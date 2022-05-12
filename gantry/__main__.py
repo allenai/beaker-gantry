@@ -1,3 +1,4 @@
+import platform
 import sys
 from typing import Optional, Tuple
 
@@ -267,6 +268,7 @@ def run(
             .with_env_var(name="GITHUB_TOKEN", secret=gh_token_secret)
             .with_env_var(name="GITHUB_REPO", value=f"{github_account}/{github_repo}")
             .with_env_var(name="GIT_REF", value=git_ref)
+            .with_env_var(name="PYTHON_VERSION", value=platform.python_version())
             .with_dataset("/gantry", beaker=entrypoint_dataset.id)
         ],
     )

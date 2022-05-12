@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -euo pipefail
+set -eo pipefail
 
 # Ensure we have all the environment variables we need.
 for env_var in "$GITHUB_TOKEN" "$GITHUB_REPO" "$GIT_REF"; do
@@ -47,7 +47,11 @@ venv_path="$(pwd)/.venv/"
 if [[ -f 'environment.yml' ]]; then
     conda env create -p "$venv_path" -f 'environment.yml'
 elif [[ -f 'setup.py' ]] || [[ -f 'requirements.txt' ]]; then
-    conda create -p "$venv_path" pip
+    if [[ -z "$PYTHON_VERSION" ]]; then
+        conda create -p "$venv_path" pip
+    else
+        conda create -p "$venv_path" "python=$PYTHON_VERSION" pip
+    fi
 else
     echo >&2 "error: at least one of 'environment.yml', 'setup.py', or 'requirements.txt' is required"
     exit 1
