@@ -51,8 +51,10 @@ setup(
     packages=find_packages(
         exclude=["*.tests", "*.tests.*", "tests.*", "tests"],
     ),
-    package_data={"gantry": ["py.typed"]},
+    package_data={"gantry": ["py.typed", "*.sh"]},
+    entry_points={"console_scripts": ["gantry=gantry.__main__:main"]},
     install_requires=read_requirements("requirements.txt"),
     extras_require={"dev": read_requirements("dev-requirements.txt")},
+    include_package_data=True,
     python_requires=">=3.7",
 )
