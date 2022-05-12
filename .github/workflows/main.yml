@@ -24,6 +24,8 @@ jobs:
     name: Python ${{ matrix.python }} - ${{ matrix.task.name }}
     runs-on: [ubuntu-latest]
     timeout-minutes: 15
+    env:
+      BEAKER_TOKEN: ${{ secrets.BEAKER_TOKEN }}
     strategy:
       fail-fast: false
       matrix:
