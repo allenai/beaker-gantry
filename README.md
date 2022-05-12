@@ -39,8 +39,8 @@
 
 ### Who is this for?
 
-**gantry** is for both new and seasoned Beaker users who need to run Python batch jobs (as opposed to interactive sessions) from a rapidly changing repository.
-Without **gantry**, this workflow usually looks like this:
+Gantry is for both new and seasoned Beaker users who need to run Python batch jobs (as opposed to interactive sessions) from a rapidly changing repository.
+Without Gantry, this workflow usually looks like this:
 
 1. Add a Dockerfile to your repository.
 2. Build the Docker image locally.
@@ -51,7 +51,7 @@ Without **gantry**, this workflow usually looks like this:
 
 This requires experience with Docker, experience writing Beaker experiment specs, and a fast and reliable internet connection (a luxury that some of us don't have, especially in the WFH era 🙃).
 
-With **gantry**, on the other hand, that same workflow simplifies down to this:
+With Gantry, on the other hand, that same workflow simplifies down to this:
 
 1. Write a conda `environment.yml` file, or simply a PIP `requirements.txt` and/or `setup.py` file.
 2. Commit and push your changes.
@@ -76,7 +76,7 @@ With **gantry**, on the other hand, that same workflow simplifies down to this:
 
 ### Installing with `pip`
 
-**gantry** is available [on PyPI](https://pypi.org/project/gantry/). Just run
+Gantry is available [on PyPI](https://pypi.org/project/gantry/). Just run
 
 ```bash
 pip install gantry
@@ -84,7 +84,7 @@ pip install gantry
 
 ### Installing from source
 
-To install **gantry** from source, first clone [the repository](https://github.com/allenai/gantry):
+To install Gantry from source, first clone [the repository](https://github.com/allenai/gantry):
 
 ```bash
 git clone https://github.com/allenai/gantry.git
@@ -99,9 +99,50 @@ pip install -e .
 
 ## Quick start
 
+### One-time setup
+
+If you've already configured the [Beaker command-line client](https://github.com/allenai/beaker/), Gantry will 
+find and use the existing configuration file (usually located at `$HOME/.beaker/config.yml`).
+Otherwise just set the environment variable `BEAKER_TOKEN` to your Beaker [user token](https://beaker.org/user).
+
+The first time you call `gantry run` you'll also be prompted to provide a [GitHub personal access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token) with the `repo` scope. This allows Gantry to clone your private repository when it runs in Beaker (you don't have to do this just yet, wait until you get prompted).
+
+Lastly - and this is the most important part - you'll have to create one of several different files that specify your Python environment. There are three options:
+
+1. A conda [`environment.yml`](https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html#create-env-file-manually) file.
+2. A [`setup.py`](https://docs.python.org/3/distutils/introduction.html#a-simple-example) file.
+3. A PIP [`requirements.txt`](https://pip.pypa.io/en/stable/user_guide/#requirements-files) file.
+
+The first method is [the recommended approach](#use-conda), especially if you're already using conda.
+
+### Submit your first experiment with Gantry
+
+Let's spin up a Beaker experiment that just prints "Hello, World!" from Python.
+From your repository root, run:
+
+```bash
+gantry run --workspace {WORKSPACE} --cluster {CLUSTER} -- python -c 'print("Hello, World!")'
+```
+
+Just replace `{WORKSPACE}` with the name of your own Beaker [*private*](#use-your-own-private-beaker-workspace) workspace and `{CLUSTER}` with the name of the Beaker cluster you want to run on.
+
+*Note: Everything after the `--` is the command + arguments you want to run on Beaker*
+
+## Best practices
+
+### Use your own private Beaker workspace
+
+Any authorized contributors to your workspace will have access to the secrets in your workspace, and Gantry needs to store your GitHub personal access token (PAT) as a secret in the workspace.
+That's also why it's important to [limit the scope and lifetime of your GitHub token](#limit-the-scope-and-lifetime-of-your-github-token)
+
+### Limit the scope and lifetime of your GitHub token
+
+Your PAT only needs to have the `repo` scope and should have a short expiration time (e.g. 30 days).
+This limits the harm a bad actor could cause if they were able to read your PAT from your Beaker workspace somehow.
+
 ### Use conda
 
-Adding a [conda environment file](https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html#create-env-file-manually) will make your exact Python environment much easier to reproduce.
+Adding a [conda environment file](https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html#create-env-file-manually) will generally make your exact Python environment easier to reproduce, especially when you have platform-dependent requirements like PyTorch.
 You don't necessarily need to write the `environment.yml` file manually either.
 If you've already initialized a conda environment locally, you can just run:
 
@@ -111,6 +152,8 @@ conda env export --from-history
 
 See [Exporting an Environment File Across Platforms](https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html#exporting-an-environment-file-across-platforms) for more details.
 
-## Best practices
-
 ## FAQ
+
+### Can I use my own Docker image?
+
+You sure can! Gantry can use any image that has bash and conda installed. But for PyTorch-based experiments, consider using one of our official [Beaker PyTorch images](https://beaker.org/ws/ai2/fab/images?text=pytorch&sort=created:descending) first. Just set the `--beaker-image` or `--docker-image` command line option accordingly.

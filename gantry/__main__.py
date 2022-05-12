@@ -212,10 +212,16 @@ def run(
         Beaker.from_env() if workspace is None else Beaker.from_env(default_workspace=workspace)
     )
     try:
-        if beaker.workspace.get_permissions().public:
+        permissions = beaker.workspace.get_permissions()
+        if permissions.public:
             raise WorkspacePermissionsError(
                 f"Your workspace {beaker.workspace.url()} is public! "
                 f"Public workspaces are not allowed."
+            )
+        if len(permissions.authorizations) > 1:
+            raise WorkspacePermissionsError(
+                f"Your workspace {beaker.workspace.url()} can't have additional contributors! "
+                f"This would allow every contributor to view your GitHub personal access token."
             )
     except WorkspaceNotSet:
         raise ConfigurationError(
