@@ -48,9 +48,9 @@ if [[ -f 'environment.yml' ]]; then
     conda env create -p "$venv_path" -f 'environment.yml'
     conda activate "$venv_path"
 elif [[ -f 'setup.py' ]]; then
-    conda env create -p "$venv_path"
+    conda create -p "$venv_path" pip
     conda activate "$venv_path"
-    python setup.py install
+    pip install .
 else
     echo >&2 "error: missing conda 'environment.yml' or 'setup.py' file"
     exit 1

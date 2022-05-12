@@ -55,14 +55,15 @@ sys.excepthook = excepthook
 @click.version_option(version=VERSION)
 def main():
     rich.get_console().print(
-        '''[cyan b]
-   __ _                    _               _  _
-  / _` |  __ _    _ _     | |_      _ _   | || |
-  \__, | / _` |  | ' \    |  _|    | '_|   \_, |
-  |___/  \__,_|  |_||_|   _\__|   _|_|_   _|__/  [/][blue]
-_|"""""|_|"""""|_|"""""|_|"""""|_|"""""|_| """"|
-"`-0-0-'"`-0-0-'"`-0-0-'"`-0-0-'"`-0-0-'"`-0-0-'
-[/]''',  # noqa: W605
+        '''
+[cyan b]                                             o=======[]   [/]
+[cyan b]   __ _                    _               _ |_      []   [/]
+[cyan b]  / _` |  __ _    _ _     | |_      _ _   | || |     []   [/]
+[cyan b]  \__, | / _` |  | ' \    |  _|    | '_|   \_, |   _/ ]_  [/]
+[cyan b]  |___/  \__,_|  |_||_|   _\__|   _|_|_   _|__/   |_____| [/]
+[blue b]_|"""""|_|"""""|_|"""""|_|"""""|_|"""""|_| """"| [/]
+[blue b] `---------------------------------------------' [/]
+''',  # noqa: W605
         highlight=False,
     )
 
@@ -129,6 +130,12 @@ _|"""""|_|"""""|_|"""""|_|"""""|_|"""""|_| """"|
     show_default=True,
 )
 @click.option(
+    "--show-logs/--no-logs",
+    default=True,
+    show_default=True,
+    help="""Whether or not to print the logs to stdout when the experiment finalizes.""",
+)
+@click.option(
     "--timeout",
     type=int,
     default=0,
@@ -156,6 +163,7 @@ def run(
     shared_memory: Optional[str] = None,
     gh_token_secret: str = constants.GITHUB_TOKEN_SECRET,
     timeout: int = 0,
+    show_logs: bool = True,
     allow_dirty: bool = False,
     dry_run: bool = False,
 ):
@@ -164,7 +172,7 @@ def run(
 
     E.g.
 
-    $ gantry run --name 'hello-world' -- python -c 'Hello, World!'
+    $ gantry run --name 'hello-world' -- python -c 'print("Hello, World!")'
     """
     if not arg:
         raise ConfigurationError("[ARGS]... are required!")
@@ -253,7 +261,9 @@ def run(
         return
 
     try:
-        experiment = beaker.experiment.wait_for(experiment, timeout=timeout)[0]
+        experiment = beaker.experiment.wait_for(
+            experiment, timeout=timeout if timeout > 0 else None
+        )[0]
     except (KeyboardInterrupt, TimeoutError):
         print_stderr("[yellow]Canceling experiment...[/]")
         beaker.experiment.stop(experiment)
@@ -268,12 +278,17 @@ def run(
         exit_code = job.status.exit_code
 
     # Display the logs.
-    print()
-    rich.get_console().rule(f"Logs from task [i]'{task.display_name}'[/]")
-    util.display_logs(beaker.job.logs(job, quiet=True))
+    if show_logs:
+        print()
+        rich.get_console().rule(f"Logs from task [i]'{task.display_name}'[/]")
+        util.display_logs(beaker.job.logs(job, quiet=True))
 
     if exit_code > 0:
         raise ExperimentFailedError(f"Experiment exited with non-zero code ({exit_code})")
+
+    print(
+        f"[green]\N{check mark} [b]'{name}'[/] completed successfully {beaker.experiment.url(experiment)}[/]"
+    )
 
 
 if __name__ == "__main__":
