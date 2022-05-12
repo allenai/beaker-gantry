@@ -46,21 +46,27 @@ echo "
 venv_path="$(pwd)/.venv/"
 if [[ -f 'environment.yml' ]]; then
     conda env create -p "$venv_path" -f 'environment.yml'
-    conda activate "$venv_path"
-elif [[ -f 'setup.py' ]]; then
+elif [[ -f 'setup.py' ]] || [[ -f 'requirements.txt' ]]; then
     conda create -p "$venv_path" pip
-    conda activate "$venv_path"
-    pip install .
 else
-    echo >&2 "error: missing conda 'environment.yml' or 'setup.py' file"
+    echo >&2 "error: at least one of 'environment.yml', 'setup.py', or 'requirements.txt' is required"
     exit 1
 fi
+
+conda activate "$venv_path"
+
+if [[ -f 'setup.py' ]]; then
+    pip install .
+elif [[ -f 'requirements.txt' ]]; then
+    pip install -r requirements.txt
+fi
+
+PYTHONPATH="$(pwd)"
+export PYTHONPATH
 
 # Create directory for results.
 mkdir -p /results/.gantry
 
-PYTHONPATH="$(pwd)"
-export PYTHONPATH
 
 echo "
 #############################
