@@ -103,6 +103,20 @@ def main():
     show_default=True,
 )
 @click.option(
+    "--beaker-image",
+    type=str,
+    default=constants.DEFAULT_IMAGE,
+    help="""The name or ID of an image on Beaker to use for your experiment.
+    Mutually exclusive with --docker-image.""",
+    show_default=True,
+)
+@click.option(
+    "--docker-image",
+    type=str,
+    help="""The name of a public Docker image to use for your experiment.
+    Mutually exclusive with --beaker-image.""",
+)
+@click.option(
     "--cpus",
     type=float,
     help="""Minimum number of logical CPU cores (e.g. 4.0, 0.5).""",
@@ -157,6 +171,8 @@ def run(
     task_name: str = "main",
     workspace: Optional[str] = None,
     cluster: Tuple[str, ...] = (constants.DEFAULT_CLUSTER,),
+    beaker_image: Optional[str] = constants.DEFAULT_IMAGE,
+    docker_image: Optional[str] = None,
     cpus: Optional[float] = None,
     gpus: Optional[int] = None,
     memory: Optional[str] = None,
@@ -176,6 +192,11 @@ def run(
     """
     if not arg:
         raise ConfigurationError("[ARGS]... are required!")
+
+    if (beaker_image is None) == (docker_image is None):
+        raise ConfigurationError(
+            "Either --beaker-image or --docker-image must be specified, but not both."
+        )
 
     name: str = name or prompt.Prompt.ask(  # type: ignore[assignment]
         "[i]What would you like to call this experiment?[/]", default=util.unique_name()
@@ -236,7 +257,8 @@ def run(
             TaskSpec.new(
                 task_name,
                 cluster_to_use,
-                beaker_image=constants.DEFAULT_IMAGE,
+                beaker_image=beaker_image,
+                docker_image=docker_image,
                 result_path="/results",
                 command=["bash", "/gantry/entrypoint.sh"],
                 arguments=list(arg),
