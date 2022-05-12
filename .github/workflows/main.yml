@@ -60,11 +60,6 @@ jobs:
                 isort --check .
                 black --check .
 
-          - python: '3.10'
-            task:
-              name: Docs
-              run: cd docs && make html
-
     steps:
       - uses: actions/checkout@v3
 
