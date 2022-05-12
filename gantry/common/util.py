@@ -51,7 +51,7 @@ def parse_git_remote_url(url: str) -> Tuple[str, str]:
             .split("/")
         )
     except ValueError:
-        raise InvalidRemoteError("Failed to parse GitHub repo path from remote '{url}'")
+        raise InvalidRemoteError(f"Failed to parse GitHub repo path from remote '{url}'")
     return account, repo
 
 
@@ -99,9 +99,15 @@ def ensure_entrypoint_dataset(beaker: Beaker) -> Dataset:
     from importlib_resources import as_file, files
 
     workspace_id = beaker.workspace.get().id
-    entrypoint_dataset_name = f"gantry-v{VERSION}-{workspace_id}"
 
     with as_file(files("gantry").joinpath(ENTRYPOINT)) as entrypoint_path:
+        # Get hash of the local entrypoint source file.
+        sha256_hash = hashlib.sha256()
+        with open(entrypoint_path, "rb") as f:
+            sha256_hash.update(f.read())
+
+        entrypoint_dataset_name = f"gantry-v{VERSION}-{workspace_id}-{sha256_hash.hexdigest()[:6]}"
+
         # Ensure gantry entrypoint dataset exists.
         gantry_entrypoint_dataset: Dataset
         try:
@@ -123,9 +129,6 @@ def ensure_entrypoint_dataset(beaker: Beaker) -> Dataset:
         ds_files = list(beaker.dataset.ls(gantry_entrypoint_dataset))
         if len(ds_files) != 1:
             raise EntrypointChecksumError(err_msg)
-        sha256_hash = hashlib.sha256()
-        with open(entrypoint_path, "rb") as f:
-            sha256_hash.update(f.read())
         if ds_files[0].digest != Digest(sha256_hash.digest()):
             raise EntrypointChecksumError(err_msg)
 
