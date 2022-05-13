@@ -113,6 +113,8 @@ Lastly - and this is the most important part - you'll have to create one of seve
 3. A PIP [`requirements.txt`](https://pip.pypa.io/en/stable/user_guide/#requirements-files) file.
 
 The first method is [the recommended approach](#use-conda), especially if you're already using conda.
+But it's perfectly okay to use a combination of these different approaches as well.
+This can be useful when, for example, you need to [use a CUDA-enabled version of PyTorch on Beaker but a CPU-only version locally](#how-do-i-use-a-cuda-enabled-version-of-pytorch-on-beaker-when-im-using-a-cpu-only-version-locally).
 
 ### Submit your first experiment with Gantry
 
@@ -126,6 +128,8 @@ gantry run --workspace {WORKSPACE} --cluster {CLUSTER} -- python -c 'print("Hell
 Just replace `{WORKSPACE}` with the name of your own Beaker [*private*](#use-your-own-private-beaker-workspace) workspace and `{CLUSTER}` with the name of the Beaker cluster you want to run on.
 
 *❗Note: Everything after the `--` is the command + arguments you want to run on Beaker. It's necessary to include the `--` if any of your arguments look like options themselves (like `-c` in this example) so gantry can differentiate them from its own options.*
+
+Try `gantry run --help` to see all of the available options.
 
 ## Best practices
 
@@ -150,6 +154,8 @@ conda env export --from-history
 ```
 
 See [Exporting an Environment File Across Platforms](https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html#exporting-an-environment-file-across-platforms) for more details.
+
+It's also okay to [use a combination of conda environment and PIP requirements files](#can-i-use-both-conda-environment-and-pip-requirements-files).
 
 ## FAQ
 
@@ -179,8 +185,35 @@ dependencies:
 
 ### Can I use both conda environment and PIP requirements files?
 
-Yes you can.
+Yes you can. Gantry will initialize your environment using your conda environment file (if you have one)
+and then will also check for a PIP requirements file.
+
+
+### How do I use a CUDA-enabled version of PyTorch on Beaker when I'm using a CPU-only version locally?
+
+One way to handle this would be to start with a `requirements.txt` that lists the `torch` version you need along with any other dependencies, e.g.
+
+```
+# requirements.txt
+torch==1.11.0
+...
+```
+
+Then a conda `environment.yml` some where in your repository that specifies exactly how to install PyTorch on Beaker, e.g.:
+
+```yaml
+# beaker/environment.yml
+name: torch-env
+channels:
+- pytorch
+dependencies:
+- cudatoolkit=11.3
+- pytorch==1.11.0  # make sure this matches the version in requirements.txt
+```
+
+When you call `gantry run`, use the `--conda` flag to specify the path to your conda env file (e.g. `--conda beaker/environment.yml`).
+Gantry will use that env file to initialize the environment, and then will install the rest of your dependencies from the `requirements.txt` file.
 
 ### Why "Gantry"?
 
-A gantry is structure that's used, among other things, to lift containers off of ships. Analogously Beaker Gantry's purpose is to lift Docker containers (or at least the *management* of Docker containers) away from users.
+A gantry is a structure that's used, among other things, to lift containers off of ships. Analogously Beaker Gantry's purpose is to lift Docker containers (or at least the *management* of Docker containers) away from users.
