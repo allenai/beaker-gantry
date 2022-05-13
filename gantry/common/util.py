@@ -69,6 +69,7 @@ def display_logs(logs: Iterable[bytes]):
     line_buffer = ""
     for bytes_chunk in logs:
         chunk = line_buffer + bytes_chunk.decode(errors="ignore")
+        chunk = chunk.replace("\r", "\n")
         lines = chunk.split("\n")
         if chunk.endswith("\n"):
             line_buffer = ""

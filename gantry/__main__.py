@@ -63,6 +63,7 @@ def handle_sigterm(sig, frame):
 def main():
     # Configure rich.
     if os.environ.get("GANTRY_GITHUB_TESTING"):
+        # Force a broader terminal when running tests in GitHub Actions.
         console_width = 180
         rich.reconfigure(width=console_width, force_terminal=True, force_interactive=False)
         pretty.install()
