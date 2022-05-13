@@ -1,4 +1,6 @@
+import os
 import platform
+import signal
 import sys
 from typing import Optional, Tuple
 
@@ -13,7 +15,7 @@ from beaker import (
     WorkspaceNotSet,
 )
 from click_help_colors import HelpColorsCommand, HelpColorsGroup
-from rich import print, prompt, traceback
+from rich import pretty, print, prompt, traceback
 
 from .common import constants, util
 from .common.util import print_stderr
@@ -52,9 +54,27 @@ def excepthook(exctype, value, tb):
 sys.excepthook = excepthook
 
 
+def handle_sigterm(sig, frame):
+    raise TermInterrupt
+
+
 @click.group(**_CLICK_GROUP_DEFAULTS)
 @click.version_option(version=VERSION)
 def main():
+    # Configure rich.
+    if os.environ.get("GANTRY_GITHUB_TESTING"):
+        # Force a broader terminal when running tests in GitHub Actions.
+        console_width = 180
+        rich.reconfigure(width=console_width, force_terminal=True, force_interactive=False)
+        pretty.install()
+        traceback.install(width=console_width, suppress=[click])
+    else:
+        pretty.install()
+        traceback.install(suppress=[click])
+
+    # Handle SIGTERM just like KeyboardInterrupt
+    signal.signal(signal.SIGTERM, handle_sigterm)
+
     rich.get_console().print(
         '''
 [cyan b]                                             o=======[]   [/]
@@ -294,7 +314,7 @@ def run(
         experiment = beaker.experiment.wait_for(
             experiment, timeout=timeout if timeout > 0 else None
         )[0]
-    except (KeyboardInterrupt, TimeoutError):
+    except (KeyboardInterrupt, TermInterrupt, TimeoutError):
         print_stderr("[yellow]Canceling experiment...[/]")
         beaker.experiment.stop(experiment)
         raise
@@ -322,5 +342,4 @@ def run(
 
 
 if __name__ == "__main__":
-    traceback.install()
     main()

@@ -18,6 +18,7 @@ env:
   # Change this to invalidate existing cache.
   CACHE_PREFIX: v0
   PYTHONPATH: ./
+  GANTRY_GITHUB_TESTING: 'true'
 
 jobs:
   checks:
@@ -26,6 +27,7 @@ jobs:
     timeout-minutes: 15
     env:
       BEAKER_TOKEN: ${{ secrets.BEAKER_TOKEN }}
+      BEAKER_WORKSPACE: ai2/gantry-testing
     strategy:
       fail-fast: false
       matrix:
@@ -60,8 +62,29 @@ jobs:
                 isort --check .
                 black --check .
 
+          - python: '3.10'
+            task:
+              name: Run
+              run: |
+                run_name=$(python conftest.py run_name)
+                cluster=$(python conftest.py cluster)
+                gantry run \
+                  --workspace "$BEAKER_WORKSPACE" \
+                  --name "$run_name" \
+                  --cluster "$cluster" \
+                  --timeout -1 \
+                  -- python -c 'print("Hello, World!")'
+
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout (PR)
+        if: github.event_name == 'pull_request'
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}  # check out PR head commit instead of merge commit
+
+      - name: Checkout (push or tag)
+        if: github.event_name != 'pull_request'
+        uses: actions/checkout@v3
 
       - name: Setup Python environment
         uses: ./.github/actions/setup-venv
