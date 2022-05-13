@@ -156,3 +156,30 @@ See [Exporting an Environment File Across Platforms](https://docs.conda.io/proje
 ### Can I use my own Docker image?
 
 You sure can! Gantry can use any image that has bash and conda installed. But for PyTorch-based experiments, consider using one of our official [Beaker PyTorch images](https://beaker.org/ws/ai2/fab/images?text=pytorch&sort=created:descending) first. Just set the `--beaker-image` or `--docker-image` command line option accordingly.
+
+### Will Gantry work for GPU experiments?
+
+Absolutely! This was the main use-case Gantry was developed for. Just set the `--gpus` option for `gantry run` to the number of GPUs you need.
+You should also ensure that the way in which you specify your Python environment (e.g. conda `environment.yml`, `setup.py`, or PIP `requirements.txt` file) will lead to your dependencies being properly installed to support
+the GPU hardware specific to the cluster you're running on.
+
+For example, if one of your dependencies is [PyTorch](https://pytorch.org/), you're probably best off writing a conda `environment.yml` file since conda is the preferred way to install PyTorch.
+You'll generally want to use the latest supported CUDA version, so in this case your `environment.yml` file could look like this:
+
+```yaml
+name: torch-env
+channels:
+- pytorch
+dependencies:
+- cudatoolkit=11.3
+- pytorch
+- ...
+```
+
+### Can I use both conda environment and PIP requirements files?
+
+Yes you can.
+
+### Why "Gantry"?
+
+A gantry is structure that's used, among other things, to lift containers off of ships. Analogously Beaker Gantry's purpose is to lift Docker containers (or at least the *management* of Docker containers) away from users.
