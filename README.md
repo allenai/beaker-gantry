@@ -199,7 +199,7 @@ torch==1.11.0
 ...
 ```
 
-Then a conda `environment.yml` some where in your repository that specifies exactly how to install PyTorch on Beaker, e.g.:
+Then add a conda `environment.yml` somewhere in your repository that specifies exactly how to install PyTorch (and a CUDA toolkit) on Beaker, e.g.:
 
 ```yaml
 # beaker/environment.yml
