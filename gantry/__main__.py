@@ -182,7 +182,7 @@ def main():
 @click.option(
     "--allow-dirty",
     is_flag=True,
-    help="""Allow submitted the experiment with a dirty working directory.""",
+    help="""Allow submitting the experiment with a dirty working directory.""",
 )
 @click.option("--dry-run", is_flag=True, help="""Do a dry run only.""")
 def run(

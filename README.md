@@ -126,14 +126,14 @@ gantry run --workspace {WORKSPACE} --cluster {CLUSTER} -- python -c 'print("Hell
 
 Just replace `{WORKSPACE}` with the name of your own Beaker [*private*](#use-your-own-private-beaker-workspace) workspace and `{CLUSTER}` with the name of the Beaker cluster you want to run on.
 
-*Note: Everything after the `--` is the command + arguments you want to run on Beaker*
+*❗Note: Everything after the `--` is the command + arguments you want to run on Beaker. It's necessary to include the `--` if any of your arguments look like options themselves (like `-c` in this example) so gantry can differentiate them from its own options.*
 
 ## Best practices
 
 ### Use your own private Beaker workspace
 
 Any authorized contributors to your workspace will have access to the secrets in your workspace, and Gantry needs to store your GitHub personal access token (PAT) as a secret in the workspace.
-That's also why it's important to [limit the scope and lifetime of your GitHub token](#limit-the-scope-and-lifetime-of-your-github-token)
+That's also why it's important to [limit the scope and lifetime of your GitHub token](#limit-the-scope-and-lifetime-of-your-github-token).
 
 ### Limit the scope and lifetime of your GitHub token
 
