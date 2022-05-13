@@ -75,12 +75,14 @@ jobs:
                   -- python -c 'print("Hello, World!")'
 
     steps:
-      - if: github.event_name == 'pull_request'
+      - name: Checkout (PR)
+        if: github.event_name == 'pull_request'
         uses: actions/checkout@v3
         with:
           ref: ${{ github.event.pull_request.head.sha }}  # check out PR head commit instead of merge commit
 
-      - if: github.event_name != 'pull_request'
+      - name: Checkout (push or tag)
+        if: github.event_name != 'pull_request'
         uses: actions/checkout@v3
 
       - name: Setup Python environment
