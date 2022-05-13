@@ -18,6 +18,7 @@ from click_help_colors import HelpColorsCommand, HelpColorsGroup
 from rich import pretty, print, prompt, traceback
 
 from .common import constants, util
+from .common.aliases import PathOrStr
 from .common.util import print_stderr
 from .exceptions import *
 from .version import VERSION
@@ -45,7 +46,7 @@ def excepthook(exctype, value, tb):
     if issubclass(exctype, (GantryError,)):
         print_stderr(f"[red][bold]{exctype.__name__}:[/] [i]{value}[/][/]")
     # For interruptions, call the original exception handler.
-    elif issubclass(exctype, (KeyboardInterrupt,)):
+    elif issubclass(exctype, (KeyboardInterrupt, TermInterrupt)):
         sys.__excepthook__(exctype, value, tb)
     else:
         print_stderr(traceback.Traceback.from_exception(exctype, value, tb, suppress=[click]))
@@ -67,10 +68,8 @@ def main():
         console_width = 180
         rich.reconfigure(width=console_width, force_terminal=True, force_interactive=False)
         pretty.install()
-        traceback.install(width=console_width, suppress=[click])
     else:
         pretty.install()
-        traceback.install(suppress=[click])
 
     # Handle SIGTERM just like KeyboardInterrupt
     signal.signal(signal.SIGTERM, handle_sigterm)
@@ -165,6 +164,18 @@ def main():
     show_default=True,
 )
 @click.option(
+    "--conda",
+    type=click.Path(exists=True, dir_okay=False),
+    help=f"""Path to a conda environment file for reconstructing your Python environment.
+    If not specified, '{constants.CONDA_ENV_FILE}' will be used if it exists.""",
+)
+@click.option(
+    "--pip",
+    type=click.Path(exists=True, dir_okay=False),
+    help=f"""Path to a PIP requirements file for reconstructing your Python environment.
+    If not specified, '{constants.PIP_REQUIREMENTS_FILE}' will be used if it exists.""",
+)
+@click.option(
     "--show-logs/--no-logs",
     default=True,
     show_default=True,
@@ -199,6 +210,8 @@ def run(
     memory: Optional[str] = None,
     shared_memory: Optional[str] = None,
     gh_token_secret: str = constants.GITHUB_TOKEN_SECRET,
+    conda: Optional[PathOrStr] = None,
+    pip: Optional[PathOrStr] = None,
     timeout: int = 0,
     show_logs: bool = True,
     allow_dirty: bool = False,
@@ -277,7 +290,7 @@ def run(
     # Find a cluster to use.
     cluster_to_use = util.ensure_cluster(beaker, task_resources, *cluster)
 
-    # Initialize experiment spec.
+    # Initialize experiment and task spec.
     spec = ExperimentSpec(
         description=description,
         tasks=[
@@ -295,6 +308,14 @@ def run(
             .with_env_var(name="GITHUB_REPO", value=f"{github_account}/{github_repo}")
             .with_env_var(name="GIT_REF", value=git_ref)
             .with_env_var(name="PYTHON_VERSION", value=platform.python_version())
+            .with_env_var(
+                name="CONDA_ENV_FILE",
+                value=str(conda) if conda is not None else constants.CONDA_ENV_FILE,
+            )
+            .with_env_var(
+                name="PIP_REQUIREMENTS_FILE",
+                value=str(pip) if pip is not None else constants.PIP_REQUIREMENTS_FILE,
+            )
             .with_dataset("/gantry", beaker=entrypoint_dataset.id)
         ],
     )
