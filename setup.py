@@ -49,7 +49,7 @@ setup(
     author_email="contact@allenai.org",
     license="Apache",
     packages=find_packages(
-        exclude=["*.tests", "*.tests.*", "tests.*", "tests"],
+        exclude=["*.tests", "*.tests.*", "tests.*", "tests", "integration_tests", "conftest"],
     ),
     package_data={"gantry": ["py.typed", "*.sh"]},
     entry_points={"console_scripts": ["gantry=gantry.__main__:main"]},

@@ -26,6 +26,7 @@ jobs:
     timeout-minutes: 15
     env:
       BEAKER_TOKEN: ${{ secrets.BEAKER_TOKEN }}
+      BEAKER_WORKSPACE: ai2/gantry-testing
     strategy:
       fail-fast: false
       matrix:
@@ -59,6 +60,19 @@ jobs:
               run: |
                 isort --check .
                 black --check .
+
+          - python: '3.10'
+            task:
+              name: Run
+              run: |
+                run_name=$(python conftest.py run_name)
+                cluster=$(python conftest.py cluster)
+                gantry run \
+                  --workspace "$BEAKER_WORKSPACE" \
+                  --name "$run_name" \
+                  --cluster "$cluster" \
+                  --timeout -1 \
+                  -- python -c 'print("Hello, World!")'
 
     steps:
       - uses: actions/checkout@v3
