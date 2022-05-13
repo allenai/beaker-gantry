@@ -52,11 +52,14 @@ fi
 # Reconstruct the Python environment.
 venv_path="$(pwd)/.venv/"
 if [[ -f "$CONDA_ENV_FILE" ]]; then
+    echo "[GANTRY] Initializing environment from conda env file $CONDA_ENV_FILE..."
     conda env create -p "$venv_path" -f "$CONDA_ENV_FILE" 
 elif [[ -f 'setup.py' ]] || [[ -f "$PIP_REQUIREMENTS_FILE" ]]; then
     if [[ -z "$PYTHON_VERSION" ]]; then
+        echo "[GANTRY] Initializing environment with default Python version..."
         conda create -p "$venv_path" pip
     else
+        echo "[GANTRY] Initializing environment with Python $PYTHON_VERSION..."
         conda create -p "$venv_path" "python=$PYTHON_VERSION" pip
     fi
 else
@@ -67,10 +70,13 @@ fi
 conda activate "$venv_path"
 
 if [[ -f 'setup.py' ]] && [[ -f "$PIP_REQUIREMENTS_FILE" ]]; then
+    echo "[GANTRY] Installing package setup.py and $PIP_REQUIREMENTS_FILE..."
     pip install . -r $PIP_REQUIREMENTS_FILE
 elif [[ -f 'setup.py' ]]; then
+    echo "[GANTRY] Installing package setup.py..."
     pip install .
 elif [[ -f "$PIP_REQUIREMENTS_FILE" ]]; then
+    echo "[GANTRY] Installing dependencies from $PIP_REQUIREMENTS_FILE..."
     pip install -r "$PIP_REQUIREMENTS_FILE"
 fi
 

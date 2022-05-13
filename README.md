@@ -172,6 +172,7 @@ channels:
 - pytorch
 dependencies:
 - cudatoolkit=11.3
+- numpy
 - pytorch
 - ...
 ```
