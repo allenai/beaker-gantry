@@ -304,6 +304,7 @@ def run(
                 arguments=list(arg),
                 resources=task_resources,
             )
+            .with_env_var(name="GANTRY_VERSION", value=VERSION)
             .with_env_var(name="GITHUB_TOKEN", secret=gh_token_secret)
             .with_env_var(name="GITHUB_REPO", value=f"{github_account}/{github_repo}")
             .with_env_var(name="GIT_REF", value=git_ref)
