@@ -87,7 +87,7 @@ To install Gantry from source, first clone [the repository](https://github.com/a
 
 ```bash
 git clone https://github.com/allenai/beaker-gantry.git
-cd gantry
+cd beaker-gantry
 ```
 
 Then run
