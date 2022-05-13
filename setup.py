@@ -31,7 +31,7 @@ with open("gantry/version.py", "r") as version_file:
     exec(version_file.read(), VERSION)
 
 setup(
-    name="gantry",
+    name="beaker-gantry",
     version=VERSION["VERSION"],
     description="",
     long_description=open("README.md").read(),

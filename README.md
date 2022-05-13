@@ -1,22 +1,22 @@
 <div align="center">
 <!-- TODO: Add logo -->
 <br>
-<img src=".github/gantry-logo-ascii.png"/>
+<img src="https://raw.githubusercontent.com/allenai/beaker-gantry/main/.github/gantry-logo-ascii.png"/>
 <br>
 <h1>Beaker Gantry</h1>
 <p>Gantry streamlines running Python experiments in <a href="https://beaker.org">Beaker</a> by managing containers and boilerplate for you</p>
 <hr/>
 <!-- TODO: Add badges once this is open source -->
-<!-- <a href="https://github.com/allenai/beaker-gantry/actions"> -->
-<!--     <img alt="CI" src="https://github.com/allenai/beaker-gantry/workflows/Main/badge.svg?event=push&branch=main"> -->
-<!-- </a> -->
-<!-- <a href="https://pypi.org/project/beaker-gantry/"> -->
-<!--     <img alt="PyPI" src="https://img.shields.io/pypi/v/beaker-gantry"> -->
-<!-- </a> -->
-<!-- <a href="https://github.com/allenai/beaker-gantry/blob/main/LICENSE"> -->
-<!--     <img alt="License" src="https://img.shields.io/github/license/allenai/beaker-gantry.svg?color=blue&cachedrop"> -->
-<!-- </a> -->
-<!-- <br/> -->
+<a href="https://github.com/allenai/beaker-gantry/actions">
+    <img alt="CI" src="https://github.com/allenai/beaker-gantry/workflows/Main/badge.svg?event=push&branch=main">
+</a>
+<a href="https://pypi.org/project/beaker-gantry/">
+    <img alt="PyPI" src="https://img.shields.io/pypi/v/beaker-gantry">
+</a>
+<a href="https://github.com/allenai/beaker-gantry/blob/main/LICENSE">
+    <img alt="License" src="https://img.shields.io/github/license/allenai/beaker-gantry.svg?color=blue&cachedrop">
+</a>
+<br/>
 </div>
 
 ⚡️*Easy to use*
@@ -78,15 +78,15 @@ With Gantry, on the other hand, that same workflow simplifies down to this:
 Gantry is available [on PyPI](https://pypi.org/project/gantry/). Just run
 
 ```bash
-pip install gantry
+pip install beaker-gantry
 ```
 
 ### Installing from source
 
-To install Gantry from source, first clone [the repository](https://github.com/allenai/gantry):
+To install Gantry from source, first clone [the repository](https://github.com/allenai/beaker-gantry):
 
 ```bash
-git clone https://github.com/allenai/gantry.git
+git clone https://github.com/allenai/beaker-gantry.git
 cd gantry
 ```
 
