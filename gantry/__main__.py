@@ -1,3 +1,4 @@
+import os
 import platform
 import signal
 import sys
@@ -61,10 +62,14 @@ def handle_sigterm(sig, frame):
 @click.version_option(version=VERSION)
 def main():
     # Configure rich.
-    console_width = max(rich.get_console().width, 180)
-    rich.reconfigure(width=console_width, force_terminal=True)
-    pretty.install()
-    traceback.install(width=console_width, suppress=[click])
+    if os.environ.get("GANTRY_GITHUB_TESTING"):
+        console_width = 180
+        rich.reconfigure(width=console_width, force_terminal=True, force_interactive=False)
+        pretty.install()
+        traceback.install(width=console_width, suppress=[click])
+    else:
+        pretty.install()
+        traceback.install(suppress=[click])
 
     # Handle SIGTERM just like KeyboardInterrupt
     signal.signal(signal.SIGTERM, handle_sigterm)

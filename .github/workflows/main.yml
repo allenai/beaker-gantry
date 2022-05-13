@@ -18,6 +18,7 @@ env:
   # Change this to invalidate existing cache.
   CACHE_PREFIX: v0
   PYTHONPATH: ./
+  GANTRY_GITHUB_TESTING: 'true'
 
 jobs:
   checks:
