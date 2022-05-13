@@ -1,4 +1,4 @@
-beaker-py>=0.15.3,<0.16.0
+beaker-py>=1.0,<2.0
 GitPython>=3.0,<4.0
 rich>=12.0,<12.5
 click>=7.0,<8.1.4
