@@ -1,9 +1,8 @@
 <div align="center">
 <!-- TODO: Add logo -->
-<!-- <br> -->
-<!-- <img src="https://raw.githubusercontent.com/allenai/beaker-py/main/docs/source/_static/beaker-500px-transparent.png" width="200"/> -->
-<!-- <br> -->
-<!-- <br> -->
+<br>
+<img src=".github/gantry-logo-ascii.png"/>
+<br>
 <h1>Beaker Gantry</h1>
 <p>Gantry streamlines running Python experiments in <a href="https://beaker.org">Beaker</a> by managing containers and boilerplate for you</p>
 <hr/>
