@@ -62,7 +62,7 @@ def handle_sigterm(sig, frame):
 def main():
     # Configure rich.
     console_width = max(rich.get_console().width, 180)
-    rich.reconfigure(width=console_width, force_terminal=True, force_interactive=False)
+    rich.reconfigure(width=console_width, force_terminal=True)
     pretty.install()
     traceback.install(width=console_width, suppress=[click])
 
