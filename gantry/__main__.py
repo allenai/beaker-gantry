@@ -1,4 +1,5 @@
 import platform
+import signal
 import sys
 from typing import Optional, Tuple
 
@@ -50,6 +51,10 @@ def excepthook(exctype, value, tb):
 
 
 sys.excepthook = excepthook
+
+
+def handle_sigterm(sig, frame):
+    raise TermInterrupt
 
 
 @click.group(**_CLICK_GROUP_DEFAULTS)
@@ -294,7 +299,7 @@ def run(
         experiment = beaker.experiment.wait_for(
             experiment, timeout=timeout if timeout > 0 else None
         )[0]
-    except (KeyboardInterrupt, TimeoutError):
+    except (KeyboardInterrupt, TermInterrupt, TimeoutError):
         print_stderr("[yellow]Canceling experiment...[/]")
         beaker.experiment.stop(experiment)
         raise
@@ -322,5 +327,8 @@ def run(
 
 
 if __name__ == "__main__":
-    traceback.install()
+    console_width = max(rich.get_console().width, 180)
+    rich.reconfigure(width=console_width, force_terminal=True, force_interactive=False)
+    traceback.install(width=console_width, suppress=[click])
+    signal.signal(signal.SIGTERM, handle_sigterm)
     main()

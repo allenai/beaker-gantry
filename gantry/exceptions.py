@@ -34,3 +34,7 @@ class WorkspacePermissionsError(GantryError):
 
 class GitHubTokenSecretNotFound(GantryError):
     pass
+
+
+class TermInterrupt(GantryError):
+    pass
