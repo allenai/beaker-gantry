@@ -14,7 +14,7 @@ from beaker import (
     WorkspaceNotSet,
 )
 from click_help_colors import HelpColorsCommand, HelpColorsGroup
-from rich import print, prompt, traceback
+from rich import pretty, print, prompt, traceback
 
 from .common import constants, util
 from .common.util import print_stderr
@@ -327,8 +327,13 @@ def run(
 
 
 if __name__ == "__main__":
+    # Configure rich.
     console_width = max(rich.get_console().width, 180)
     rich.reconfigure(width=console_width, force_terminal=True, force_interactive=False)
+    pretty.install()
     traceback.install(width=console_width, suppress=[click])
+
+    # Handle SIGTERM just like KeyboardInterrupt
     signal.signal(signal.SIGTERM, handle_sigterm)
+
     main()
