@@ -33,7 +33,7 @@
 
 🪶 *Lightweight*
 
-- Pure Python.
+- Pure Python (built on top of [beaker-py](https://github.com/allenai/beaker-py)).
 - Minimal dependencies.
 
 ### Who is this for?
