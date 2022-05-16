@@ -59,14 +59,18 @@ With Gantry, on the other hand, that same workflow simplifies down to this:
 
 ## In this README
 
-- 💾 [Installing](#installing)
-- 🚀 [Quick start](#quick-start)
-- 👓 [Best practices](#best-practices)
-- ❓ [FAQ](#faq)
+- 💾 **[Installing](#installing)**
+- 🚀 **[Quick start](#quick-start)**
+- 👓 **[Best practices](#best-practices)**
+- ❓ **[FAQ](#faq)**
 
-<br>
+### Additional info
 
-*For developers* 👇
+#### 👋 *Examples*
+
+- [Savings results / metrics from an experiment](./examples/metrics)
+
+#### 💻 *For developers*
 
 - [CHANGELOG](https://github.com/allenai/beaker-gantry/blob/main/CHANGELOG.md)
 - [CONTRIBUTING](https://github.com/allenai/beaker-gantry/blob/main/CONTRIBUTING.md)
@@ -119,7 +123,9 @@ This can be useful when, for example, you need to [use a CUDA-enabled version of
 ### Submit your first experiment with Gantry
 
 Let's spin up a Beaker experiment that just prints "Hello, World!" from Python.
-From your repository root, run:
+
+First make sure you've committed *and* pushed all changes so far in your repository.
+Then (from the root of your repository) run:
 
 ```bash
 gantry run --workspace {WORKSPACE} --cluster {CLUSTER} -- python -c 'print("Hello, World!")'
@@ -213,6 +219,12 @@ dependencies:
 
 When you call `gantry run`, use the `--conda` flag to specify the path to your conda env file (e.g. `--conda beaker/environment.yml`).
 Gantry will use that env file to initialize the environment, and then will install the rest of your dependencies from the `requirements.txt` file.
+
+### How can I save results or metrics from an experiment?
+
+By default Gantry uses the `/results` directory on the image as the location of the results dataset.
+That means that everything your experiment writes to this directory will be persisted as a Beaker dataset when the experiment finalizes.
+And you can also create Beaker metrics for your experiment by writing a JSON file called `metrics.json` in the `/results` directory.
 
 ### Why "Gantry"?
 

@@ -73,6 +73,7 @@ jobs:
                   --name "$run_name" \
                   --cluster "$cluster" \
                   --timeout -1 \
+                  --yes \
                   -- python -c 'print("Hello, World!")'
 
     steps:
