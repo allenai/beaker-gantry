@@ -1,9 +1,11 @@
+import time
 from typing import Iterable, Tuple
 
 import rich
 from beaker import (
     Beaker,
     Dataset,
+    DatasetConflict,
     DatasetNotFound,
     Digest,
     SecretNotFound,
@@ -116,9 +118,13 @@ def ensure_entrypoint_dataset(beaker: Beaker) -> Dataset:
         except DatasetNotFound:
             # Create it.
             print(f"Creating entrypoint dataset '{entrypoint_dataset_name}'")
-            gantry_entrypoint_dataset = beaker.dataset.create(
-                entrypoint_dataset_name, entrypoint_path
-            )
+            try:
+                gantry_entrypoint_dataset = beaker.dataset.create(
+                    entrypoint_dataset_name, entrypoint_path
+                )
+            except DatasetConflict:  # could be in a race with another `gantry` process.
+                time.sleep(1.0)
+                gantry_entrypoint_dataset = beaker.dataset.get(entrypoint_dataset_name)
 
         # Verify contents.
         err_msg = (
