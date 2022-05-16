@@ -28,10 +28,6 @@ class EntrypointChecksumError(GantryError):
     pass
 
 
-class WorkspacePermissionsError(GantryError):
-    pass
-
-
 class GitHubTokenSecretNotFound(GantryError):
     pass
 

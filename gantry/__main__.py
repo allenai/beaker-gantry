@@ -195,6 +195,12 @@ def main():
     is_flag=True,
     help="""Allow submitting the experiment with a dirty working directory.""",
 )
+@click.option(
+    "-y",
+    "--yes",
+    is_flag=True,
+    help="""Skip all confirmation prompts.""",
+)
 @click.option("--dry-run", is_flag=True, help="""Do a dry run only.""")
 def run(
     arg: Tuple[str, ...],
@@ -216,6 +222,7 @@ def run(
     show_logs: bool = True,
     allow_dirty: bool = False,
     dry_run: bool = False,
+    yes: bool = False,
 ):
     """
     Run an experiment on Beaker.
@@ -232,10 +239,6 @@ def run(
             "Either --beaker-image or --docker-image must be specified, but not both."
         )
 
-    name: str = name or prompt.Prompt.ask(  # type: ignore[assignment]
-        "[i]What would you like to call this experiment?[/]", default=util.unique_name()
-    )
-
     task_resources = TaskResources(
         cpu_count=cpus, gpu_count=gpus, memory=memory, shared_memory=shared_memory
     )
@@ -246,16 +249,21 @@ def run(
     )
     try:
         permissions = beaker.workspace.get_permissions()
-        if permissions.public:
-            raise WorkspacePermissionsError(
-                f"Your workspace {beaker.workspace.url()} is public! "
-                f"Public workspaces are not allowed."
-            )
         if len(permissions.authorizations) > 1:
-            raise WorkspacePermissionsError(
-                f"Your workspace {beaker.workspace.url()} can't have additional contributors! "
-                f"This would allow every contributor to view your GitHub personal access token."
+            print_stderr(
+                f"[yellow]Your workspace [b]{beaker.workspace.url()}[/] multiple contributors! "
+                f"Every contributor can view your GitHub personal access token secret ('{gh_token_secret}').[/]"
             )
+            if not yes and not prompt.Confirm.ask(
+                "[yellow][i]Are you sure you want to use this workspace?[/][/]"
+            ):
+                raise KeyboardInterrupt
+        elif workspace is None:
+            default_workspace = beaker.workspace.get()
+            if not yes and not prompt.Confirm.ask(
+                f"Using default workspace [b cyan]{default_workspace.full_name}[/]. [i]Is that correct?[/]"
+            ):
+                raise KeyboardInterrupt
     except WorkspaceNotSet:
         raise ConfigurationError(
             "'--workspace' option is required since you don't have a default workspace set"
@@ -322,8 +330,19 @@ def run(
     )
 
     if dry_run:
-        print("Dry run experiment spec:", spec.to_json())
+        rich.get_console().rule("[b]Dry run[/]")
+        print(
+            f"[b]Workspace:[/] {beaker.workspace.url()}\n"
+            f"[b]Cluster:[/] {beaker.cluster.url(cluster_to_use)}\n"
+            f"[b]Commit:[/] https://github.com/{github_account}/{github_repo}/commit/{git_ref}\n"
+            f"[b]Experiment spec:[/]",
+            spec.to_json(),
+        )
         return
+
+    name: str = name or prompt.Prompt.ask(  # type: ignore[assignment]
+        "[i]What would you like to call this experiment?[/]", default=util.unique_name()
+    )
 
     experiment = beaker.experiment.create(name, spec)
     print(f"Experiment submitted, see progress at {beaker.experiment.url(experiment)}")
