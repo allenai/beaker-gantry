@@ -119,7 +119,9 @@ This can be useful when, for example, you need to [use a CUDA-enabled version of
 ### Submit your first experiment with Gantry
 
 Let's spin up a Beaker experiment that just prints "Hello, World!" from Python.
-From your repository root, run:
+
+First make sure you've committed *and* pushed all changes so far in your repository.
+Then (from the root of your repository) run:
 
 ```bash
 gantry run --workspace {WORKSPACE} --cluster {CLUSTER} -- python -c 'print("Hello, World!")'
