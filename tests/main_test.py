@@ -37,4 +37,3 @@ def test_dry_run(workspace_name: str, beaker_cluster_name: str, run_name: str):
         text=True,
     )
     assert result.returncode == 0
-    assert "Dry run experiment spec" in result.stdout
