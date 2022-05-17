@@ -327,7 +327,7 @@ def run(
     )
     if not beaker.cluster.get(cluster_to_use).is_cloud:
         # Attach NFS for on-premise clusters.
-        task_spec.with_dataset("/net", host_path="/net")
+        task_spec = task_spec.with_dataset("/data/net", host_path="/net")
     spec = ExperimentSpec(description=description, tasks=[task_spec])
 
     if dry_run:
