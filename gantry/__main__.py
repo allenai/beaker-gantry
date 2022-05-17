@@ -373,12 +373,21 @@ def run(
         print()
         rich.get_console().rule(f"Logs from task [i]'{task.display_name}'[/]")
         util.display_logs(beaker.job.logs(job, quiet=True))
+        rich.get_console().rule("End logs")
+        print()
 
     if exit_code > 0:
         raise ExperimentFailedError(f"Experiment exited with non-zero code ({exit_code})")
 
+    assert job.execution is not None
+    assert job.status.started is not None
+    assert job.status.exited is not None
+
     print(
-        f"[green]\N{check mark}[/] [b]'{name}'[/] completed successfully {beaker.experiment.url(experiment)}"
+        f"[b green]\N{check mark}[/] [b cyan]{name}[/] completed successfully\n"
+        f"[b]Experiment:[/] {beaker.experiment.url(experiment)}\n"
+        f"[b]Runtime:[/] {util.format_timedelta(job.status.exited - job.status.started)}\n"
+        f"[b]Results:[/] {beaker.dataset.url(job.execution.result.beaker)}"
     )
 
     metrics = beaker.experiment.metrics(experiment)
