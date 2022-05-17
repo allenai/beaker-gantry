@@ -378,8 +378,12 @@ def run(
         raise ExperimentFailedError(f"Experiment exited with non-zero code ({exit_code})")
 
     print(
-        f"[green]\N{check mark} [b]'{name}'[/] completed successfully {beaker.experiment.url(experiment)}[/]"
+        f"[green]\N{check mark}[/] [b]'{name}'[/] completed successfully {beaker.experiment.url(experiment)}"
     )
+
+    metrics = beaker.experiment.metrics(experiment)
+    if metrics is not None:
+        print("[b]Metrics:[/]", metrics)
 
 
 if __name__ == "__main__":

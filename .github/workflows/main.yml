@@ -64,7 +64,7 @@ jobs:
 
           - python: '3.10'
             task:
-              name: Run
+              name: Example - Hello, World!
               run: |
                 run_name=$(python conftest.py run_name)
                 cluster=$(python conftest.py cluster)
@@ -75,6 +75,20 @@ jobs:
                   --timeout -1 \
                   --yes \
                   -- python -c 'print("Hello, World!")'
+
+          - python: '3.10'
+            task:
+              name: Example - Metrics 
+              run: |
+                run_name=$(python conftest.py run_name)
+                cluster=$(python conftest.py cluster)
+                gantry run \
+                  --workspace "$BEAKER_WORKSPACE" \
+                  --name "$run_name" \
+                  --cluster "$cluster" \
+                  --timeout -1 \
+                  --yes \
+                  -- python examples/metrics/run.py
 
     steps:
       - name: Checkout (PR)
