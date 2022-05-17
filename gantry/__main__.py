@@ -6,16 +6,17 @@ from typing import Optional, Tuple
 
 import click
 import rich
+from click_help_colors import HelpColorsCommand, HelpColorsGroup
+from rich import pretty, print, prompt, traceback
+
 from beaker import (
     Beaker,
     ExperimentSpec,
     SecretNotFound,
     TaskResources,
     TaskSpec,
-    WorkspaceNotSet,
+    WorkspaceNotSet
 )
-from click_help_colors import HelpColorsCommand, HelpColorsGroup
-from rich import pretty, print, prompt, traceback
 
 from .common import constants, util
 from .common.aliases import PathOrStr
@@ -373,6 +374,8 @@ def run(
         print()
         rich.get_console().rule(f"Logs from task [i]'{task.display_name}'[/]")
         util.display_logs(beaker.job.logs(job, quiet=True))
+        rich.get_console().rule("End logs")
+        print()
 
     if exit_code > 0:
         raise ExperimentFailedError(f"Experiment exited with non-zero code ({exit_code})")
@@ -383,9 +386,9 @@ def run(
 
     print(
         f"[b green]\N{check mark}[/] [b cyan]{name}[/] completed successfully "
-        f"{beaker.experiment.url(experiment)}\n\n"
+        f"{beaker.experiment.url(experiment)}\n"
         f"[b]Runtime:[/] {util.format_timedelta(job.status.exited - job.status.started)}\n"
-        f"[b]Results:[/] {beaker.dataset.url(job.execution.result.beaker)}\n"
+        f"[b]Results:[/] {beaker.dataset.url(job.execution.result.beaker)}"
     )
 
     metrics = beaker.experiment.metrics(experiment)
