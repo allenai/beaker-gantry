@@ -1,5 +1,5 @@
 import time
-from typing import Iterable, Tuple
+from typing import TYPE_CHECKING, Iterable, Tuple
 
 import rich
 from beaker import (
@@ -17,6 +17,9 @@ from rich.console import Console
 from ..exceptions import *
 from ..version import VERSION
 from .constants import ENTRYPOINT, GITHUB_TOKEN_SECRET
+
+if TYPE_CHECKING:
+    from datetime import timedelta
 
 
 def unique_name() -> str:
@@ -174,3 +177,26 @@ def ensure_cluster(beaker: Beaker, task_resources: TaskResources, *clusters: str
                 f"No clusters currently have enough free resources available. Will use '{cluster_to_use}' anyway."
             )
     return cluster_to_use
+
+
+def format_timedelta(td: "timedelta") -> str:
+    def format_value_and_unit(value: int, unit: str) -> str:
+        if value == 1:
+            return f"{value} {unit}"
+        else:
+            return f"{value} {unit}s"
+
+    parts = []
+    seconds = int(td.total_seconds())
+    days, seconds = divmod(seconds, 86400)
+    hours, seconds = divmod(seconds, 3600)
+    minutes, seconds = divmod(seconds, 60)
+    if days:
+        parts.append(format_value_and_unit(days, "day"))
+    if hours:
+        parts.append(format_value_and_unit(hours, "hour"))
+    if minutes:
+        parts.append(format_value_and_unit(minutes, "minute"))
+    if seconds:
+        parts.append(format_value_and_unit(seconds, "second"))
+    return ", ".join(parts)

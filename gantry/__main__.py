@@ -377,8 +377,15 @@ def run(
     if exit_code > 0:
         raise ExperimentFailedError(f"Experiment exited with non-zero code ({exit_code})")
 
+    assert job.execution is not None
+    assert job.status.started is not None
+    assert job.status.exited is not None
+
     print(
-        f"[green]\N{check mark}[/] [b]'{name}'[/] completed successfully {beaker.experiment.url(experiment)}"
+        f"[b green]\N{check mark}[/] [b cyan]{name}[/] completed successfully "
+        f"{beaker.experiment.url(experiment)}\n\n"
+        f"[b]Runtime:[/] {util.format_timedelta(job.status.exited - job.status.started)}\n"
+        f"[b]Results:[/] {beaker.dataset.url(job.execution.result.beaker)}\n"
     )
 
     metrics = beaker.experiment.metrics(experiment)
