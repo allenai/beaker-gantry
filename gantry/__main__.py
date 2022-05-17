@@ -384,8 +384,8 @@ def run(
     assert job.status.exited is not None
 
     print(
-        f"[b green]\N{check mark}[/] [b cyan]{name}[/] completed successfully "
-        f"{beaker.experiment.url(experiment)}\n"
+        f"[b green]\N{check mark}[/] [b cyan]{name}[/] completed successfully\n"
+        f"[b]Experiment:[/] {beaker.experiment.url(experiment)}\n"
         f"[b]Runtime:[/] {util.format_timedelta(job.status.exited - job.status.started)}\n"
         f"[b]Results:[/] {beaker.dataset.url(job.execution.result.beaker)}"
     )
