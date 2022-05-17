@@ -299,35 +299,36 @@ def run(
     cluster_to_use = util.ensure_cluster(beaker, task_resources, *cluster)
 
     # Initialize experiment and task spec.
-    spec = ExperimentSpec(
-        description=description,
-        tasks=[
-            TaskSpec.new(
-                task_name,
-                cluster_to_use,
-                beaker_image=beaker_image,
-                docker_image=docker_image,
-                result_path="/results",
-                command=["bash", "/gantry/entrypoint.sh"],
-                arguments=list(arg),
-                resources=task_resources,
-            )
-            .with_env_var(name="GANTRY_VERSION", value=VERSION)
-            .with_env_var(name="GITHUB_TOKEN", secret=gh_token_secret)
-            .with_env_var(name="GITHUB_REPO", value=f"{github_account}/{github_repo}")
-            .with_env_var(name="GIT_REF", value=git_ref)
-            .with_env_var(name="PYTHON_VERSION", value=platform.python_version())
-            .with_env_var(
-                name="CONDA_ENV_FILE",
-                value=str(conda) if conda is not None else constants.CONDA_ENV_FILE,
-            )
-            .with_env_var(
-                name="PIP_REQUIREMENTS_FILE",
-                value=str(pip) if pip is not None else constants.PIP_REQUIREMENTS_FILE,
-            )
-            .with_dataset("/gantry", beaker=entrypoint_dataset.id)
-        ],
+    task_spec = (
+        TaskSpec.new(
+            task_name,
+            cluster_to_use,
+            beaker_image=beaker_image,
+            docker_image=docker_image,
+            result_path="/results",
+            command=["bash", "/gantry/entrypoint.sh"],
+            arguments=list(arg),
+            resources=task_resources,
+        )
+        .with_env_var(name="GANTRY_VERSION", value=VERSION)
+        .with_env_var(name="GITHUB_TOKEN", secret=gh_token_secret)
+        .with_env_var(name="GITHUB_REPO", value=f"{github_account}/{github_repo}")
+        .with_env_var(name="GIT_REF", value=git_ref)
+        .with_env_var(name="PYTHON_VERSION", value=platform.python_version())
+        .with_env_var(
+            name="CONDA_ENV_FILE",
+            value=str(conda) if conda is not None else constants.CONDA_ENV_FILE,
+        )
+        .with_env_var(
+            name="PIP_REQUIREMENTS_FILE",
+            value=str(pip) if pip is not None else constants.PIP_REQUIREMENTS_FILE,
+        )
+        .with_dataset("/gantry", beaker=entrypoint_dataset.id)
     )
+    if not beaker.cluster.get(cluster_to_use).is_cloud:
+        # Attach NFS for on-premise clusters.
+        task_spec.with_dataset("/net", host_path="/net")
+    spec = ExperimentSpec(description=description, tasks=[task_spec])
 
     if dry_run:
         rich.get_console().rule("[b]Dry run[/]")
