@@ -228,7 +228,7 @@ And you can also create Beaker metrics for your experiment by writing a JSON fil
 
 ### Can I access data on NFS?
 
-Yes. When you choose an on-premise cluster the NFS drives will automatically be attached to the experiment's container at `/net`.
+Yes. When you choose an on-premise cluster managed by the Beaker team that supports the NFS drive it will be automatically attached to the experiment's container.
 
 ### Why "Gantry"?
 

@@ -238,6 +238,7 @@ def build_experiment_spec(
     gh_token_secret: Optional[str] = constants.GITHUB_TOKEN_SECRET,
     conda: Optional[PathOrStr] = None,
     pip: Optional[PathOrStr] = None,
+    nfs: Optional[bool] = None,
 ):
     task_spec = (
         TaskSpec.new(
@@ -270,5 +271,12 @@ def build_experiment_spec(
             name="PIP_REQUIREMENTS_FILE",
             value=str(pip),
         )
+
+    if nfs is None:
+        if cluster_to_use in constants.NFS_SUPPORTED_CLUSTERS:
+            nfs = True
+
+    if nfs:
+        task_spec = task_spec.with_dataset(constants.NFS_MOUNT, host_path=constants.NFS_MOUNT)
 
     return ExperimentSpec(description=description, tasks=[task_spec])

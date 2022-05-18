@@ -103,7 +103,7 @@ jobs:
                   --timeout -1 \
                   --conda test_fixtures/conda/environment.yml \
                   --yes \
-                  -- pip freeze
+                  -- python --version
 
     steps:
       - name: Checkout (PR)

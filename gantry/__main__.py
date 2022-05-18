@@ -168,6 +168,13 @@ def main():
     If not specified, '{constants.PIP_REQUIREMENTS_FILE}' will be used if it exists.""",
 )
 @click.option(
+    "--nfs / --no-nfs",
+    default=None,
+    help=f"""Whether or not to mount the NFS drive ({constants.NFS_MOUNT}) to the experiment.
+    This only works for cirrascale clusters managed by the Beaker team.
+    If not specified, gantry will always mount NFS when it knows the cluster supports it.""",
+)
+@click.option(
     "--show-logs/--no-logs",
     default=True,
     show_default=True,
@@ -211,6 +218,7 @@ def run(
     conda: Optional[PathOrStr] = None,
     pip: Optional[PathOrStr] = None,
     timeout: int = 0,
+    nfs: Optional[bool] = None,
     show_logs: bool = True,
     allow_dirty: bool = False,
     dry_run: bool = False,
@@ -305,6 +313,7 @@ def run(
         docker_image=docker_image,
         conda=conda,
         pip=pip,
+        nfs=nfs,
     )
 
     if dry_run:
@@ -321,6 +330,8 @@ def run(
     name: str = name or prompt.Prompt.ask(  # type: ignore[assignment]
         "[i]What would you like to call this experiment?[/]", default=util.unique_name()
     )
+    if not name:
+        raise ConfigurationError("Experiment name cannot be empty!")
 
     experiment = beaker.experiment.create(name, spec)
     print(f"Experiment submitted, see progress at {beaker.experiment.url(experiment)}")
