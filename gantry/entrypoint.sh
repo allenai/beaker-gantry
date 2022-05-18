@@ -43,9 +43,11 @@ echo "
 "
 
 if [[ -z "$CONDA_ENV_FILE" ]]; then
+    # shellcheck disable=SC2296
     CONDA_ENV_FILE="environment.yml"
 fi
 if [[ -z "$PIP_REQUIREMENTS_FILE" ]]; then
+    # shellcheck disable=SC2296
     PIP_REQUIREMENTS_FILE="requirements.txt"
 fi
 
@@ -71,7 +73,7 @@ conda activate "$venv_path"
 
 if [[ -f 'setup.py' ]] && [[ -f "$PIP_REQUIREMENTS_FILE" ]]; then
     echo "[GANTRY] Installing package setup.py and $PIP_REQUIREMENTS_FILE..."
-    pip install . -r $PIP_REQUIREMENTS_FILE
+    pip install . -r "$PIP_REQUIREMENTS_FILE"
 elif [[ -f 'setup.py' ]]; then
     echo "[GANTRY] Installing package setup.py..."
     pip install .

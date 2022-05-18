@@ -1,5 +1,7 @@
+import platform
 import time
-from typing import TYPE_CHECKING, Iterable, Tuple
+from pathlib import Path
+from typing import TYPE_CHECKING, Iterable, List, Optional, Tuple
 
 import rich
 from beaker import (
@@ -8,15 +10,24 @@ from beaker import (
     DatasetConflict,
     DatasetNotFound,
     Digest,
+    ExperimentSpec,
     SecretNotFound,
     TaskResources,
+    TaskSpec,
 )
 from rich import print
 from rich.console import Console
 
 from ..exceptions import *
 from ..version import VERSION
-from .constants import ENTRYPOINT, GITHUB_TOKEN_SECRET
+from .aliases import PathOrStr
+from .constants import (
+    CONDA_ENV_FILE,
+    ENTRYPOINT,
+    GITHUB_TOKEN_SECRET,
+    PIP_REQUIREMENTS_FILE,
+    RESULTS_DIR,
+)
 
 if TYPE_CHECKING:
     from datetime import timedelta
@@ -101,8 +112,7 @@ def ensure_repo(allow_dirty: bool = False) -> Tuple[str, str, str]:
 
 def ensure_entrypoint_dataset(beaker: Beaker) -> Dataset:
     import hashlib
-
-    from importlib_resources import as_file, files
+    from importlib.resources import as_file, files
 
     workspace_id = beaker.workspace.get().id
 
@@ -110,7 +120,13 @@ def ensure_entrypoint_dataset(beaker: Beaker) -> Dataset:
         # Get hash of the local entrypoint source file.
         sha256_hash = hashlib.sha256()
         with open(entrypoint_path, "rb") as f:
-            sha256_hash.update(f.read())
+            contents = (
+                f.read()
+                .replace(b"${{ constants.CONDA_ENV_FILE }}", CONDA_ENV_FILE.encode())
+                .replace(b"${{ constants.PIP_REQUIREMENTS_FILE }}", PIP_REQUIREMENTS_FILE.encode())
+            )
+            assert b"${{" not in contents
+            sha256_hash.update(contents)
 
         entrypoint_dataset_name = f"gantry-v{VERSION}-{workspace_id}-{sha256_hash.hexdigest()[:6]}"
 
@@ -122,6 +138,8 @@ def ensure_entrypoint_dataset(beaker: Beaker) -> Dataset:
             # Create it.
             print(f"Creating entrypoint dataset '{entrypoint_dataset_name}'")
             try:
+                with open(entrypoint_path, "wb") as f:
+                    f.write(contents)
                 gantry_entrypoint_dataset = beaker.dataset.create(
                     entrypoint_dataset_name, entrypoint_path
                 )
@@ -200,3 +218,54 @@ def format_timedelta(td: "timedelta") -> str:
     if seconds:
         parts.append(format_value_and_unit(seconds, "second"))
     return ", ".join(parts)
+
+
+def build_experiment_spec(
+    task_name: str,
+    cluster_to_use: str,
+    task_resources: TaskResources,
+    arguments: List[str],
+    entrypoint_dataset: str,
+    github_account: str,
+    github_repo: str,
+    git_ref: str,
+    description: Optional[str] = None,
+    beaker_image: Optional[str] = None,
+    docker_image: Optional[str] = None,
+    gh_token_secret: Optional[str] = GITHUB_TOKEN_SECRET,
+    conda: Optional[PathOrStr] = None,
+    pip: Optional[PathOrStr] = None,
+):
+    task_spec = (
+        TaskSpec.new(
+            task_name,
+            cluster_to_use,
+            beaker_image=beaker_image,
+            docker_image=docker_image,
+            result_path=RESULTS_DIR,
+            command=["bash", "/gantry/entrypoint.sh"],
+            arguments=arguments,
+            resources=task_resources,
+        )
+        .with_env_var(name="GANTRY_VERSION", value=VERSION)
+        .with_env_var(name="GITHUB_TOKEN", secret=gh_token_secret)
+        .with_env_var(name="GITHUB_REPO", value=f"{github_account}/{github_repo}")
+        .with_env_var(name="GIT_REF", value=git_ref)
+        .with_dataset("/gantry", beaker=entrypoint_dataset)
+    )
+
+    if conda is not None:
+        task_spec = task_spec.with_env_var(
+            name="CONDA_ENV_FILE",
+            value=str(conda),
+        )
+    elif not Path(CONDA_ENV_FILE).is_file():
+        task_spec = task_spec.with_env_var(name="PYTHON_VERSION", value=platform.python_version())
+
+    if pip is not None:
+        task_spec = task_spec.with_env_var(
+            name="PIP_REQUIREMENTS_FILE",
+            value=str(pip),
+        )
+
+    return ExperimentSpec(description=description, tasks=[task_spec])
