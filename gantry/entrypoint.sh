@@ -96,9 +96,13 @@ echo "
 #############################
 "
 
-echo "Using Python $(python --version) from $(which python)"
+echo "Using $(python --version) from $(which python)"
 echo "Packages:"
-pip freeze
+if which sed >/dev/null; then
+    pip freeze | sed 's/^/- /'
+else
+    pip freeze
+fi
 
 echo "
 #############################
