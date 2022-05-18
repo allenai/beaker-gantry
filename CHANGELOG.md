@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- NFS drive automatically attached when using cirrascale clusters.
+- Added `--save-spec PATH` option to `beaker run` for saving the generated experiment spec to a YAML file.
+
 ## [v0.2.1](https://github.com/allenai/beaker-gantry/releases/tag/v0.2.1) - 2022-05-16
 
 ### Changed

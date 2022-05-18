@@ -90,6 +90,21 @@ jobs:
                   --yes \
                   -- python examples/metrics/run.py
 
+          - python: '3.10'
+            task:
+              name: Example - Conda
+              run: |
+                run_name=$(python conftest.py run_name)
+                cluster=$(python conftest.py cluster)
+                gantry run \
+                  --workspace "$BEAKER_WORKSPACE" \
+                  --name "$run_name" \
+                  --cluster "$cluster" \
+                  --timeout -1 \
+                  --conda test_fixtures/conda/environment.yml \
+                  --yes \
+                  -- python --version
+
     steps:
       - name: Checkout (PR)
         if: github.event_name == 'pull_request'

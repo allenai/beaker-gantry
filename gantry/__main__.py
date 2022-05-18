@@ -1,19 +1,11 @@
 import os
-import platform
 import signal
 import sys
 from typing import Optional, Tuple
 
 import click
 import rich
-from beaker import (
-    Beaker,
-    ExperimentSpec,
-    SecretNotFound,
-    TaskResources,
-    TaskSpec,
-    WorkspaceNotSet,
-)
+from beaker import Beaker, SecretNotFound, TaskResources, WorkspaceNotSet
 from click_help_colors import HelpColorsCommand, HelpColorsGroup
 from rich import pretty, print, prompt, traceback
 
@@ -176,6 +168,13 @@ def main():
     If not specified, '{constants.PIP_REQUIREMENTS_FILE}' will be used if it exists.""",
 )
 @click.option(
+    "--nfs / --no-nfs",
+    default=None,
+    help=f"""Whether or not to mount the NFS drive ({constants.NFS_MOUNT}) to the experiment.
+    This only works for cirrascale clusters managed by the Beaker team.
+    If not specified, gantry will always mount NFS when it knows the cluster supports it.""",
+)
+@click.option(
     "--show-logs/--no-logs",
     default=True,
     show_default=True,
@@ -202,6 +201,11 @@ def main():
     help="""Skip all confirmation prompts.""",
 )
 @click.option("--dry-run", is_flag=True, help="""Do a dry run only.""")
+@click.option(
+    "--save-spec",
+    type=click.Path(exists=False),
+    help="""A path to save the generated Beaker experiment spec to.""",
+)
 def run(
     arg: Tuple[str, ...],
     name: Optional[str] = None,
@@ -219,10 +223,12 @@ def run(
     conda: Optional[PathOrStr] = None,
     pip: Optional[PathOrStr] = None,
     timeout: int = 0,
+    nfs: Optional[bool] = None,
     show_logs: bool = True,
     allow_dirty: bool = False,
     dry_run: bool = False,
     yes: bool = False,
+    save_spec: Optional[PathOrStr] = None,
 ):
     """
     Run an experiment on Beaker.
@@ -299,35 +305,26 @@ def run(
     cluster_to_use = util.ensure_cluster(beaker, task_resources, *cluster)
 
     # Initialize experiment and task spec.
-    spec = ExperimentSpec(
+    spec = util.build_experiment_spec(
+        task_name=task_name,
+        cluster_to_use=cluster_to_use,
+        task_resources=task_resources,
+        arguments=list(arg),
+        entrypoint_dataset=entrypoint_dataset.id,
+        github_account=github_account,
+        github_repo=github_repo,
+        git_ref=git_ref,
         description=description,
-        tasks=[
-            TaskSpec.new(
-                task_name,
-                cluster_to_use,
-                beaker_image=beaker_image,
-                docker_image=docker_image,
-                result_path="/results",
-                command=["bash", "/gantry/entrypoint.sh"],
-                arguments=list(arg),
-                resources=task_resources,
-            )
-            .with_env_var(name="GANTRY_VERSION", value=VERSION)
-            .with_env_var(name="GITHUB_TOKEN", secret=gh_token_secret)
-            .with_env_var(name="GITHUB_REPO", value=f"{github_account}/{github_repo}")
-            .with_env_var(name="GIT_REF", value=git_ref)
-            .with_env_var(name="PYTHON_VERSION", value=platform.python_version())
-            .with_env_var(
-                name="CONDA_ENV_FILE",
-                value=str(conda) if conda is not None else constants.CONDA_ENV_FILE,
-            )
-            .with_env_var(
-                name="PIP_REQUIREMENTS_FILE",
-                value=str(pip) if pip is not None else constants.PIP_REQUIREMENTS_FILE,
-            )
-            .with_dataset("/gantry", beaker=entrypoint_dataset.id)
-        ],
+        beaker_image=beaker_image,
+        docker_image=docker_image,
+        conda=conda,
+        pip=pip,
+        nfs=nfs,
     )
+
+    if save_spec:
+        spec.to_file(save_spec)
+        print(f"Experiment spec saved to {save_spec}")
 
     if dry_run:
         rich.get_console().rule("[b]Dry run[/]")
@@ -343,6 +340,8 @@ def run(
     name: str = name or prompt.Prompt.ask(  # type: ignore[assignment]
         "[i]What would you like to call this experiment?[/]", default=util.unique_name()
     )
+    if not name:
+        raise ConfigurationError("Experiment name cannot be empty!")
 
     experiment = beaker.experiment.create(name, spec)
     print(f"Experiment submitted, see progress at {beaker.experiment.url(experiment)}")

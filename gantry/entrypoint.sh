@@ -43,10 +43,12 @@ echo "
 "
 
 if [[ -z "$CONDA_ENV_FILE" ]]; then
-    CONDA_ENV_FILE="environment.yml"
+    # shellcheck disable=SC2296
+    CONDA_ENV_FILE="${{ CONDA_ENV_FILE }}"
 fi
 if [[ -z "$PIP_REQUIREMENTS_FILE" ]]; then
-    PIP_REQUIREMENTS_FILE="requirements.txt"
+    # shellcheck disable=SC2296
+    PIP_REQUIREMENTS_FILE="${{ PIP_REQUIREMENTS_FILE }}"
 fi
 
 # Reconstruct the Python environment.
@@ -71,7 +73,7 @@ conda activate "$venv_path"
 
 if [[ -f 'setup.py' ]] && [[ -f "$PIP_REQUIREMENTS_FILE" ]]; then
     echo "[GANTRY] Installing package setup.py and $PIP_REQUIREMENTS_FILE..."
-    pip install . -r $PIP_REQUIREMENTS_FILE
+    pip install . -r "$PIP_REQUIREMENTS_FILE"
 elif [[ -f 'setup.py' ]]; then
     echo "[GANTRY] Installing package setup.py..."
     pip install .
@@ -84,7 +86,8 @@ PYTHONPATH="$(pwd)"
 export PYTHONPATH
 
 # Create directory for results.
-mkdir -p /results/.gantry
+# shellcheck disable=SC2296
+mkdir -p "${{ RESULTS_DIR }}/.gantry"
 
 
 echo "
@@ -94,4 +97,5 @@ echo "
 "
 
 # Execute the arguments to this script as commands themselves, piping output into a log file.
-exec "$@" 2>&1 | tee /results/.gantry/out.log
+# shellcheck disable=SC2296
+exec "$@" 2>&1 | tee "${{ RESULTS_DIR }}/.gantry/out.log"

@@ -13,3 +13,13 @@ PIP_REQUIREMENTS_FILE = "requirements.txt"
 RESULTS_DIR = "/results"
 
 METRICS_FILE = f"{RESULTS_DIR}/metrics.json"
+
+NFS_MOUNT = "/net/nfs.cirrascale"
+
+NFS_SUPPORTED_CLUSTERS = {
+    "ai2/allennlp-cirrascale",
+    "ai2/aristo-cirrascale",
+    "ai2/general-cirrascale",
+    "ai2/mosaic-cirrascale",
+    "ai2/s2-cirrascale",
+}
