@@ -201,6 +201,11 @@ def main():
     help="""Skip all confirmation prompts.""",
 )
 @click.option("--dry-run", is_flag=True, help="""Do a dry run only.""")
+@click.option(
+    "--save-spec",
+    type=click.Path(exists=False),
+    help="""A path to save the generated Beaker experiment spec to.""",
+)
 def run(
     arg: Tuple[str, ...],
     name: Optional[str] = None,
@@ -223,6 +228,7 @@ def run(
     allow_dirty: bool = False,
     dry_run: bool = False,
     yes: bool = False,
+    save_spec: Optional[PathOrStr] = None,
 ):
     """
     Run an experiment on Beaker.
@@ -315,6 +321,10 @@ def run(
         pip=pip,
         nfs=nfs,
     )
+
+    if save_spec:
+        spec.to_file(save_spec)
+        print(f"Experiment spec saved to {save_spec}")
 
     if dry_run:
         rich.get_console().rule("[b]Dry run[/]")
