@@ -92,6 +92,16 @@ mkdir -p "${{ RESULTS_DIR }}/.gantry"
 
 echo "
 #############################
+# [GANTRY] Environment info #
+#############################
+"
+
+echo "Using Python $(python --version) from $(which python)"
+echo "Packages:"
+pip freeze
+
+echo "
+#############################
 # [GANTRY] Setup complete ✓ #
 #############################
 "
