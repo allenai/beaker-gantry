@@ -280,3 +280,24 @@ def build_experiment_spec(
         task_spec = task_spec.with_dataset(constants.NFS_MOUNT, host_path=constants.NFS_MOUNT)
 
     return ExperimentSpec(description=description, tasks=[task_spec])
+
+
+def check_for_upgrades():
+    import packaging.version
+    import requests
+
+    try:
+        response = requests.get(
+            "https://api.github.com/repos/allenai/beaker-gantry/releases/latest", timeout=1
+        )
+        if response.ok:
+            latest_version = packaging.version.parse(response.json()["tag_name"])
+            if latest_version > packaging.version.parse(VERSION):
+                print_stderr(
+                    f":warning: [yellow]You're using [b]gantry v{VERSION}[/], "
+                    f"but a newer version ([b]v{latest_version}[/]) is available: "
+                    f"https://github.com/allenai/beaker-gantry/releases/tag/v{latest_version}[/]\n"
+                    f"[yellow i]You can upgrade by running:[/] pip install --upgrade beaker-gantry\n",
+                )
+    except (requests.exceptions.Timeout, requests.exceptions.ConnectionError):
+        pass

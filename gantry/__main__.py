@@ -79,6 +79,8 @@ def main():
         highlight=False,
     )
 
+    util.check_for_upgrades()
+
 
 @main.command(**_CLICK_COMMAND_DEFAULTS)
 @click.argument("arg", nargs=-1)
