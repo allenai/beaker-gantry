@@ -183,6 +183,7 @@ name: torch-env
 channels:
 - pytorch
 dependencies:
+- python=3.9
 - cudatoolkit=11.3
 - numpy
 - pytorch
@@ -213,6 +214,7 @@ name: torch-env
 channels:
 - pytorch
 dependencies:
+- python=3.9
 - cudatoolkit=11.3
 - pytorch==1.11.0  # make sure this matches the version in requirements.txt
 ```
