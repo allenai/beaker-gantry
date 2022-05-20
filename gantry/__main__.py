@@ -1,6 +1,7 @@
 import os
 import signal
 import sys
+from pathlib import Path
 from typing import Optional, Tuple
 
 import click
@@ -205,7 +206,7 @@ def main():
 @click.option("--dry-run", is_flag=True, help="""Do a dry run only.""")
 @click.option(
     "--save-spec",
-    type=click.Path(exists=False),
+    type=click.Path(dir_okay=False, file_okay=True),
     help="""A path to save the generated Beaker experiment spec to.""",
 )
 def run(
@@ -325,6 +326,14 @@ def run(
     )
 
     if save_spec:
+        if (
+            Path(save_spec).is_file()
+            and not yes
+            and not prompt.Confirm.ask(
+                f"[yellow]The file '{save_spec}' already exists. [i]Are you sure you want to overwrite it?[/][/]"
+            )
+        ):
+            raise KeyboardInterrupt
         spec.to_file(save_spec)
         print(f"Experiment spec saved to {save_spec}")
 

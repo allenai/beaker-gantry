@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Changed
+
+- You can now overwrite an existing file with the `--save-spec` option. Pass `--yes` to avoid the confirmation prompt.
+
 ## [v0.3.0](https://github.com/allenai/beaker-gantry/releases/tag/v0.3.0) - 2022-05-18
 
 ### Added
