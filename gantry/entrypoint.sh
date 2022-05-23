@@ -55,8 +55,10 @@ if [[ -z "$PIP_REQUIREMENTS_FILE" ]]; then
 fi
 
 if conda activate $VENV_NAME >/dev/null; then
+    echo "[GANTRY] Using existing conda environment $VENV_NAME"
     # The virtual environment already exists. Possibly update it based on an environment file.
     if [[ -f "$CONDA_ENV_FILE" ]]; then
+        echo "[GANTRY] Updating environment from conda env file $CONDA_ENV_FILE..."
         conda env update -f "$CONDA_ENV_FILE"
     fi
 else
