@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [v0.4.0](https://github.com/allenai/beaker-gantry/releases/tag/v0.4.0) - 2022-05-23
+
 ### Added
 
 - Added the `--venv` option. Use this to specify an existing conda environment on your image to use.
