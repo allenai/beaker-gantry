@@ -171,6 +171,11 @@ def main():
     If not specified, '{constants.PIP_REQUIREMENTS_FILE}' will be used if it exists.""",
 )
 @click.option(
+    "--venv",
+    type=str,
+    help="""The name of an existing conda environment on the image to use.""",
+)
+@click.option(
     "--nfs / --no-nfs",
     default=None,
     help=f"""Whether or not to mount the NFS drive ({constants.NFS_MOUNT}) to the experiment.
@@ -225,6 +230,7 @@ def run(
     gh_token_secret: str = constants.GITHUB_TOKEN_SECRET,
     conda: Optional[PathOrStr] = None,
     pip: Optional[PathOrStr] = None,
+    venv: Optional[str] = None,
     timeout: int = 0,
     nfs: Optional[bool] = None,
     show_logs: bool = True,
@@ -322,6 +328,7 @@ def run(
         docker_image=docker_image,
         conda=conda,
         pip=pip,
+        venv=venv,
         nfs=nfs,
     )
 
