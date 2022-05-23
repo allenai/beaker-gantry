@@ -42,6 +42,9 @@ echo "
 ###############################################
 "
 
+if [[ -z "$VENV_NAME" ]]; then
+    VENV_NAME=venv
+fi
 if [[ -z "$CONDA_ENV_FILE" ]]; then
     # shellcheck disable=SC2296
     CONDA_ENV_FILE="${{ CONDA_ENV_FILE }}"
@@ -51,26 +54,30 @@ if [[ -z "$PIP_REQUIREMENTS_FILE" ]]; then
     PIP_REQUIREMENTS_FILE="${{ PIP_REQUIREMENTS_FILE }}"
 fi
 
-# Reconstruct the Python environment.
-venv_path="$(pwd)/.venv/"
-if [[ -f "$CONDA_ENV_FILE" ]]; then
-    echo "[GANTRY] Initializing environment from conda env file $CONDA_ENV_FILE..."
-    conda env create -p "$venv_path" -f "$CONDA_ENV_FILE" 
-elif [[ -f 'setup.py' ]] || [[ -f "$PIP_REQUIREMENTS_FILE" ]]; then
-    if [[ -z "$PYTHON_VERSION" ]]; then
-        echo "[GANTRY] Initializing environment with default Python version..."
-        conda create -p "$venv_path" pip
-    else
-        echo "[GANTRY] Initializing environment with Python $PYTHON_VERSION..."
-        conda create -p "$venv_path" "python=$PYTHON_VERSION" pip
+if conda activate $VENV_NAME >/dev/null; then
+    # The virtual environment already exists. Possibly update it based on an environment file.
+    if [[ -f "$CONDA_ENV_FILE" ]]; then
+        conda env update -f "$CONDA_ENV_FILE"
     fi
 else
-    echo >&2 "error: at least one of 'environment.yml', 'setup.py', or 'requirements.txt' is required"
-    exit 1
+    # The virtual environment doesn't exist yet. Create it.
+    if [[ -f "$CONDA_ENV_FILE" ]]; then
+        # Create from the environment file.
+        echo "[GANTRY] Initializing environment from conda env file $CONDA_ENV_FILE..."
+        conda env create -n "$VENV_NAME" -f "$CONDA_ENV_FILE" 
+    elif [[ -z "$PYTHON_VERSION" ]]; then
+        # Create a new empty environment with the whatever the default Python version is.
+        echo "[GANTRY] Initializing environment with default Python version..."
+        conda create -n "$VENV_NAME" pip
+    else
+        # Create a new empty environment with the specific Python version.
+        echo "[GANTRY] Initializing environment with Python $PYTHON_VERSION..."
+        conda create -n "$VENV_NAME" "python=$PYTHON_VERSION" pip
+    fi
+    conda activate "$VENV_NAME"
 fi
 
-conda activate "$venv_path"
-
+# Check for a 'requirements.txt' and/or 'setup.py' file.
 if [[ -f 'setup.py' ]] && [[ -f "$PIP_REQUIREMENTS_FILE" ]]; then
     echo "[GANTRY] Installing package setup.py and $PIP_REQUIREMENTS_FILE..."
     pip install . -r "$PIP_REQUIREMENTS_FILE"

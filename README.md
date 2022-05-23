@@ -165,9 +165,9 @@ It's also okay to [use a combination of conda environment and PIP requirements f
 
 ## FAQ
 
-### Can I use my own Docker image?
+### Can I use my own Docker/Beaker image?
 
-You sure can! Gantry can use any image that has bash and conda installed. But for PyTorch-based experiments, consider using one of our official [Beaker PyTorch images](https://beaker.org/ws/ai2/fab/images?text=pytorch&sort=created:descending) first. Just set the `--beaker-image` or `--docker-image` command line option accordingly.
+You sure can! Gantry can use any image that has bash and conda installed. This can be useful when you have dependencies that take a long time to install (like PyTorch), in which case it works best if you build your image with a conda environment that already has those dependencies installed. Then when you call `gantry run`, use the `--venv` option to tell Gantry to use that environment instead of creating a new conda environment in the container.
 
 ### Will Gantry work for GPU experiments?
 

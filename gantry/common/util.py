@@ -238,6 +238,7 @@ def build_experiment_spec(
     gh_token_secret: Optional[str] = constants.GITHUB_TOKEN_SECRET,
     conda: Optional[PathOrStr] = None,
     pip: Optional[PathOrStr] = None,
+    venv: Optional[str] = None,
     nfs: Optional[bool] = None,
 ):
     task_spec = (
@@ -270,6 +271,12 @@ def build_experiment_spec(
         task_spec = task_spec.with_env_var(
             name="PIP_REQUIREMENTS_FILE",
             value=str(pip),
+        )
+
+    if venv is not None:
+        task_spec = task_spec.with_env_var(
+            name="VENV_NAME",
+            value=venv,
         )
 
     if nfs is None:
