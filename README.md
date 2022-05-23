@@ -173,6 +173,16 @@ Gantry can use any image that has bash and conda installed. This can be useful w
 
 In this case it works best if you build your image with a conda environment that already has your big dependencies installed. Then when you call `gantry run`, use the `--venv` option to tell Gantry to use that environment instead of creating a new conda environment in the container. You may also want to add a `requirements.txt` file to your repository that lists all of your dependencies (including PyTorch and anything else already installed in your image's conda environment) so Gantry can make sure the environment on the image is up-to-date when it runs.
 
+For example, you could use one of our [pre-built PyTorch images](https://beaker.org/ws/ai2/fab/images?text=pytorch&sort=created:descending), such as [`ai2/pytorch1.11.0-cuda11.3-python3.9`](https://beaker.org/im/01G3S1CBQ0K832MCFDA77XQXFJ/details), like this:
+
+```bash
+gantry run \
+    --beaker-image 'ai2/pytorch1.11.0-cuda11.3-python3.9' \
+    --venv 'base' \
+    --pip requirements.txt \
+    -- python -c 'print("Hello, World!")'
+```
+
 ### Will Gantry work for GPU experiments?
 
 Absolutely! This was the main use-case Gantry was developed for. Just set the `--gpus` option for `gantry run` to the number of GPUs you need.
