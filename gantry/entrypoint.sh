@@ -55,17 +55,17 @@ if [[ -z "$PIP_REQUIREMENTS_FILE" ]]; then
 fi
 
 if conda activate $VENV_NAME >/dev/null; then
-    echo "[GANTRY] Using existing conda environment $VENV_NAME"
+    echo "[GANTRY] Using existing conda environment '$VENV_NAME'"
     # The virtual environment already exists. Possibly update it based on an environment file.
     if [[ -f "$CONDA_ENV_FILE" ]]; then
-        echo "[GANTRY] Updating environment from conda env file $CONDA_ENV_FILE..."
+        echo "[GANTRY] Updating environment from conda env file '$CONDA_ENV_FILE'..."
         conda env update -f "$CONDA_ENV_FILE"
     fi
 else
     # The virtual environment doesn't exist yet. Create it.
     if [[ -f "$CONDA_ENV_FILE" ]]; then
         # Create from the environment file.
-        echo "[GANTRY] Initializing environment from conda env file $CONDA_ENV_FILE..."
+        echo "[GANTRY] Initializing environment from conda env file '$CONDA_ENV_FILE'..."
         conda env create -n "$VENV_NAME" -f "$CONDA_ENV_FILE" 
     elif [[ -z "$PYTHON_VERSION" ]]; then
         # Create a new empty environment with the whatever the default Python version is.
@@ -81,13 +81,13 @@ fi
 
 # Check for a 'requirements.txt' and/or 'setup.py' file.
 if [[ -f 'setup.py' ]] && [[ -f "$PIP_REQUIREMENTS_FILE" ]]; then
-    echo "[GANTRY] Installing package setup.py and $PIP_REQUIREMENTS_FILE..."
+    echo "[GANTRY] Installing packages from 'setup.py' and '$PIP_REQUIREMENTS_FILE'..."
     pip install . -r "$PIP_REQUIREMENTS_FILE"
 elif [[ -f 'setup.py' ]]; then
-    echo "[GANTRY] Installing package setup.py..."
+    echo "[GANTRY] Installing packages from 'setup.py'..."
     pip install .
 elif [[ -f "$PIP_REQUIREMENTS_FILE" ]]; then
-    echo "[GANTRY] Installing dependencies from $PIP_REQUIREMENTS_FILE..."
+    echo "[GANTRY] Installing dependencies from '$PIP_REQUIREMENTS_FILE'..."
     pip install -r "$PIP_REQUIREMENTS_FILE"
 fi
 
