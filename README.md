@@ -104,21 +104,30 @@ pip install -e .
 
 ### One-time setup
 
-If you've already configured the [Beaker command-line client](https://github.com/allenai/beaker/), Gantry will 
-find and use the existing configuration file (usually located at `$HOME/.beaker/config.yml`).
-Otherwise just set the environment variable `BEAKER_TOKEN` to your Beaker [user token](https://beaker.org/user).
+1. **Create and clone your repository.**
 
-The first time you call `gantry run` you'll also be prompted to provide a [GitHub personal access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token) with the `repo` scope. This allows Gantry to clone your private repository when it runs in Beaker (you don't have to do this just yet, wait until you get prompted).
+    If you haven't already done so, create a GitHub repository for your project and clone it locally.
+    **Every `gantry` command you run must be invoked from the root directory of your repository.**
 
-Lastly - and this is the most important part - you'll have to create one of several different files that specify your Python environment. There are three options:
+2. **Configure Gantry.**
 
-1. A conda [`environment.yml`](https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html#create-env-file-manually) file.
-2. A [`setup.py`](https://docs.python.org/3/distutils/introduction.html#a-simple-example) file.
-3. A PIP [`requirements.txt`](https://pip.pypa.io/en/stable/user_guide/#requirements-files) file.
+    If you've already configured the [Beaker command-line client](https://github.com/allenai/beaker/), Gantry will 
+    find and use the existing configuration file (usually located at `$HOME/.beaker/config.yml`).
+    Otherwise just set the environment variable `BEAKER_TOKEN` to your Beaker [user token](https://beaker.org/user).
 
-The first method is [the recommended approach](#use-conda), especially if you're already using conda.
-But it's perfectly okay to use a combination of these different approaches as well.
-This can be useful when, for example, you need to [use a CUDA-enabled version of PyTorch on Beaker but a CPU-only version locally](#how-do-i-use-a-cuda-enabled-version-of-pytorch-on-beaker-when-im-using-a-cpu-only-version-locally).
+    The first time you call `gantry run ...` you'll also be prompted to provide a [GitHub personal access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token) with the `repo` scope. This allows Gantry to clone your private repository when it runs in Beaker (you don't have to do this just yet, wait until you get prompted).
+
+3. **Specify your Python environment.**
+
+    Lastly - and this is the most important part - you'll have to create one of several different files that specify your Python environment. There are three options:
+
+    1. A conda [`environment.yml`](https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html#create-env-file-manually) file.
+    2. A [`setup.py`](https://docs.python.org/3/distutils/introduction.html#a-simple-example) file.
+    3. A PIP [`requirements.txt`](https://pip.pypa.io/en/stable/user_guide/#requirements-files) file.
+
+    The first method is [the recommended approach](#use-conda), especially if you're already using conda.
+    But it's perfectly okay to use a combination of these different approaches as well.
+    This can be useful when, for example, you need to [use a CUDA-enabled version of PyTorch on Beaker but a CPU-only version locally](#how-do-i-use-a-cuda-enabled-version-of-pytorch-on-beaker-when-im-using-a-cpu-only-version-locally).
 
 ### Submit your first experiment with Gantry
 

@@ -247,7 +247,9 @@ def run(
     $ gantry run --name 'hello-world' -- python -c 'print("Hello, World!")'
     """
     if not arg:
-        raise ConfigurationError("[ARGS]... are required!")
+        raise ConfigurationError(
+            "[ARGS]... are required! For example:\n$ gantry run -- python -c 'print(\"Hello, World!\")'"
+        )
 
     if (beaker_image is None) == (docker_image is None):
         raise ConfigurationError(
