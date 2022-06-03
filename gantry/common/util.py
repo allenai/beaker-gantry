@@ -322,7 +322,7 @@ def ensure_workspace(
         permissions = beaker.workspace.get_permissions()
         if len(permissions.authorizations) > 1:
             print_stderr(
-                f"[yellow]Your workspace [b]{beaker.workspace.url()}[/] multiple contributors! "
+                f"[yellow]Your workspace [b]{beaker.workspace.url()}[/] has multiple contributors! "
                 f"Every contributor can view your GitHub personal access token secret ('{gh_token_secret}').[/]"
             )
             if not yes and not prompt.Confirm.ask(
