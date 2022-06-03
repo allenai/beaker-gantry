@@ -115,7 +115,7 @@ pip install -e .
     find and use the existing configuration file (usually located at `$HOME/.beaker/config.yml`).
     Otherwise just set the environment variable `BEAKER_TOKEN` to your Beaker [user token](https://beaker.org/user).
 
-    The first time you call `gantry run ...` you'll also be prompted to provide a [GitHub personal access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token) with the `repo` scope. This allows Gantry to clone your private repository when it runs in Beaker (you don't have to do this just yet, wait until you get prompted).
+    The first time you call `gantry run ...` you'll also be prompted to provide a [GitHub personal access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token) with the `repo` scope. This allows Gantry to clone your private repository when it runs in Beaker. You don't have to do this just yet (Gantry will prompt you for it), but if you need to update this token later you can use the `gantry config set-gh-token` command.
 
 3. **Specify your Python environment.**
 
@@ -259,6 +259,10 @@ Yes. When you choose an on-premise cluster managed by the Beaker team that suppo
 
 You can use the `--dry-run` option with `gantry run` to see what Gantry will submit without actually submitting an experiment.
 You can also use `--save-spec PATH` in combination with `--dry-run` to save the actual experiment spec to a YAML file.
+
+### How can I update Gantry's GitHub token?
+
+Just use the command `gantry config set-gh-token`.
 
 ### Why "Gantry"?
 
