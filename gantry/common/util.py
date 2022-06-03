@@ -5,9 +5,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Iterable, List, Optional, Tuple
 
 import rich
-from rich import print, prompt
-from rich.console import Console
-
 from beaker import (
     Beaker,
     Dataset,
@@ -18,8 +15,10 @@ from beaker import (
     SecretNotFound,
     TaskResources,
     TaskSpec,
-    WorkspaceNotSet
+    WorkspaceNotSet,
 )
+from rich import print, prompt
+from rich.console import Console
 
 from ..exceptions import *
 from ..version import VERSION

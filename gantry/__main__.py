@@ -6,10 +6,9 @@ from typing import Optional, Tuple
 
 import click
 import rich
+from beaker import SecretNotFound, TaskResources
 from click_help_colors import HelpColorsCommand, HelpColorsGroup
 from rich import pretty, print, prompt, traceback
-
-from beaker import SecretNotFound, TaskResources
 
 from .common import constants, util
 from .common.aliases import PathOrStr
