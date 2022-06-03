@@ -285,7 +285,11 @@ def run(
         if not gh_token:
             raise ConfigurationError("token cannot be empty!")
         beaker.secret.write(gh_token_secret, gh_token)
-        print(f"GitHub token secret uploaded to workspace as '{gh_token_secret}'")
+        print(
+            f"GitHub token secret uploaded to workspace as '{gh_token_secret}'.\n"
+            f"If you need to update this secret in the future, use the command:\n"
+            f"[i]$ gantry config set-gh-token[/]"
+        )
 
     gh_token_secret = util.ensure_github_token_secret(beaker, gh_token_secret)
 
