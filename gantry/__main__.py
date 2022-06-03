@@ -6,7 +6,7 @@ from typing import Optional, Tuple
 
 import click
 import rich
-from beaker import Beaker, SecretNotFound, TaskResources, WorkspaceNotSet
+from beaker import SecretNotFound, TaskResources
 from click_help_colors import HelpColorsCommand, HelpColorsGroup
 from rich import pretty, print, prompt, traceback
 
@@ -242,7 +242,7 @@ def run(
     """
     Run an experiment on Beaker.
 
-    E.g.
+    Example:
 
     $ gantry run --name 'hello-world' -- python -c 'print("Hello, World!")'
     """
@@ -261,30 +261,7 @@ def run(
     )
 
     # Initialize Beaker client and validate workspace.
-    beaker = (
-        Beaker.from_env() if workspace is None else Beaker.from_env(default_workspace=workspace)
-    )
-    try:
-        permissions = beaker.workspace.get_permissions()
-        if len(permissions.authorizations) > 1:
-            print_stderr(
-                f"[yellow]Your workspace [b]{beaker.workspace.url()}[/] multiple contributors! "
-                f"Every contributor can view your GitHub personal access token secret ('{gh_token_secret}').[/]"
-            )
-            if not yes and not prompt.Confirm.ask(
-                "[yellow][i]Are you sure you want to use this workspace?[/][/]"
-            ):
-                raise KeyboardInterrupt
-        elif workspace is None:
-            default_workspace = beaker.workspace.get()
-            if not yes and not prompt.Confirm.ask(
-                f"Using default workspace [b cyan]{default_workspace.full_name}[/]. [i]Is that correct?[/]"
-            ):
-                raise KeyboardInterrupt
-    except WorkspaceNotSet:
-        raise ConfigurationError(
-            "'--workspace' option is required since you don't have a default workspace set"
-        )
+    beaker = util.ensure_workspace(workspace=workspace, yes=yes, gh_token_secret=gh_token_secret)
 
     # Get repository account, name, and current ref.
     github_account, github_repo, git_ref = util.ensure_repo(allow_dirty)
@@ -308,7 +285,11 @@ def run(
         if not gh_token:
             raise ConfigurationError("token cannot be empty!")
         beaker.secret.write(gh_token_secret, gh_token)
-        print(f"GitHub token secret uploaded to workspace as '{gh_token_secret}'")
+        print(
+            f"GitHub token secret uploaded to workspace as '{gh_token_secret}'.\n"
+            f"If you need to update this secret in the future, use the command:\n"
+            f"[i]$ gantry config set-gh-token[/]"
+        )
 
     gh_token_secret = util.ensure_github_token_secret(beaker, gh_token_secret)
 
@@ -412,6 +393,64 @@ def run(
     metrics = beaker.experiment.metrics(experiment)
     if metrics is not None:
         print("[b]Metrics:[/]", metrics)
+
+
+@main.group(**_CLICK_GROUP_DEFAULTS)
+def config():
+    """
+    Configure Gantry for a specific Beaker workspace.
+    """
+
+
+@config.command(**_CLICK_COMMAND_DEFAULTS)
+@click.argument("token")
+@click.option(
+    "-w",
+    "--workspace",
+    type=str,
+    help="""The Beaker workspace to use.
+    If not specified, your default workspace will be used.""",
+)
+@click.option(
+    "-s",
+    "--secret",
+    type=str,
+    help="""The name of the Beaker secret to write to.""",
+    default=constants.GITHUB_TOKEN_SECRET,
+    show_default=True,
+)
+@click.option(
+    "-y",
+    "--yes",
+    is_flag=True,
+    help="""Skip all confirmation prompts.""",
+)
+def set_gh_token(
+    token: str,
+    workspace: Optional[str] = None,
+    secret: str = constants.GITHUB_TOKEN_SECRET,
+    yes: bool = False,
+):
+    """
+    Set or update Gantry's GitHub token for the workspace.
+
+    You can create a suitable GitHub token by going to https://github.com/settings/tokens/new
+    and generating a token with the '\N{ballot box with check} repo' scope.
+
+    Example:
+
+    $ gantry config set-gh-token "$GITHUB_TOKEN"
+    """
+    # Initialize Beaker client and validate workspace.
+    beaker = util.ensure_workspace(workspace=workspace, yes=yes, gh_token_secret=secret)
+
+    # Write token to secret.
+    beaker.secret.write(secret, token)
+
+    print(
+        f"[green]\N{check mark} GitHub token added to workspace "
+        f"'{beaker.config.default_workspace}' as the secret '{secret}'"
+    )
 
 
 if __name__ == "__main__":

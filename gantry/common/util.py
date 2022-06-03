@@ -15,14 +15,16 @@ from beaker import (
     SecretNotFound,
     TaskResources,
     TaskSpec,
+    WorkspaceNotSet,
 )
-from rich import print
+from rich import print, prompt
 from rich.console import Console
 
 from ..exceptions import *
 from ..version import VERSION
 from . import constants
 from .aliases import PathOrStr
+from .constants import GITHUB_TOKEN_SECRET
 
 if TYPE_CHECKING:
     from datetime import timedelta
@@ -308,3 +310,33 @@ def check_for_upgrades():
                 )
     except (requests.exceptions.Timeout, requests.exceptions.ConnectionError):
         pass
+
+
+def ensure_workspace(
+    workspace: Optional[str] = None, yes: bool = False, gh_token_secret: str = GITHUB_TOKEN_SECRET
+) -> Beaker:
+    beaker = (
+        Beaker.from_env() if workspace is None else Beaker.from_env(default_workspace=workspace)
+    )
+    try:
+        permissions = beaker.workspace.get_permissions()
+        if len(permissions.authorizations) > 1:
+            print_stderr(
+                f"[yellow]Your workspace [b]{beaker.workspace.url()}[/] has multiple contributors! "
+                f"Every contributor can view your GitHub personal access token secret ('{gh_token_secret}').[/]"
+            )
+            if not yes and not prompt.Confirm.ask(
+                "[yellow][i]Are you sure you want to use this workspace?[/][/]"
+            ):
+                raise KeyboardInterrupt
+        elif workspace is None:
+            default_workspace = beaker.workspace.get()
+            if not yes and not prompt.Confirm.ask(
+                f"Using default workspace [b cyan]{default_workspace.full_name}[/]. [i]Is that correct?[/]"
+            ):
+                raise KeyboardInterrupt
+    except WorkspaceNotSet:
+        raise ConfigurationError(
+            "'--workspace' option is required since you don't have a default workspace set"
+        )
+    return beaker
