@@ -264,6 +264,14 @@ You can also use `--save-spec PATH` in combination with `--dry-run` to save the 
 
 Just use the command `gantry config set-gh-token`.
 
+### How can I attach Beaker datasets to an experiment?
+
+Just use the `--dataset` option for `gantry run`. For example:
+
+```bash
+gantry run --dataset 'petew/squad-train:/input-data' -- ls /input-data
+```
+
 ### Why "Gantry"?
 
 A gantry is a structure that's used, among other things, to lift containers off of ships. Analogously Beaker Gantry's purpose is to lift Docker containers (or at least the *management* of Docker containers) away from users.
