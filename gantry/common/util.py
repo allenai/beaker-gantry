@@ -316,7 +316,9 @@ def ensure_workspace(
     workspace: Optional[str] = None, yes: bool = False, gh_token_secret: str = GITHUB_TOKEN_SECRET
 ) -> Beaker:
     beaker = (
-        Beaker.from_env() if workspace is None else Beaker.from_env(default_workspace=workspace)
+        Beaker.from_env(session=True)
+        if workspace is None
+        else Beaker.from_env(session=True, default_workspace=workspace)
     )
     try:
         permissions = beaker.workspace.get_permissions()
