@@ -340,7 +340,7 @@ def run(
             )
             return
 
-        name: str = name or prompt.Prompt.ask(  # type: ignore[assignment]
+        name: str = name or prompt.Prompt.ask(  # type: ignore[assignment,no-redef]
             "[i]What would you like to call this experiment?[/]", default=util.unique_name()
         )
         if not name:
