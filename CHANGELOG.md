@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [v0.6.0](https://github.com/allenai/beaker-gantry/releases/tag/v0.6.0) - 2022-06-10
+
 ### Added
 
 - Added `--dataset` option for attaching input datasets to an experiment.
