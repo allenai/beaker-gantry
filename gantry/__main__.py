@@ -263,138 +263,137 @@ def run(
     # Initialize Beaker client and validate workspace.
     beaker = util.ensure_workspace(workspace=workspace, yes=yes, gh_token_secret=gh_token_secret)
 
-    with beaker.session():
-        # Get repository account, name, and current ref.
-        github_account, github_repo, git_ref = util.ensure_repo(allow_dirty)
+    # Get repository account, name, and current ref.
+    github_account, github_repo, git_ref = util.ensure_repo(allow_dirty)
 
-        # Get the entrypoint dataset.
-        entrypoint_dataset = util.ensure_entrypoint_dataset(beaker)
+    # Get the entrypoint dataset.
+    entrypoint_dataset = util.ensure_entrypoint_dataset(beaker)
 
-        # Get / set the GitHub token secret.
-        try:
-            beaker.secret.get(gh_token_secret)
-        except SecretNotFound:
-            print_stderr(
-                f"[yellow]GitHub token secret '{gh_token_secret}' not found in workspace.[/]\n"
-                f"You can create a suitable GitHub token by going to https://github.com/settings/tokens/new "
-                f"and generating a token with the '\N{ballot box with check} repo' scope."
-            )
-            gh_token = prompt.Prompt.ask(
-                "[i]Please paste your GitHub token here[/]",
-                password=True,
-            )
-            if not gh_token:
-                raise ConfigurationError("token cannot be empty!")
-            beaker.secret.write(gh_token_secret, gh_token)
-            print(
-                f"GitHub token secret uploaded to workspace as '{gh_token_secret}'.\n"
-                f"If you need to update this secret in the future, use the command:\n"
-                f"[i]$ gantry config set-gh-token[/]"
-            )
-
-        gh_token_secret = util.ensure_github_token_secret(beaker, gh_token_secret)
-
-        # Find a cluster to use.
-        cluster_to_use = util.ensure_cluster(beaker, task_resources, *cluster)
-
-        # Initialize experiment and task spec.
-        spec = util.build_experiment_spec(
-            task_name=task_name,
-            cluster_to_use=cluster_to_use,
-            task_resources=task_resources,
-            arguments=list(arg),
-            entrypoint_dataset=entrypoint_dataset.id,
-            github_account=github_account,
-            github_repo=github_repo,
-            git_ref=git_ref,
-            description=description,
-            beaker_image=beaker_image,
-            docker_image=docker_image,
-            conda=conda,
-            pip=pip,
-            venv=venv,
-            nfs=nfs,
+    # Get / set the GitHub token secret.
+    try:
+        beaker.secret.get(gh_token_secret)
+    except SecretNotFound:
+        print_stderr(
+            f"[yellow]GitHub token secret '{gh_token_secret}' not found in workspace.[/]\n"
+            f"You can create a suitable GitHub token by going to https://github.com/settings/tokens/new "
+            f"and generating a token with the '\N{ballot box with check} repo' scope."
         )
-
-        if save_spec:
-            if (
-                Path(save_spec).is_file()
-                and not yes
-                and not prompt.Confirm.ask(
-                    f"[yellow]The file '{save_spec}' already exists. "
-                    f"[i]Are you sure you want to overwrite it?[/][/]"
-                )
-            ):
-                raise KeyboardInterrupt
-            spec.to_file(save_spec)
-            print(f"Experiment spec saved to {save_spec}")
-
-        if dry_run:
-            rich.get_console().rule("[b]Dry run[/]")
-            print(
-                f"[b]Workspace:[/] {beaker.workspace.url()}\n"
-                f"[b]Cluster:[/] {beaker.cluster.url(cluster_to_use)}\n"
-                f"[b]Commit:[/] https://github.com/{github_account}/{github_repo}/commit/{git_ref}\n"
-                f"[b]Experiment spec:[/]",
-                spec.to_json(),
-            )
-            return
-
-        name: str = name or prompt.Prompt.ask(  # type: ignore[assignment,no-redef]
-            "[i]What would you like to call this experiment?[/]", default=util.unique_name()
+        gh_token = prompt.Prompt.ask(
+            "[i]Please paste your GitHub token here[/]",
+            password=True,
         )
-        if not name:
-            raise ConfigurationError("Experiment name cannot be empty!")
-
-        experiment = beaker.experiment.create(name, spec)
-        print(f"Experiment submitted, see progress at {beaker.experiment.url(experiment)}")
-
-        # Can return right away if timeout is 0.
-        if timeout == 0:
-            return
-
-        try:
-            experiment = beaker.experiment.wait_for(
-                experiment, timeout=timeout if timeout > 0 else None
-            )[0]
-        except (KeyboardInterrupt, TermInterrupt, TimeoutError):
-            print_stderr("[yellow]Canceling experiment...[/]")
-            beaker.experiment.stop(experiment)
-            raise
-
-        # Get job and its exit code.
-        exit_code = 0
-        task = beaker.experiment.tasks(experiment)[0]
-        job = task.latest_job
-        assert job is not None
-        if job.status.exit_code is not None and job.status.exit_code > 0:
-            exit_code = job.status.exit_code
-
-        # Display the logs.
-        if show_logs:
-            print()
-            rich.get_console().rule(f"Logs from task [i]'{task.display_name}'[/]")
-            util.display_logs(beaker.job.logs(job, quiet=True))
-            rich.get_console().rule("End logs")
-            print()
-
-        if exit_code > 0:
-            raise ExperimentFailedError(f"Experiment exited with non-zero code ({exit_code})")
-
-        assert job.execution is not None
-        assert job.status.started is not None
-        assert job.status.exited is not None
-
+        if not gh_token:
+            raise ConfigurationError("token cannot be empty!")
+        beaker.secret.write(gh_token_secret, gh_token)
         print(
-            f"[b green]\N{check mark}[/] [b cyan]{name}[/] completed successfully\n"
-            f"[b]Experiment:[/] {beaker.experiment.url(experiment)}\n"
-            f"[b]Runtime:[/] {util.format_timedelta(job.status.exited - job.status.started)}\n"
-            f"[b]Results:[/] {beaker.dataset.url(job.execution.result.beaker)}"
+            f"GitHub token secret uploaded to workspace as '{gh_token_secret}'.\n"
+            f"If you need to update this secret in the future, use the command:\n"
+            f"[i]$ gantry config set-gh-token[/]"
         )
 
-        metrics = beaker.experiment.metrics(experiment)
-        if metrics is not None:
-            print("[b]Metrics:[/]", metrics)
+    gh_token_secret = util.ensure_github_token_secret(beaker, gh_token_secret)
+
+    # Find a cluster to use.
+    cluster_to_use = util.ensure_cluster(beaker, task_resources, *cluster)
+
+    # Initialize experiment and task spec.
+    spec = util.build_experiment_spec(
+        task_name=task_name,
+        cluster_to_use=cluster_to_use,
+        task_resources=task_resources,
+        arguments=list(arg),
+        entrypoint_dataset=entrypoint_dataset.id,
+        github_account=github_account,
+        github_repo=github_repo,
+        git_ref=git_ref,
+        description=description,
+        beaker_image=beaker_image,
+        docker_image=docker_image,
+        conda=conda,
+        pip=pip,
+        venv=venv,
+        nfs=nfs,
+    )
+
+    if save_spec:
+        if (
+            Path(save_spec).is_file()
+            and not yes
+            and not prompt.Confirm.ask(
+                f"[yellow]The file '{save_spec}' already exists. "
+                f"[i]Are you sure you want to overwrite it?[/][/]"
+            )
+        ):
+            raise KeyboardInterrupt
+        spec.to_file(save_spec)
+        print(f"Experiment spec saved to {save_spec}")
+
+    if dry_run:
+        rich.get_console().rule("[b]Dry run[/]")
+        print(
+            f"[b]Workspace:[/] {beaker.workspace.url()}\n"
+            f"[b]Cluster:[/] {beaker.cluster.url(cluster_to_use)}\n"
+            f"[b]Commit:[/] https://github.com/{github_account}/{github_repo}/commit/{git_ref}\n"
+            f"[b]Experiment spec:[/]",
+            spec.to_json(),
+        )
+        return
+
+    name: str = name or prompt.Prompt.ask(  # type: ignore[assignment,no-redef]
+        "[i]What would you like to call this experiment?[/]", default=util.unique_name()
+    )
+    if not name:
+        raise ConfigurationError("Experiment name cannot be empty!")
+
+    experiment = beaker.experiment.create(name, spec)
+    print(f"Experiment submitted, see progress at {beaker.experiment.url(experiment)}")
+
+    # Can return right away if timeout is 0.
+    if timeout == 0:
+        return
+
+    try:
+        experiment = beaker.experiment.wait_for(
+            experiment, timeout=timeout if timeout > 0 else None
+        )[0]
+    except (KeyboardInterrupt, TermInterrupt, TimeoutError):
+        print_stderr("[yellow]Canceling experiment...[/]")
+        beaker.experiment.stop(experiment)
+        raise
+
+    # Get job and its exit code.
+    exit_code = 0
+    task = beaker.experiment.tasks(experiment)[0]
+    job = task.latest_job
+    assert job is not None
+    if job.status.exit_code is not None and job.status.exit_code > 0:
+        exit_code = job.status.exit_code
+
+    # Display the logs.
+    if show_logs:
+        print()
+        rich.get_console().rule(f"Logs from task [i]'{task.display_name}'[/]")
+        util.display_logs(beaker.job.logs(job, quiet=True))
+        rich.get_console().rule("End logs")
+        print()
+
+    if exit_code > 0:
+        raise ExperimentFailedError(f"Experiment exited with non-zero code ({exit_code})")
+
+    assert job.execution is not None
+    assert job.status.started is not None
+    assert job.status.exited is not None
+
+    print(
+        f"[b green]\N{check mark}[/] [b cyan]{name}[/] completed successfully\n"
+        f"[b]Experiment:[/] {beaker.experiment.url(experiment)}\n"
+        f"[b]Runtime:[/] {util.format_timedelta(job.status.exited - job.status.started)}\n"
+        f"[b]Results:[/] {beaker.dataset.url(job.execution.result.beaker)}"
+    )
+
+    metrics = beaker.experiment.metrics(experiment)
+    if metrics is not None:
+        print("[b]Metrics:[/]", metrics)
 
 
 @main.group(**_CLICK_GROUP_DEFAULTS)
