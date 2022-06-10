@@ -225,6 +225,21 @@ def format_timedelta(td: "timedelta") -> str:
     return ", ".join(parts)
 
 
+def ensure_datasets(beaker: Beaker, *datasets: str) -> List[Tuple[str, str]]:
+    out = []
+    for dataset_str in datasets:
+        try:
+            dataset_name, path = dataset_str.split(":")
+        except ValueError:
+            raise ValueError(
+                f"Bad '--dataset' specification: '{dataset_str}'\n"
+                f"Datasets should be in the form of 'dataset-name:/mount/location'."
+            )
+        dataset_id = beaker.dataset.get(dataset_name).id
+        out.append((dataset_id, path))
+    return out
+
+
 def build_experiment_spec(
     task_name: str,
     cluster_to_use: str,
@@ -242,6 +257,7 @@ def build_experiment_spec(
     pip: Optional[PathOrStr] = None,
     venv: Optional[str] = None,
     nfs: Optional[bool] = None,
+    datasets: Optional[List[Tuple[str, str]]] = None,
 ):
     task_spec = (
         TaskSpec.new(
@@ -287,6 +303,10 @@ def build_experiment_spec(
 
     if nfs:
         task_spec = task_spec.with_dataset(constants.NFS_MOUNT, host_path=constants.NFS_MOUNT)
+
+    if datasets:
+        for dataset_id, path in datasets:
+            task_spec = task_spec.with_dataset(path, beaker=dataset_id)
 
     return ExperimentSpec(description=description, tasks=[task_spec])
 

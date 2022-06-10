@@ -113,8 +113,8 @@ def main():
     type=str,
     multiple=True,
     default=[constants.DEFAULT_CLUSTER],
-    help="""A potential cluster to use. If multiple are given,
-    the first one with enough free resources to run the experiment is picked.""",
+    help="""A potential cluster to use. If this option is used multiple times,
+    the first cluster with enough free resources to run the experiment is picked.""",
     show_default=True,
 )
 @click.option(
@@ -150,6 +150,13 @@ def main():
     "--shared-memory",
     type=int,
     help="""Size of /dev/shm as a number with unit suffix (e.g. 2.5GiB).""",
+)
+@click.option(
+    "--dataset",
+    type=str,
+    multiple=True,
+    help="""An input dataset in the form of 'dataset-name:/mount/location' to attach to your experiment.
+    You can specify this option more than once to attach multiple datasets.""",
 )
 @click.option(
     "--gh-token-secret",
@@ -227,6 +234,7 @@ def run(
     gpus: Optional[int] = None,
     memory: Optional[str] = None,
     shared_memory: Optional[str] = None,
+    dataset: Optional[Tuple[str, ...]] = None,
     gh_token_secret: str = constants.GITHUB_TOKEN_SECRET,
     conda: Optional[PathOrStr] = None,
     pip: Optional[PathOrStr] = None,
@@ -293,6 +301,9 @@ def run(
 
     gh_token_secret = util.ensure_github_token_secret(beaker, gh_token_secret)
 
+    # Validate the input datasets.
+    datasets_to_use = util.ensure_datasets(beaker, *dataset) if dataset else []
+
     # Find a cluster to use.
     cluster_to_use = util.ensure_cluster(beaker, task_resources, *cluster)
 
@@ -313,6 +324,7 @@ def run(
         pip=pip,
         venv=venv,
         nfs=nfs,
+        datasets=datasets_to_use,
     )
 
     if save_spec:

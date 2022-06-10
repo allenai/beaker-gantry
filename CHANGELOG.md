@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- Added `--dataset` option for attaching input datasets to an experiment.
+  For example: `gantry run --dataset 'petew/squad-train:/input-data' -- ls /input-data`
+
 ## [v0.5.2](https://github.com/allenai/beaker-gantry/releases/tag/v0.5.2) - 2022-06-10
 
 ### Changed
