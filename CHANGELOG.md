@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Changed
+
+- `beaker-py` v1.4 or newer now required to make use of `Beaker.session()` for performance.
+
 ## [v0.5.0](https://github.com/allenai/beaker-gantry/releases/tag/v0.5.0) - 2022-06-03
 
 ### Added
