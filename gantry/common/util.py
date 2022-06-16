@@ -68,13 +68,20 @@ def parse_git_remote_url(url: str) -> Tuple[str, str]:
     return account, repo
 
 
-def display_logs(logs: Iterable[bytes]):
+def display_logs(logs: Iterable[bytes], ignore_timestamp: Optional[str] = None) -> Optional[str]:
     console = rich.get_console()
+    latest_timestamp: Optional[str] = None
 
     def print_line(line: str):
+        if not line:
+            return
+        nonlocal latest_timestamp
         # Remove timestamp
         try:
-            _, line = line.split("Z ", maxsplit=1)
+            timestamp, line = line.split("Z ", maxsplit=1)
+            latest_timestamp = f"{timestamp}Z"
+            if ignore_timestamp is not None and latest_timestamp == ignore_timestamp:
+                return
         except ValueError:
             pass
         console.print(line, highlight=False)
@@ -87,13 +94,13 @@ def display_logs(logs: Iterable[bytes]):
         if chunk.endswith("\n"):
             line_buffer = ""
         else:
-            # Last line line chunk is probably incomplete.
+            # Last line chunk is probably incomplete.
             lines, line_buffer = lines[:-1], lines[-1]
         for line in lines:
             print_line(line)
 
-    if line_buffer:
-        print_line(line_buffer)
+    print_line(line_buffer)
+    return latest_timestamp
 
 
 def ensure_repo(allow_dirty: bool = False) -> Tuple[str, str, str]:
