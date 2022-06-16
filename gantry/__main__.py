@@ -39,14 +39,8 @@ def excepthook(exctype, value, tb):
     # Ignore `GantryError` because we don't need a traceback for those.
     if issubclass(exctype, (GantryError,)):
         print_stderr(f"[red][bold]{exctype.__name__}:[/] [i]{value}[/][/]")
-    #  # For interruptions, call the original exception handler.
-    elif issubclass(
-        exctype,
-        (
-            KeyboardInterrupt,
-            TermInterrupt,
-        ),
-    ):
+    # For interruptions, call the original exception handler.
+    elif issubclass(exctype, (KeyboardInterrupt, TermInterrupt)):
         sys.__excepthook__(exctype, value, tb)
     else:
         print_stderr(traceback.Traceback.from_exception(exctype, value, tb, suppress=[click]))
