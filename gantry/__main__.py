@@ -7,7 +7,7 @@ from typing import Optional, Tuple
 
 import click
 import rich
-from beaker import Job, SecretNotFound, TaskResources
+from beaker import Job, JobTimeoutError, SecretNotFound, TaskResources
 from click_help_colors import HelpColorsCommand, HelpColorsGroup
 from rich import pretty, print, prompt, traceback
 
@@ -39,8 +39,14 @@ def excepthook(exctype, value, tb):
     # Ignore `GantryError` because we don't need a traceback for those.
     if issubclass(exctype, (GantryError,)):
         print_stderr(f"[red][bold]{exctype.__name__}:[/] [i]{value}[/][/]")
-    # For interruptions, call the original exception handler.
-    elif issubclass(exctype, (KeyboardInterrupt, TermInterrupt)):
+    #  # For interruptions, call the original exception handler.
+    elif issubclass(
+        exctype,
+        (
+            KeyboardInterrupt,
+            TermInterrupt,
+        ),
+    ):
         sys.__excepthook__(exctype, value, tb)
     else:
         print_stderr(traceback.Traceback.from_exception(exctype, value, tb, suppress=[click]))
@@ -393,7 +399,7 @@ def run(
                 )
                 time.sleep(2.0)
                 if timeout > 0 and time.monotonic() - start >= timeout:
-                    raise TimeoutError
+                    raise JobTimeoutError(f"Job did not finish within {timeout} seconds")
 
             rich.get_console().rule("End logs")
             print()
@@ -404,10 +410,11 @@ def run(
             job = beaker.experiment.tasks(experiment)[0].latest_job
             assert job is not None
             exit_code = job.status.exit_code
-    except (KeyboardInterrupt, TermInterrupt, TimeoutError):
-        print_stderr("[yellow]Canceling experiment...[/]")
+    except (KeyboardInterrupt, TermInterrupt, JobTimeoutError) as exc:
+        print_stderr(f"[red][bold]{exc.__class__.__name__}:[/] [i]{exc}[/][/]")
         beaker.experiment.stop(experiment)
-        raise
+        print_stderr("[yellow]Experiment cancelled.[/]")
+        sys.exit(1)
 
     assert job is not None
     assert exit_code is not None
