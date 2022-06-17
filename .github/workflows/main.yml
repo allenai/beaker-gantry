@@ -31,38 +31,38 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python: ['3.7', '3.10']
+        python: ['3.7', '3.10.4']
         task:
           - name: Test
             run: |
               pytest -v --color=yes tests/
 
         include:
-          - python: '3.10'
+          - python: '3.10.4'
             task:
               name: Lint
               run: flake8 .
 
-          - python: '3.10'
+          - python: '3.10.4'
             task:
               name: Type check
               run: mypy .
 
-          - python: '3.10'
+          - python: '3.10.4'
             task:
               name: Build
               run: |
                 python setup.py check
                 python setup.py bdist_wheel sdist
 
-          - python: '3.10'
+          - python: '3.10.4'
             task:
               name: Style
               run: |
                 isort --check .
                 black --check .
 
-          - python: '3.10'
+          - python: '3.10.4'
             task:
               name: Example - Hello, World!
               run: |
@@ -76,7 +76,7 @@ jobs:
                   --yes \
                   -- python -c 'print("Hello, World!")'
 
-          - python: '3.10'
+          - python: '3.10.4'
             task:
               name: Example - Metrics 
               run: |
@@ -90,7 +90,7 @@ jobs:
                   --yes \
                   -- python examples/metrics/run.py
 
-          - python: '3.10'
+          - python: '3.10.4'
             task:
               name: Example - Conda
               run: |

@@ -1,12 +1,13 @@
 import os
 import signal
 import sys
+import time
 from pathlib import Path
 from typing import Optional, Tuple
 
 import click
 import rich
-from beaker import SecretNotFound, TaskResources
+from beaker import Job, JobTimeoutError, SecretNotFound, TaskResources
 from click_help_colors import HelpColorsCommand, HelpColorsGroup
 from rich import pretty, print, prompt, traceback
 
@@ -364,30 +365,53 @@ def run(
     if timeout == 0:
         return
 
+    job: Optional[Job] = None
+    exit_code: Optional[int] = None
+
     try:
-        experiment = beaker.experiment.wait_for(
-            experiment, timeout=timeout if timeout > 0 else None
-        )[0]
-    except (KeyboardInterrupt, TermInterrupt, TimeoutError):
-        print_stderr("[yellow]Canceling experiment...[/]")
+        if show_logs:
+            start = time.monotonic()
+
+            print("Waiting for job to launch..", end="")
+            while job is None:
+                time.sleep(1.0)
+                print(".", end="")
+                job = beaker.experiment.tasks(experiment.id)[0].latest_job
+
+            # Stream the logs.
+            print()
+            rich.get_console().rule("Logs")
+
+            last_timestamp: Optional[str] = None
+            while exit_code is None:
+                job = beaker.experiment.tasks(experiment.id)[0].latest_job
+                assert job is not None
+                exit_code = job.status.exit_code
+                last_timestamp = util.display_logs(
+                    beaker.job.logs(job, quiet=True, since=last_timestamp),
+                    ignore_timestamp=last_timestamp,
+                )
+                time.sleep(2.0)
+                if timeout > 0 and time.monotonic() - start >= timeout:
+                    raise JobTimeoutError(f"Job did not finish within {timeout} seconds")
+
+            rich.get_console().rule("End logs")
+            print()
+        else:
+            experiment = beaker.experiment.wait_for(
+                experiment, timeout=timeout if timeout > 0 else None
+            )[0]
+            job = beaker.experiment.tasks(experiment)[0].latest_job
+            assert job is not None
+            exit_code = job.status.exit_code
+    except (KeyboardInterrupt, TermInterrupt, JobTimeoutError) as exc:
+        print_stderr(f"[red][bold]{exc.__class__.__name__}:[/] [i]{exc}[/][/]")
         beaker.experiment.stop(experiment)
-        raise
+        print_stderr("[yellow]Experiment cancelled.[/]")
+        sys.exit(1)
 
-    # Get job and its exit code.
-    exit_code = 0
-    task = beaker.experiment.tasks(experiment)[0]
-    job = task.latest_job
     assert job is not None
-    if job.status.exit_code is not None and job.status.exit_code > 0:
-        exit_code = job.status.exit_code
-
-    # Display the logs.
-    if show_logs:
-        print()
-        rich.get_console().rule(f"Logs from task [i]'{task.display_name}'[/]")
-        util.display_logs(beaker.job.logs(job, quiet=True))
-        rich.get_console().rule("End logs")
-        print()
+    assert exit_code is not None
 
     if exit_code > 0:
         raise ExperimentFailedError(f"Experiment exited with non-zero code ({exit_code})")
