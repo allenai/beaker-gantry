@@ -290,7 +290,9 @@ def build_experiment_spec(
             value=str(conda),
         )
     elif not Path(constants.CONDA_ENV_FILE).is_file():
-        task_spec = task_spec.with_env_var(name="PYTHON_VERSION", value=platform.python_version())
+        task_spec = task_spec.with_env_var(
+            name="PYTHON_VERSION", value=".".join(platform.python_version_tuple()[:-1])
+        )
 
     if pip is not None:
         task_spec = task_spec.with_env_var(

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Fixed
+
+- Fixed issue where Python version was too specific for Conda. Now we only specify the major and minor version.
+
 ## [v0.7.0](https://github.com/allenai/beaker-gantry/releases/tag/v0.7.0) - 2022-06-16
 
 ### Changed
