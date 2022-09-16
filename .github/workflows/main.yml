@@ -28,6 +28,7 @@ jobs:
     env:
       BEAKER_TOKEN: ${{ secrets.BEAKER_TOKEN }}
       BEAKER_WORKSPACE: ai2/gantry-testing
+      GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
     strategy:
       fail-fast: false
       matrix:
