@@ -10,7 +10,7 @@ CONDA_ENV_FILE = "environment.yml"
 
 PIP_REQUIREMENTS_FILE = "requirements.txt"
 
-RUNTIME_DIR = "/gantry/runtime"
+RUNTIME_DIR = "/gantry-runtime"
 
 RESULTS_DIR = "/results"
 
