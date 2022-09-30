@@ -32,6 +32,9 @@ echo "
 #########################################
 "
 
+mkdir -p "${{ RUNTIME_DIR }}"
+cd "${{ RUNTIME_DIR }}"
+
 # Clone the repo and checkout the target commit.
 gh repo clone "$GITHUB_REPO" .
 git checkout "$GIT_REF"
