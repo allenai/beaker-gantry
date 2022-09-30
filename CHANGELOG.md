@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [v0.8.1](https://github.com/allenai/beaker-gantry/releases/tag/v0.8.1) - 2022-09-30
+
 ### Fixed
 
 - Fixed an issue when using a custom Docker image where Gantry would fail if the working directory of the image was non-empty.
