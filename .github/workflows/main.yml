@@ -109,13 +109,13 @@ jobs:
     steps:
       - name: Checkout (PR)
         if: github.event_name == 'pull_request'
-        uses: actions/checkout@v3
+        uses: actions/checkout@v3.1.0
         with:
           ref: ${{ github.event.pull_request.head.sha }}  # check out PR head commit instead of merge commit
 
       - name: Checkout (push or tag)
         if: github.event_name != 'pull_request'
-        uses: actions/checkout@v3
+        uses: actions/checkout@v3.1.0
 
       - name: Setup Python environment
         uses: ./.github/actions/setup-venv
@@ -149,7 +149,7 @@ jobs:
     env:
       PYPI_USERNAME: allennlp
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v3.1.0
 
       - name: Setup Python
         uses: actions/setup-python@v4
