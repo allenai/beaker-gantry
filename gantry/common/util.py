@@ -265,6 +265,8 @@ def build_experiment_spec(
     venv: Optional[str] = None,
     nfs: Optional[bool] = None,
     datasets: Optional[List[Tuple[str, str]]] = None,
+    env: Optional[List[Tuple[str, str]]] = None,
+    env_secrets: Optional[List[Tuple[str, str]]] = None,
 ):
     task_spec = (
         TaskSpec.new(
@@ -283,6 +285,12 @@ def build_experiment_spec(
         .with_env_var(name="GIT_REF", value=git_ref)
         .with_dataset("/gantry", beaker=entrypoint_dataset)
     )
+
+    for name, val in env or []:
+        task_spec = task_spec.with_env_var(name=name, value=val)
+
+    for name, secret in env_secrets or []:
+        task_spec = task_spec.with_env_var(name=name, secret=secret)
 
     if conda is not None:
         task_spec = task_spec.with_env_var(
