@@ -144,12 +144,12 @@ def main():
 )
 @click.option(
     "--memory",
-    type=int,
+    type=str,
     help="""Minimum available system memory as a number with unit suffix (e.g. 2.5GiB).""",
 )
 @click.option(
     "--shared-memory",
-    type=int,
+    type=str,
     help="""Size of /dev/shm as a number with unit suffix (e.g. 2.5GiB).""",
 )
 @click.option(
