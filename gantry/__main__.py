@@ -183,16 +183,16 @@ def main():
     type=str,
     help="""The name of an existing conda environment on the image to use.""",
 )
-@click.option( 
+@click.option(
     "--env",
     type=str,
-    help="""Environment variables to add the Beaker experiment. Should be in the form '{NAME}={VALUE}'."""
+    help="""Environment variables to add the Beaker experiment. Should be in the form '{NAME}={VALUE}'.""",
     multiple=True,
 )
-@click.option( 
+@click.option(
     "--env-secret",
     type=str,
-    help="""Environment variables to add the Beaker experiment from Beaker secrets. Should be in the form '{NAME}={SECRET_NAME}'."""
+    help="""Environment variables to add the Beaker experiment from Beaker secrets. Should be in the form '{NAME}={SECRET_NAME}'.""",
     multiple=True,
 )
 @click.option(
