@@ -184,6 +184,19 @@ def main():
     help="""The name of an existing conda environment on the image to use.""",
 )
 @click.option(
+    "--env",
+    type=str,
+    help="""Environment variables to add the Beaker experiment. Should be in the form '{NAME}={VALUE}'.""",
+    multiple=True,
+)
+@click.option(
+    "--env-secret",
+    type=str,
+    help="""Environment variables to add the Beaker experiment from Beaker secrets.
+    Should be in the form '{NAME}={SECRET_NAME}'.""",
+    multiple=True,
+)
+@click.option(
     "--nfs / --no-nfs",
     default=None,
     help=f"""Whether or not to mount the NFS drive ({constants.NFS_MOUNT}) to the experiment.
@@ -240,6 +253,8 @@ def run(
     conda: Optional[PathOrStr] = None,
     pip: Optional[PathOrStr] = None,
     venv: Optional[str] = None,
+    env: Optional[Tuple[str, ...]] = None,
+    env_secret: Optional[Tuple[str, ...]] = None,
     timeout: int = 0,
     nfs: Optional[bool] = None,
     show_logs: bool = True,
@@ -308,6 +323,22 @@ def run(
     # Find a cluster to use.
     cluster_to_use = util.ensure_cluster(beaker, task_resources, *cluster)
 
+    env_vars = []
+    for e in env or []:
+        try:
+            name, val = e.split("=")
+        except ValueError:
+            raise ValueError("Invalid --env option: {e}")
+        env_vars.append((name, val))
+
+    env_secrets = []
+    for e in env_secret or []:
+        try:
+            name, secret = e.split("=")
+        except ValueError:
+            raise ValueError(f"Invalid --env-secret option: {e}")
+        env_secrets.append((name, secret))
+
     # Initialize experiment and task spec.
     spec = util.build_experiment_spec(
         task_name=task_name,
@@ -326,6 +357,8 @@ def run(
         venv=venv,
         nfs=nfs,
         datasets=datasets_to_use,
+        env=env_vars,
+        env_secrets=env_secrets,
     )
 
     if save_spec:
