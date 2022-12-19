@@ -326,18 +326,18 @@ def run(
     env_vars = []
     for e in env or []:
         try:
-            name, val = e.split("=")
+            env_name, val = e.split("=")
         except ValueError:
             raise ValueError("Invalid --env option: {e}")
-        env_vars.append((name, val))
+        env_vars.append((env_name, val))
 
     env_secrets = []
     for e in env_secret or []:
         try:
-            name, secret = e.split("=")
+            env_secret_name, secret = e.split("=")
         except ValueError:
             raise ValueError(f"Invalid --env-secret option: {e}")
-        env_secrets.append((name, secret))
+        env_secrets.append((env_secret_name, secret))
 
     # Initialize experiment and task spec.
     spec = util.build_experiment_spec(
