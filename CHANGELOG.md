@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [v0.8.2](https://github.com/allenai/beaker-gantry/releases/tag/v0.8.2) - 2023-01-19
+
 ### Added
 
 - Added `--env` and `--env-secret` options for adding environment variables to your Beaker experiments.
