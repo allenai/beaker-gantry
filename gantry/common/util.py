@@ -167,7 +167,7 @@ def ensure_entrypoint_dataset(beaker: Beaker) -> Dataset:
     ds_files = list(beaker.dataset.ls(gantry_entrypoint_dataset))
     if len(ds_files) != 1:
         raise EntrypointChecksumError(err_msg)
-    if ds_files[0].digest != Digest(sha256_hash.digest()):
+    if ds_files[0].digest != Digest.from_decoded(sha256_hash.digest(), "SHA256"):
         raise EntrypointChecksumError(err_msg)
 
     return gantry_entrypoint_dataset
