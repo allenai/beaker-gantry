@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [v0.9.0](https://github.com/allenai/beaker-gantry/releases/tag/v0.9.0) - 2023-02-10
+
 ### Changed
 
 - You can now set the priority of your jobs via `--priority`.
