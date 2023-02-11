@@ -387,7 +387,6 @@ def run(
         rich.get_console().rule("[b]Dry run[/]")
         print(
             f"[b]Workspace:[/] {beaker.workspace.url()}\n"
-            f"[b]Cluster:[/] {beaker.cluster.url(cluster_to_use)}\n"
             f"[b]Commit:[/] https://github.com/{github_account}/{github_repo}/commit/{git_ref}\n"
             f"[b]Experiment spec:[/]",
             spec.to_json(),
@@ -418,7 +417,7 @@ def run(
             while job is None:
                 time.sleep(1.0)
                 print(".", end="")
-                job = beaker.experiment.tasks(experiment.id)[0].latest_job
+                job = beaker.experiment.tasks(experiment.id)[0].latest_job  # type: ignore
 
             # Stream the logs.
             print()
@@ -426,7 +425,7 @@ def run(
 
             last_timestamp: Optional[str] = None
             while exit_code is None:
-                job = beaker.experiment.tasks(experiment.id)[0].latest_job
+                job = beaker.experiment.tasks(experiment.id)[0].latest_job  # type: ignore
                 assert job is not None
                 exit_code = job.status.exit_code
                 last_timestamp = util.display_logs(
@@ -443,7 +442,7 @@ def run(
             experiment = beaker.experiment.wait_for(
                 experiment, timeout=timeout if timeout > 0 else None
             )[0]
-            job = beaker.experiment.tasks(experiment)[0].latest_job
+            job = beaker.experiment.tasks(experiment)[0].latest_job  # type: ignore
             assert job is not None
             exit_code = job.status.exit_code
     except (KeyboardInterrupt, TermInterrupt, JobTimeoutError) as exc:

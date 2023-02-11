@@ -260,7 +260,7 @@ def build_experiment_spec(
             resources=task_resources,
             priority=priority,
         )
-        .with_constraint(cluster=[clusters] if isinstance(clusters, str) else clusters)
+        .with_constraint(cluster=clusters)
         .with_env_var(name="GANTRY_VERSION", value=VERSION)
         .with_env_var(name="GITHUB_TOKEN", secret=gh_token_secret)
         .with_env_var(name="GITHUB_REPO", value=f"{github_account}/{github_repo}")
