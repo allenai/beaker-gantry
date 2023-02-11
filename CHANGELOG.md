@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Changed
+
+- You can now set the priority of your jobs via `--priority`.
+- By default if you don't specify a cluster and priority, jobs will be submitted to all clusters under preemptible priority.
+
 ## [v0.8.2](https://github.com/allenai/beaker-gantry/releases/tag/v0.8.2) - 2023-01-19
 
 ### Added

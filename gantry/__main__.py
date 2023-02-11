@@ -7,7 +7,7 @@ from typing import Optional, Tuple
 
 import click
 import rich
-from beaker import Job, JobTimeoutError, SecretNotFound, TaskResources
+from beaker import Job, JobTimeoutError, Priority, SecretNotFound, TaskResources
 from click_help_colors import HelpColorsCommand, HelpColorsGroup
 from rich import pretty, print, prompt, traceback
 
@@ -113,9 +113,10 @@ def main():
     "--cluster",
     type=str,
     multiple=True,
-    default=[constants.DEFAULT_CLUSTER],
-    help="""A potential cluster to use. If this option is used multiple times,
-    the first cluster with enough free resources to run the experiment is picked.""",
+    default=None,
+    help="""A potential cluster to use. This option can be used multiple times to allow multiple clusters.
+    If you don't specify a cluster or the priority, the priority will default to 'preemptible' and
+    the job will be able to run on any on-premise cluster.""",
     show_default=True,
 )
 @click.option(
@@ -235,13 +236,18 @@ def main():
     type=click.Path(dir_okay=False, file_okay=True),
     help="""A path to save the generated Beaker experiment spec to.""",
 )
+@click.option(
+    "--priority",
+    type=click.Choice([str(p) for p in Priority]),
+    help="The job priority. If you don't specifiy at least one cluster, priority will default to 'preemptible'.",
+)
 def run(
     arg: Tuple[str, ...],
     name: Optional[str] = None,
     description: Optional[str] = None,
     task_name: str = "main",
     workspace: Optional[str] = None,
-    cluster: Tuple[str, ...] = (constants.DEFAULT_CLUSTER,),
+    cluster: Optional[Tuple[str, ...]] = None,
     beaker_image: Optional[str] = constants.DEFAULT_IMAGE,
     docker_image: Optional[str] = None,
     cpus: Optional[float] = None,
@@ -262,6 +268,7 @@ def run(
     dry_run: bool = False,
     yes: bool = False,
     save_spec: Optional[PathOrStr] = None,
+    priority: Optional[str] = None,
 ):
     """
     Run an experiment on Beaker.
@@ -320,9 +327,6 @@ def run(
     # Validate the input datasets.
     datasets_to_use = util.ensure_datasets(beaker, *dataset) if dataset else []
 
-    # Find a cluster to use.
-    cluster_to_use = util.ensure_cluster(beaker, task_resources, *cluster)
-
     env_vars = []
     for e in env or []:
         try:
@@ -339,10 +343,14 @@ def run(
             raise ValueError(f"Invalid --env-secret option: {e}")
         env_secrets.append((env_secret_name, secret))
 
+    # Default to preemptible priority when no cluster has been specified.
+    if not cluster and priority is None:
+        priority = Priority.preemptible
+
     # Initialize experiment and task spec.
     spec = util.build_experiment_spec(
         task_name=task_name,
-        cluster_to_use=cluster_to_use,
+        clusters=list(cluster or []),
         task_resources=task_resources,
         arguments=list(arg),
         entrypoint_dataset=entrypoint_dataset.id,
@@ -359,6 +367,7 @@ def run(
         datasets=datasets_to_use,
         env=env_vars,
         env_secrets=env_secrets,
+        priority=priority,
     )
 
     if save_spec:

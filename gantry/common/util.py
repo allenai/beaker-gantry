@@ -2,7 +2,7 @@ import platform
 import tempfile
 import time
 from pathlib import Path
-from typing import TYPE_CHECKING, Iterable, List, Optional, Tuple
+from typing import TYPE_CHECKING, Iterable, List, Optional, Tuple, Union
 
 import rich
 from beaker import (
@@ -12,6 +12,7 @@ from beaker import (
     DatasetNotFound,
     Digest,
     ExperimentSpec,
+    Priority,
     SecretNotFound,
     TaskResources,
     TaskSpec,
@@ -188,27 +189,6 @@ def ensure_github_token_secret(
     return secret_name
 
 
-def ensure_cluster(beaker: Beaker, task_resources: TaskResources, *clusters: str) -> str:
-    cluster_to_use: str
-    if not clusters:
-        raise ConfigurationError("At least one cluster is required")
-    elif len(clusters) == 1:
-        cluster_to_use = clusters[0]
-    else:
-        available_clusters = sorted(
-            beaker.cluster.filter_available(task_resources, *clusters), key=lambda x: x.queued_jobs
-        )
-        if available_clusters:
-            cluster_to_use = available_clusters[0].cluster.full_name
-            print(f"Using cluster '{cluster_to_use}'")
-        else:
-            cluster_to_use = clusters[0]
-            print_stderr(
-                f"No clusters currently have enough free resources available. Will use '{cluster_to_use}' anyway."
-            )
-    return cluster_to_use
-
-
 def format_timedelta(td: "timedelta") -> str:
     def format_value_and_unit(value: int, unit: str) -> str:
         if value == 1:
@@ -249,7 +229,7 @@ def ensure_datasets(beaker: Beaker, *datasets: str) -> List[Tuple[str, str]]:
 
 def build_experiment_spec(
     task_name: str,
-    cluster_to_use: str,
+    clusters: List[str],
     task_resources: TaskResources,
     arguments: List[str],
     entrypoint_dataset: str,
@@ -267,18 +247,20 @@ def build_experiment_spec(
     datasets: Optional[List[Tuple[str, str]]] = None,
     env: Optional[List[Tuple[str, str]]] = None,
     env_secrets: Optional[List[Tuple[str, str]]] = None,
+    priority: Optional[Union[str, Priority]] = None,
 ):
     task_spec = (
         TaskSpec.new(
             task_name,
-            cluster_to_use,
             beaker_image=beaker_image,
             docker_image=docker_image,
             result_path=constants.RESULTS_DIR,
             command=["bash", "/gantry/entrypoint.sh"],
             arguments=arguments,
             resources=task_resources,
+            priority=priority,
         )
+        .with_constraint(cluster=[clusters] if isinstance(clusters, str) else clusters)
         .with_env_var(name="GANTRY_VERSION", value=VERSION)
         .with_env_var(name="GITHUB_TOKEN", secret=gh_token_secret)
         .with_env_var(name="GITHUB_REPO", value=f"{github_account}/{github_repo}")
@@ -314,9 +296,10 @@ def build_experiment_spec(
             value=venv,
         )
 
-    if nfs is None:
-        if cluster_to_use in constants.NFS_SUPPORTED_CLUSTERS:
-            nfs = True
+    if nfs is None and all(
+        ["cirrascale" in cluster or "elanding" in cluster for cluster in clusters]
+    ):
+        nfs = True
 
     if nfs:
         task_spec = task_spec.with_dataset(constants.NFS_MOUNT, host_path=constants.NFS_MOUNT)
