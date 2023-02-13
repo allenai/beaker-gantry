@@ -14,7 +14,7 @@ RESULTS_DIR = "/results"
 
 METRICS_FILE = f"{RESULTS_DIR}/metrics.json"
 
-NFS_MOUNT = "/net/nfs"
+NFS_MOUNT = "/net/nfs.cirrascale"
 
 NFS_SUPPORTED_CLUSTERS = {
     "ai2/allennlp-cirrascale",
