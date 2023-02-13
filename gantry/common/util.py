@@ -296,9 +296,7 @@ def build_experiment_spec(
             value=venv,
         )
 
-    if nfs is None and all(
-        ["cirrascale" in cluster or "elanding" in cluster for cluster in clusters]
-    ):
+    if nfs is None and all(["cirrascale" in cluster for cluster in clusters]):
         nfs = True
 
     if nfs:
