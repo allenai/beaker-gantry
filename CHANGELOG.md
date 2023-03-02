@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Fixed issue where cirrascale NFS would be potentially be attached to non-cirrascale machines when `--clusters` is left unspecified.
+- Fixed issue where Gantry would not use a conda `environment.yaml` file by default (only found file with `.yml` extension).
 
 ## [v0.9.2](https://github.com/allenai/beaker-gantry/releases/tag/v0.9.2) - 2023-03-02
 
