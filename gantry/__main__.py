@@ -208,7 +208,8 @@ def main():
     "--show-logs/--no-logs",
     default=True,
     show_default=True,
-    help="""Whether or not to print the logs to stdout when the experiment finalizes.""",
+    help="""Whether or not to stream the logs to stdout as the experiment runs.
+    This only takes effect when --timeout is non-zero.""",
 )
 @click.option(
     "--timeout",
