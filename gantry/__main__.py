@@ -239,7 +239,7 @@ def main():
 @click.option(
     "--priority",
     type=click.Choice([str(p) for p in Priority]),
-    help="The job priority. If you don't specifiy at least one cluster, priority will default to 'preemptible'.",
+    help="The job priority. If you don't specify at least one cluster, priority will default to 'preemptible'.",
 )
 def run(
     arg: Tuple[str, ...],
