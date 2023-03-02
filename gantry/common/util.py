@@ -279,7 +279,17 @@ def build_experiment_spec(
             name="CONDA_ENV_FILE",
             value=str(conda),
         )
-    elif not Path(constants.CONDA_ENV_FILE).is_file():
+    elif Path(constants.CONDA_ENV_FILE).is_file():
+        task_spec = task_spec.with_env_var(
+            name="CONDA_ENV_FILE",
+            value=constants.CONDA_ENV_FILE,
+        )
+    elif Path(constants.CONDA_ENV_FILE_ALTERNATE).is_file():
+        task_spec = task_spec.with_env_var(
+            name="CONDA_ENV_FILE",
+            value=constants.CONDA_ENV_FILE_ALTERNATE,
+        )
+    else:
         task_spec = task_spec.with_env_var(
             name="PYTHON_VERSION", value=".".join(platform.python_version_tuple()[:-1])
         )
