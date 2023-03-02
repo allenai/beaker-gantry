@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Fixed
+
+- Fixed issue where cirrascale NFS would be potentially be attached to non-cirrascale machines when `--clusters` is left unspecified.
+
 ## [v0.9.2](https://github.com/allenai/beaker-gantry/releases/tag/v0.9.2) - 2023-03-02
 
 ### Changed
