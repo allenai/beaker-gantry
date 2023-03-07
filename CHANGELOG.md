@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [v0.10.0](https://github.com/allenai/beaker-gantry/releases/tag/v0.10.0) - 2023-03-07
+
 ### Changed
 
 - You can now specify the `--cluster` option as a wildcard, e.g. `--cluster ai2/*-cirrascale`.
