@@ -2,6 +2,7 @@ import os
 import signal
 import sys
 import time
+from fnmatch import fnmatch
 from pathlib import Path
 from typing import Optional, Tuple
 
@@ -122,6 +123,7 @@ def main():
     multiple=True,
     default=None,
     help="""A potential cluster to use. This option can be used multiple times to allow multiple clusters.
+    You also specify it as a wildcard, e.g. '--cluster ai2/*-cirrascale'.
     If you don't specify a cluster or the priority, the priority will default to 'preemptible' and
     the job will be able to run on any on-premise cluster.""",
     show_default=True,
@@ -356,6 +358,18 @@ def run(
         except ValueError:
             raise ValueError(f"Invalid --env-secret option: {e}")
         env_secrets.append((env_secret_name, secret))
+
+    # Validate clusters.
+    if cluster:
+        cl_objects = beaker.cluster.list()
+        final_clusters = []
+        for pat in cluster:
+            matching_clusters = [cl.full_name for cl in cl_objects if fnmatch(cl.full_name, pat)]
+            if matching_clusters:
+                final_clusters.extend(matching_clusters)
+            else:
+                raise ConfigurationError(f"cluster '{pat}' did not match any Beaker clusters")
+        cluster = list(set(final_clusters))  # type: ignore
 
     # Default to preemptible priority when no cluster has been specified.
     if not cluster and priority is None:
