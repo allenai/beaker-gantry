@@ -7,7 +7,14 @@ from typing import Optional, Tuple
 
 import click
 import rich
-from beaker import Job, JobTimeoutError, Priority, SecretNotFound, TaskResources
+from beaker import (
+    ImageNotFound,
+    Job,
+    JobTimeoutError,
+    Priority,
+    SecretNotFound,
+    TaskResources,
+)
 from click_help_colors import HelpColorsCommand, HelpColorsGroup
 from rich import pretty, print, prompt, traceback
 
@@ -294,6 +301,12 @@ def run(
 
     # Initialize Beaker client and validate workspace.
     beaker = util.ensure_workspace(workspace=workspace, yes=yes, gh_token_secret=gh_token_secret)
+
+    if beaker_image is not None and beaker_image != constants.DEFAULT_IMAGE:
+        try:
+            beaker_image = beaker.image.get(beaker_image).full_name
+        except ImageNotFound:
+            raise ConfigurationError(f"Beaker image '{beaker_image}' not found")
 
     # Get repository account, name, and current ref.
     github_account, github_repo, git_ref = util.ensure_repo(allow_dirty)
