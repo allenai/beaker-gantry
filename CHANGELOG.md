@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [v0.11.0](https://github.com/allenai/beaker-gantry/releases/tag/v0.11.0) - 2023-03-07
+
 ### Added
 
 - Added the ability to override how packages/dependencies are installed via
