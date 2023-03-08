@@ -495,12 +495,15 @@ def run(
     assert job.execution is not None
     assert job.status.started is not None
     assert job.status.exited is not None
+    result_dataset = None
+    if job.result is not None and job.result.beaker is not None:
+        result_dataset = job.result.beaker
 
     print(
         f"[b green]\N{check mark}[/] [b cyan]{name}[/] completed successfully\n"
         f"[b]Experiment:[/] {beaker.experiment.url(experiment)}\n"
         f"[b]Runtime:[/] {util.format_timedelta(job.status.exited - job.status.started)}\n"
-        f"[b]Results:[/] {beaker.dataset.url(job.execution.result.beaker)}"
+        f"[b]Results:[/] {None if result_dataset is None else beaker.dataset.url(result_dataset)}"
     )
 
     metrics = beaker.experiment.metrics(experiment)
