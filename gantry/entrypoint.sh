@@ -82,16 +82,21 @@ else
     conda activate "$VENV_NAME"
 fi
 
-# Check for a 'requirements.txt' and/or 'setup.py' file.
-if [[ -f 'setup.py' ]] && [[ -f "$PIP_REQUIREMENTS_FILE" ]]; then
-    echo "[GANTRY] Installing packages from 'setup.py' and '$PIP_REQUIREMENTS_FILE'..."
-    pip install . -r "$PIP_REQUIREMENTS_FILE"
-elif [[ -f 'setup.py' ]]; then
-    echo "[GANTRY] Installing packages from 'setup.py'..."
-    pip install .
-elif [[ -f "$PIP_REQUIREMENTS_FILE" ]]; then
-    echo "[GANTRY] Installing dependencies from '$PIP_REQUIREMENTS_FILE'..."
-    pip install -r "$PIP_REQUIREMENTS_FILE"
+if [[ -z "$INSTALL_CMD" ]]; then
+    # Check for a 'requirements.txt' and/or 'setup.py' file.
+    if [[ -f 'setup.py' ]] && [[ -f "$PIP_REQUIREMENTS_FILE" ]]; then
+        echo "[GANTRY] Installing packages from 'setup.py' and '$PIP_REQUIREMENTS_FILE'..."
+        pip install . -r "$PIP_REQUIREMENTS_FILE"
+    elif [[ -f 'setup.py' ]]; then
+        echo "[GANTRY] Installing packages from 'setup.py'..."
+        pip install .
+    elif [[ -f "$PIP_REQUIREMENTS_FILE" ]]; then
+        echo "[GANTRY] Installing dependencies from '$PIP_REQUIREMENTS_FILE'..."
+        pip install -r "$PIP_REQUIREMENTS_FILE"
+    fi
+else
+    echo "[GANTRY] Installing packages with given command: $INSTALL_CMD"
+    eval "$INSTALL_CMD"
 fi
 
 PYTHONPATH="$(pwd)"

@@ -251,6 +251,11 @@ def main():
     type=click.Choice([str(p) for p in Priority]),
     help="The job priority. If you don't specify at least one cluster, priority will default to 'preemptible'.",
 )
+@click.option(
+    "--install",
+    type=str,
+    help="""Override the default installation command, e.g. '--install "python setup.py install"'""",
+)
 def run(
     arg: Tuple[str, ...],
     name: Optional[str] = None,
@@ -279,6 +284,7 @@ def run(
     yes: bool = False,
     save_spec: Optional[PathOrStr] = None,
     priority: Optional[str] = None,
+    install: Optional[str] = None,
 ):
     """
     Run an experiment on Beaker.
@@ -396,6 +402,7 @@ def run(
         env=env_vars,
         env_secrets=env_secrets,
         priority=priority,
+        install=install,
     )
 
     if save_spec:

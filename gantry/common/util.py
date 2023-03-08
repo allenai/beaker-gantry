@@ -248,6 +248,7 @@ def build_experiment_spec(
     env: Optional[List[Tuple[str, str]]] = None,
     env_secrets: Optional[List[Tuple[str, str]]] = None,
     priority: Optional[Union[str, Priority]] = None,
+    install: Optional[str] = None,
 ):
     task_spec = (
         TaskSpec.new(
@@ -305,6 +306,9 @@ def build_experiment_spec(
             name="VENV_NAME",
             value=venv,
         )
+
+    if install is not None:
+        task_spec = task_spec.with_env_var(name="INSTALL_CMD", value=install)
 
     if nfs is None and clusters and all(["cirrascale" in cluster for cluster in clusters]):
         nfs = True
