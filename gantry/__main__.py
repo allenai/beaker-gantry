@@ -267,7 +267,8 @@ def main():
     is_flag=True,
     help="""Specifies that the first task replica should be the leader and populates each task
     with 'BEAKER_LEADER_REPLICA_HOSTNAME' and 'BEAKER_LEADER_REPLICA_NODE_ID' environment variables.
-    This is only applicable when '--replicas INT' and '--host-networking' are used.""",
+    This is only applicable when '--replicas INT' and '--host-networking' are used,
+    although the '--host-networking' flag can be omitted in this case since it's assumed.""",
 )
 @click.option(
     "--host-networking",
