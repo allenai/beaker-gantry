@@ -249,6 +249,9 @@ def build_experiment_spec(
     env_secrets: Optional[List[Tuple[str, str]]] = None,
     priority: Optional[Union[str, Priority]] = None,
     install: Optional[str] = None,
+    replicas: Optional[int] = None,
+    leader_selection: bool = False,
+    host_networking: bool = False,
 ):
     task_spec = (
         TaskSpec.new(
@@ -260,6 +263,9 @@ def build_experiment_spec(
             arguments=arguments,
             resources=task_resources,
             priority=priority,
+            replicas=replicas,
+            leader_selection=leader_selection,
+            host_networking=host_networking,
         )
         .with_constraint(cluster=clusters)
         .with_env_var(name="GANTRY_VERSION", value=VERSION)

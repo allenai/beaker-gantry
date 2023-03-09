@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- Added three options: `--replicas` (int), `--leader-selection` (flag), and `--host-networking` (flag) that give you the ability to run [distributed batch jobs](https://beaker-docs.apps.allenai.org/distributed-training.html#batch-jobs).
+
 ### Changed
 
 - You can now use any image as long as it comes with `bash`. `conda` is no longer a requirement.
