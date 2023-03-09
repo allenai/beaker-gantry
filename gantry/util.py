@@ -21,11 +21,11 @@ from beaker import (
 from rich import print, prompt
 from rich.console import Console
 
-from ..exceptions import *
-from ..version import VERSION
 from . import constants
 from .aliases import PathOrStr
 from .constants import GITHUB_TOKEN_SECRET
+from .exceptions import *
+from .version import VERSION
 
 if TYPE_CHECKING:
     from datetime import timedelta

@@ -19,10 +19,10 @@ from beaker import (
 from click_help_colors import HelpColorsCommand, HelpColorsGroup
 from rich import pretty, print, prompt, traceback
 
-from .common import constants, util
-from .common.aliases import PathOrStr
-from .common.util import print_stderr
+from . import constants, util
+from .aliases import PathOrStr
 from .exceptions import *
+from .util import print_stderr
 from .version import VERSION
 
 _CLICK_GROUP_DEFAULTS = {
