@@ -257,6 +257,25 @@ def main():
     type=str,
     help="""Override the default installation command, e.g. '--install "python setup.py install"'""",
 )
+@click.option(
+    "--replicas",
+    type=int,
+    help="""The number of task replicas to run.""",
+)
+@click.option(
+    "--leader-selection",
+    is_flag=True,
+    help="""Specifies that the first task replica should be the leader and populates each task
+    with 'BEAKER_LEADER_REPLICA_HOSTNAME' and 'BEAKER_LEADER_REPLICA_NODE_ID' environment variables.
+    This is only applicable when --replicas is specified.""",
+)
+@click.option(
+    "--host-networking",
+    is_flag=True,
+    help="""Specifies that each task replica should use the host's network, which allows the
+    replicas to communicate with each other using their hostnames.
+    This is only applicable when --replicas is specified.""",
+)
 def run(
     arg: Tuple[str, ...],
     name: Optional[str] = None,
@@ -286,6 +305,9 @@ def run(
     save_spec: Optional[PathOrStr] = None,
     priority: Optional[str] = None,
     install: Optional[str] = None,
+    replicas: Optional[int] = None,
+    leader_selection: bool = False,
+    host_networking: bool = False,
 ):
     """
     Run an experiment on Beaker.
@@ -404,6 +426,9 @@ def run(
         env_secrets=env_secrets,
         priority=priority,
         install=install,
+        replicas=replicas,
+        leader_selection=leader_selection,
+        host_networking=host_networking,
     )
 
     if save_spec:
