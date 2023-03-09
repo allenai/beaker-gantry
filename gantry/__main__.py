@@ -267,14 +267,14 @@ def main():
     is_flag=True,
     help="""Specifies that the first task replica should be the leader and populates each task
     with 'BEAKER_LEADER_REPLICA_HOSTNAME' and 'BEAKER_LEADER_REPLICA_NODE_ID' environment variables.
-    This is only applicable when --replicas is specified.""",
+    This is only applicable when '--replicas INT' and '--host-networking' are used.""",
 )
 @click.option(
     "--host-networking",
     is_flag=True,
-    help="""Specifies that each task replica should use the host's network, which allows the
-    replicas to communicate with each other using their hostnames.
-    This is only applicable when --replicas is specified.""",
+    help="""Specifies that each task replica should use the host's network.
+    When used with '--replicas INT', this allows the replicas to communicate with each
+    other using their hostnames.""",
 )
 def run(
     arg: Tuple[str, ...],
@@ -428,7 +428,7 @@ def run(
         install=install,
         replicas=replicas,
         leader_selection=leader_selection,
-        host_networking=host_networking,
+        host_networking=host_networking or (bool(replicas) and leader_selection),
     )
 
     if save_spec:
