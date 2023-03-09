@@ -1,7 +1,7 @@
 import pytest
 
-from gantry.common.util import parse_git_remote_url
 from gantry.exceptions import InvalidRemoteError
+from gantry.util import parse_git_remote_url
 
 
 def test_parse_git_remote_url_ssh():
