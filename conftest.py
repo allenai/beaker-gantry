@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 
 def _get_unique_name() -> str:
-    from gantry.common.util import unique_name
+    from gantry.util import unique_name
 
     return unique_name()
 

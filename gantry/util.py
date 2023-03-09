@@ -2,7 +2,7 @@ import platform
 import tempfile
 import time
 from pathlib import Path
-from typing import TYPE_CHECKING, Iterable, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Iterable, List, Optional, Tuple, Union, cast
 
 import rich
 from beaker import (
@@ -21,11 +21,11 @@ from beaker import (
 from rich import print, prompt
 from rich.console import Console
 
-from ..exceptions import *
-from ..version import VERSION
 from . import constants
 from .aliases import PathOrStr
 from .constants import GITHUB_TOKEN_SECRET
+from .exceptions import *
+from .version import VERSION
 
 if TYPE_CHECKING:
     from datetime import timedelta
@@ -36,7 +36,7 @@ def unique_name() -> str:
 
     import petname
 
-    return petname.generate() + "-" + str(uuid.uuid4())[:7]
+    return cast(str, petname.generate()) + "-" + str(uuid.uuid4())[:7]
 
 
 def stderr_console() -> Console:
@@ -105,7 +105,7 @@ def display_logs(logs: Iterable[bytes], ignore_timestamp: Optional[str] = None) 
 
 
 def ensure_repo(allow_dirty: bool = False) -> Tuple[str, str, str]:
-    from git import Repo
+    from git.repo import Repo
 
     repo = Repo(".")
     if repo.is_dirty() and not allow_dirty:

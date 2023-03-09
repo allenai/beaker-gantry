@@ -19,10 +19,10 @@ from beaker import (
 from click_help_colors import HelpColorsCommand, HelpColorsGroup
 from rich import pretty, print, prompt, traceback
 
-from .common import constants, util
-from .common.aliases import PathOrStr
-from .common.util import print_stderr
+from . import constants, util
+from .aliases import PathOrStr
 from .exceptions import *
+from .util import print_stderr
 from .version import VERSION
 
 _CLICK_GROUP_DEFAULTS = {
@@ -58,6 +58,7 @@ sys.excepthook = excepthook
 
 
 def handle_sigterm(sig, frame):
+    del sig, frame
     raise TermInterrupt
 
 
@@ -77,7 +78,7 @@ def main():
     signal.signal(signal.SIGTERM, handle_sigterm)
 
     rich.get_console().print(
-        '''
+        r'''
 [cyan b]                                             o=======[]   [/]
 [cyan b]   __ _                    _               _ |_      []   [/]
 [cyan b]  / _` |  __ _    _ _     | |_      _ _   | || |     []   [/]
@@ -428,7 +429,7 @@ def run(
         )
         return
 
-    name: str = name or prompt.Prompt.ask(  # type: ignore[assignment,no-redef]
+    name = name or prompt.Prompt.ask(
         "[i]What would you like to call this experiment?[/]", default=util.unique_name()
     )
     if not name:
