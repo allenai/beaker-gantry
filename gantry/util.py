@@ -4,6 +4,7 @@ import time
 from pathlib import Path
 from typing import TYPE_CHECKING, Iterable, List, Optional, Tuple, Union, cast
 
+import requests
 import rich
 from beaker import (
     Beaker,
@@ -104,7 +105,7 @@ def display_logs(logs: Iterable[bytes], ignore_timestamp: Optional[str] = None) 
     return latest_timestamp
 
 
-def ensure_repo(allow_dirty: bool = False) -> Tuple[str, str, str]:
+def ensure_repo(allow_dirty: bool = False) -> Tuple[str, str, str, bool]:
     from git.repo import Repo
 
     repo = Repo(".")
@@ -112,7 +113,11 @@ def ensure_repo(allow_dirty: bool = False) -> Tuple[str, str, str]:
         raise DirtyRepoError("You have uncommitted changes! Use --allow-dirty to force.")
     git_ref = str(repo.commit())
     account, repo = parse_git_remote_url(repo.remote().url)
-    return account, repo, git_ref
+    response = requests.get(f"https://github.com/{account}/{repo}")
+    if response.status_code not in {200, 404}:
+        response.raise_for_status()
+    is_public = response.status_code == 200
+    return account, repo, git_ref, is_public
 
 
 def ensure_entrypoint_dataset(beaker: Beaker) -> Dataset:
@@ -269,11 +274,13 @@ def build_experiment_spec(
         )
         .with_constraint(cluster=clusters)
         .with_env_var(name="GANTRY_VERSION", value=VERSION)
-        .with_env_var(name="GITHUB_TOKEN", secret=gh_token_secret)
         .with_env_var(name="GITHUB_REPO", value=f"{github_account}/{github_repo}")
         .with_env_var(name="GIT_REF", value=git_ref)
         .with_dataset("/gantry", beaker=entrypoint_dataset)
     )
+
+    if gh_token_secret is not None:
+        task_spec = task_spec.with_env_var(name="GITHUB_TOKEN", secret=gh_token_secret)
 
     for name, val in env or []:
         task_spec = task_spec.with_env_var(name=name, value=val)
@@ -351,7 +358,10 @@ def check_for_upgrades():
 
 
 def ensure_workspace(
-    workspace: Optional[str] = None, yes: bool = False, gh_token_secret: str = GITHUB_TOKEN_SECRET
+    workspace: Optional[str] = None,
+    yes: bool = False,
+    gh_token_secret: str = GITHUB_TOKEN_SECRET,
+    public_repo: bool = False,
 ) -> Beaker:
     beaker = (
         Beaker.from_env(session=True)
@@ -360,7 +370,7 @@ def ensure_workspace(
     )
     try:
         permissions = beaker.workspace.get_permissions()
-        if len(permissions.authorizations) > 1:
+        if not public_repo and len(permissions.authorizations) > 1:
             print_stderr(
                 f"[yellow]Your workspace [b]{beaker.workspace.url()}[/] has multiple contributors! "
                 f"Every contributor can view your GitHub personal access token secret ('{gh_token_secret}').[/]"
