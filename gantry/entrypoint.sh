@@ -3,7 +3,7 @@
 set -eo pipefail
 
 # Ensure we have all the environment variables we need.
-for env_var in "$GITHUB_TOKEN" "$GITHUB_REPO" "$GIT_REF"; do
+for env_var in "$GITHUB_REPO" "$GIT_REF"; do
     if [[ -z "$env_var" ]]; then
         echo >&2 "error: required environment variable is empty"
         exit 1
@@ -29,11 +29,13 @@ echo "
 ##############################################
 "
 
-# Install GitHub CLI.
-conda install gh --channel conda-forge
-
-# Configure git to use GitHub CLI as a credential helper so that we can clone private repos.
-gh auth setup-git
+if [[ -n "$GITHUB_TOKEN" ]]; then
+    # Install GitHub CLI.
+    conda install gh --channel conda-forge
+    
+    # Configure git to use GitHub CLI as a credential helper so that we can clone private repos.
+    gh auth setup-git
+fi
 
 echo "
 #########################################
@@ -44,8 +46,12 @@ echo "
 mkdir -p "${{ RUNTIME_DIR }}"
 cd "${{ RUNTIME_DIR }}"
 
-# Clone the repo and checkout the target commit.
-gh repo clone "$GITHUB_REPO" .
+if [[ -n "$GITHUB_TOKEN" ]]; then
+    gh repo clone "$GITHUB_REPO" .
+else
+    git clone "https://github.com/$GITHUB_REPO" .
+fi
+
 git checkout "$GIT_REF"
 
 echo "

@@ -331,8 +331,13 @@ def run(
         cpu_count=cpus, gpu_count=gpus, memory=memory, shared_memory=shared_memory
     )
 
+    # Get repository account, name, and current ref.
+    github_account, github_repo, git_ref, is_public = util.ensure_repo(allow_dirty)
+
     # Initialize Beaker client and validate workspace.
-    beaker = util.ensure_workspace(workspace=workspace, yes=yes, gh_token_secret=gh_token_secret)
+    beaker = util.ensure_workspace(
+        workspace=workspace, yes=yes, gh_token_secret=gh_token_secret, public_repo=is_public
+    )
 
     if beaker_image is not None and beaker_image != constants.DEFAULT_IMAGE:
         try:
@@ -340,35 +345,33 @@ def run(
         except ImageNotFound:
             raise ConfigurationError(f"Beaker image '{beaker_image}' not found")
 
-    # Get repository account, name, and current ref.
-    github_account, github_repo, git_ref = util.ensure_repo(allow_dirty)
-
     # Get the entrypoint dataset.
     entrypoint_dataset = util.ensure_entrypoint_dataset(beaker)
 
     # Get / set the GitHub token secret.
-    try:
-        beaker.secret.get(gh_token_secret)
-    except SecretNotFound:
-        print_stderr(
-            f"[yellow]GitHub token secret '{gh_token_secret}' not found in workspace.[/]\n"
-            f"You can create a suitable GitHub token by going to https://github.com/settings/tokens/new "
-            f"and generating a token with the '\N{ballot box with check} repo' scope."
-        )
-        gh_token = prompt.Prompt.ask(
-            "[i]Please paste your GitHub token here[/]",
-            password=True,
-        )
-        if not gh_token:
-            raise ConfigurationError("token cannot be empty!")
-        beaker.secret.write(gh_token_secret, gh_token)
-        print(
-            f"GitHub token secret uploaded to workspace as '{gh_token_secret}'.\n"
-            f"If you need to update this secret in the future, use the command:\n"
-            f"[i]$ gantry config set-gh-token[/]"
-        )
+    if not is_public:
+        try:
+            beaker.secret.get(gh_token_secret)
+        except SecretNotFound:
+            print_stderr(
+                f"[yellow]GitHub token secret '{gh_token_secret}' not found in workspace.[/]\n"
+                f"You can create a suitable GitHub token by going to https://github.com/settings/tokens/new "
+                f"and generating a token with the '\N{ballot box with check} repo' scope."
+            )
+            gh_token = prompt.Prompt.ask(
+                "[i]Please paste your GitHub token here[/]",
+                password=True,
+            )
+            if not gh_token:
+                raise ConfigurationError("token cannot be empty!")
+            beaker.secret.write(gh_token_secret, gh_token)
+            print(
+                f"GitHub token secret uploaded to workspace as '{gh_token_secret}'.\n"
+                f"If you need to update this secret in the future, use the command:\n"
+                f"[i]$ gantry config set-gh-token[/]"
+            )
 
-    gh_token_secret = util.ensure_github_token_secret(beaker, gh_token_secret)
+        gh_token_secret = util.ensure_github_token_secret(beaker, gh_token_secret)
 
     # Validate the input datasets.
     datasets_to_use = util.ensure_datasets(beaker, *dataset) if dataset else []
@@ -418,6 +421,7 @@ def run(
         description=description,
         beaker_image=beaker_image,
         docker_image=docker_image,
+        gh_token_secret=gh_token_secret if not is_public else None,
         conda=conda,
         pip=pip,
         venv=venv,
