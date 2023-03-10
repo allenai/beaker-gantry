@@ -114,7 +114,7 @@ pip install -e .
     find and use the existing configuration file (usually located at `$HOME/.beaker/config.yml`).
     Otherwise just set the environment variable `BEAKER_TOKEN` to your Beaker [user token](https://beaker.org/user).
 
-    The first time you call `gantry run ...` you'll also be prompted to provide a [GitHub personal access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token) with the `repo` scope. This allows Gantry to clone your private repository when it runs in Beaker. You don't have to do this just yet (Gantry will prompt you for it), but if you need to update this token later you can use the `gantry config set-gh-token` command.
+    The first time you call `gantry run ...` you'll also be prompted to provide a [GitHub personal access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token) with the `repo` scope if your repository is not public. This allows Gantry to clone your private repository when it runs in Beaker. You don't have to do this just yet (Gantry will prompt you for it), but if you need to update this token later you can use the `gantry config set-gh-token` command.
 
 3. **Specify your Python environment.**
 
@@ -149,7 +149,7 @@ Try `gantry run --help` to see all of the available options.
 
 ### Use your own private Beaker workspace
 
-Any authorized contributors to your workspace will have access to the secrets in your workspace, and Gantry needs to store your GitHub personal access token (PAT) as a secret in the workspace.
+Any authorized contributors to your workspace will have access to the secrets in your workspace, and Gantry needs to store your GitHub personal access token (PAT) as a secret in the workspace (for non-public repos).
 That's also why it's important to [limit the scope and lifetime of your GitHub token](#limit-the-scope-and-lifetime-of-your-github-token).
 
 ### Limit the scope and lifetime of your GitHub token
