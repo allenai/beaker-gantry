@@ -86,7 +86,7 @@ def display_logs(logs: Iterable[bytes], ignore_timestamp: Optional[str] = None) 
                 return
         except ValueError:
             pass
-        console.print(line, highlight=False)
+        console.print(line, highlight=False, markup=False)
 
     line_buffer = ""
     for bytes_chunk in logs:

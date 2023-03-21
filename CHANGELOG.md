@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Fixed
+
+- Fixed issue where certain characters (like brackets) wouldn't be displayed in the logs output
+  when following the experiment with `--timeout -1`.
+
 ## [v0.13.0](https://github.com/allenai/beaker-gantry/releases/tag/v0.13.0) - 2023-03-09
 
 ### Changed
