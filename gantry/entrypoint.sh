@@ -31,7 +31,7 @@ echo "
 
 if [[ -n "$GITHUB_TOKEN" ]]; then
     # Install GitHub CLI.
-    conda install gh --channel conda-forge
+    conda install -y gh --channel conda-forge
     
     # Configure git to use GitHub CLI as a credential helper so that we can clone private repos.
     gh auth setup-git
@@ -88,11 +88,11 @@ else
     elif [[ -z "$PYTHON_VERSION" ]]; then
         # Create a new empty environment with the whatever the default Python version is.
         echo "[GANTRY] Initializing environment with default Python version..."
-        conda create -n "$VENV_NAME" pip
+        conda create -y -n "$VENV_NAME" pip
     else
         # Create a new empty environment with the specific Python version.
         echo "[GANTRY] Initializing environment with Python $PYTHON_VERSION..."
-        conda create -n "$VENV_NAME" "python=$PYTHON_VERSION" pip
+        conda create -y -n "$VENV_NAME" "python=$PYTHON_VERSION" pip
     fi
     conda activate "$VENV_NAME"
 fi
