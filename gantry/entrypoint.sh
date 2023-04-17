@@ -98,16 +98,13 @@ else
 fi
 
 if [[ -z "$INSTALL_CMD" ]]; then
-    # Check for a 'requirements.txt' and/or 'setup.py' file.
-    if [[ -f 'setup.py' ]] && [[ -f "$PIP_REQUIREMENTS_FILE" ]]; then
-        echo "[GANTRY] Installing packages from 'setup.py' and '$PIP_REQUIREMENTS_FILE'..."
-        pip install . -r "$PIP_REQUIREMENTS_FILE"
-    elif [[ -f 'setup.py' ]]; then
-        echo "[GANTRY] Installing packages from 'setup.py'..."
-        pip install .
+    # Check for a 'requirements.txt' and/or 'setup.py/pyproject.toml/setup.cfg' file.
+    if ( [[ -f 'setup.py' ]] || [[ -f 'pyproject.toml' ]] || [[ -f 'setup.cfg' ]] ) && [[ -f "$PIP_REQUIREMENTS_FILE" ]]; then
+        echo "[GANTRY] Installing local project and packages from '$PIP_REQUIREMENTS_FILE'..."
+    elif ( [[ -f 'setup.py' ]] || [[ -f 'pyproject.toml' ]] || [[ -f 'setup.cfg' ]] ); then
+        echo "[GANTRY] Installing local project..."
     elif [[ -f "$PIP_REQUIREMENTS_FILE" ]]; then
-        echo "[GANTRY] Installing dependencies from '$PIP_REQUIREMENTS_FILE'..."
-        pip install -r "$PIP_REQUIREMENTS_FILE"
+        echo "[GANTRY] Installing packages from '$PIP_REQUIREMENTS_FILE'..."
     fi
 else
     echo "[GANTRY] Installing packages with given command: $INSTALL_CMD"
