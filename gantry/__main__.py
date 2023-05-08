@@ -451,6 +451,7 @@ def run(
         replicas=replicas,
         leader_selection=leader_selection,
         host_networking=host_networking or (bool(replicas) and leader_selection),
+        mounts=mounts,
     )
 
     if save_spec:
