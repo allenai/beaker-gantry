@@ -277,6 +277,14 @@ def main():
     When used with '--replicas INT', this allows the replicas to communicate with each
     other using their hostnames.""",
 )
+@click.option(
+    "-m",
+    "--mount",
+    type=str,
+    help="""Host directories to mount to the Beaker experiment. Should be in the form '{HOST_SOURCE}:{TARGET}'
+    similar to the '-v' option with 'docker run'.""",
+    multiple=True,
+)
 def run(
     arg: Tuple[str, ...],
     name: Optional[str] = None,
@@ -309,6 +317,7 @@ def run(
     replicas: Optional[int] = None,
     leader_selection: bool = False,
     host_networking: bool = False,
+    mount: Optional[Tuple[str, ...]] = None,
 ):
     """
     Run an experiment on Beaker.
@@ -389,8 +398,16 @@ def run(
         try:
             env_secret_name, secret = e.split("=")
         except ValueError:
-            raise ValueError(f"Invalid --env-secret option: {e}")
+            raise ValueError(f"Invalid --env-secret option: '{e}'")
         env_secrets.append((env_secret_name, secret))
+
+    mounts = []
+    for m in mount or []:
+        try:
+            source, target = m.split(":")
+        except ValueError:
+            raise ValueError(f"Invalid --mount option: '{m}'")
+        mounts.append((source, target))
 
     # Validate clusters.
     if cluster:

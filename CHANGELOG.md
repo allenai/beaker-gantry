@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- Added the `-m/--mount` option for mounting a host directory to experiments.
+
 ## [v0.14.1](https://github.com/allenai/beaker-gantry/releases/tag/v0.14.1) - 2023-04-17
 
 ### Fixed
