@@ -257,6 +257,7 @@ def build_experiment_spec(
     replicas: Optional[int] = None,
     leader_selection: bool = False,
     host_networking: bool = False,
+    mounts: Optional[List[Tuple[str, str]]] = None,
 ):
     task_spec = (
         TaskSpec.new(
@@ -332,6 +333,10 @@ def build_experiment_spec(
     if datasets:
         for dataset_id, path in datasets:
             task_spec = task_spec.with_dataset(path, beaker=dataset_id)
+
+    if mounts:
+        for source, target in mounts:
+            task_spec = task_spec.with_dataset(target, host_path=source)
 
     return ExperimentSpec(description=description, tasks=[task_spec])
 
