@@ -114,8 +114,11 @@ else
     eval "$INSTALL_CMD"
 fi
 
-PYTHONPATH="$(pwd)"
-export PYTHONPATH
+if [[ -z "$PYTHONPATH" ]]; then
+    export PYTHONPATH="$(pwd)"
+else
+    export PYTHONPATH="${PYTHONPATH}:$(pwd)"
+fi
 
 # Create directory for results.
 # shellcheck disable=SC2296

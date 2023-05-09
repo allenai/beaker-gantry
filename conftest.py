@@ -49,7 +49,7 @@ def _get_free_cluster(beaker: Beaker) -> str:
         if utilization.queued_jobs == 0:
             logger.info("Found suitable on-prem cluster '%s'", cluster)
             return cluster
-    return "ai2/medium-cpu-testing"
+    return "ai2/general-cirrascale"
 
 
 @pytest.fixture()
