@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [v0.15.1](https://github.com/allenai/beaker-gantry/releases/tag/v0.15.1) - 2023-05-08
+
 ### Fixed
 
 - Don't override existing `PYTHONPATH` entries.
