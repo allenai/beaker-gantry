@@ -2,7 +2,7 @@
 flake8
 
 # Static type checking
-mypy>=1.0,<1.2
+mypy>=1.0,<1.4
 types-requests
 
 # Automatic code formatting
