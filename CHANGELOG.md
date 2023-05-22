@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [v0.16.0](https://github.com/allenai/beaker-gantry/releases/tag/v0.16.0) - 2023-05-22
+
 ### Added
 
 - Added support for subpaths when attaching datasets. For example: `--dataset 'dataset-name:sub/path:/mount/location'`.
