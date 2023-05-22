@@ -168,7 +168,7 @@ def main():
     type=str,
     multiple=True,
     help="""An input dataset in the form of 'dataset-name:/mount/location' or
-    'dataset-name:/subpath:/mount/location' to attach to your experiment.
+    'dataset-name:sub/path:/mount/location' to attach to your experiment.
     You can specify this option more than once to attach multiple datasets.""",
 )
 @click.option(

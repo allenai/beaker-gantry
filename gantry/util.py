@@ -223,15 +223,15 @@ def ensure_datasets(beaker: Beaker, *datasets: str) -> List[Tuple[str, Optional[
         dataset_name: str
         path: str
         sub_path: Optional[str] = None
-        if dataset_str.count(":") == 2:
+        if dataset_str.count(":") == 1:
             dataset_name, path = dataset_str.split(":")
-        elif dataset_str.count(":") == 3:
+        elif dataset_str.count(":") == 2:
             dataset_name, sub_path, path = dataset_str.split(":")
         else:
             raise ValueError(
                 f"Bad '--dataset' specification: '{dataset_str}'\n"
                 f"Datasets should be in the form of 'dataset-name:/mount/location'"
-                f"or 'dataset-name:/subpath:/mount/location'"
+                f"or 'dataset-name:sub/path:/mount/location'"
             )
         dataset_id = beaker.dataset.get(dataset_name).id
         out.append((dataset_id, sub_path, path))
