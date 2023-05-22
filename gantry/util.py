@@ -217,18 +217,24 @@ def format_timedelta(td: "timedelta") -> str:
     return ", ".join(parts)
 
 
-def ensure_datasets(beaker: Beaker, *datasets: str) -> List[Tuple[str, str]]:
+def ensure_datasets(beaker: Beaker, *datasets: str) -> List[Tuple[str, Optional[str], str]]:
     out = []
     for dataset_str in datasets:
-        try:
+        dataset_name: str
+        path: str
+        sub_path: Optional[str] = None
+        if dataset_str.count(":") == 2:
             dataset_name, path = dataset_str.split(":")
-        except ValueError:
+        elif dataset_str.count(":") == 3:
+            dataset_name, sub_path, path = dataset_str.split(":")
+        else:
             raise ValueError(
                 f"Bad '--dataset' specification: '{dataset_str}'\n"
-                f"Datasets should be in the form of 'dataset-name:/mount/location'."
+                f"Datasets should be in the form of 'dataset-name:/mount/location'"
+                f"or 'dataset-name:/subpath:/mount/location'"
             )
         dataset_id = beaker.dataset.get(dataset_name).id
-        out.append((dataset_id, path))
+        out.append((dataset_id, sub_path, path))
     return out
 
 
@@ -249,7 +255,7 @@ def build_experiment_spec(
     pip: Optional[PathOrStr] = None,
     venv: Optional[str] = None,
     nfs: Optional[bool] = None,
-    datasets: Optional[List[Tuple[str, str]]] = None,
+    datasets: Optional[List[Tuple[str, Optional[str], str]]] = None,
     env: Optional[List[Tuple[str, str]]] = None,
     env_secrets: Optional[List[Tuple[str, str]]] = None,
     priority: Optional[Union[str, Priority]] = None,
@@ -331,8 +337,8 @@ def build_experiment_spec(
         task_spec = task_spec.with_dataset(constants.NFS_MOUNT, host_path=constants.NFS_MOUNT)
 
     if datasets:
-        for dataset_id, path in datasets:
-            task_spec = task_spec.with_dataset(path, beaker=dataset_id)
+        for dataset_id, sub_path, path in datasets:
+            task_spec = task_spec.with_dataset(path, beaker=dataset_id, sub_path=sub_path)
 
     if mounts:
         for source, target in mounts:
