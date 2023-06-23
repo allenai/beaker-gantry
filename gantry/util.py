@@ -130,15 +130,7 @@ def ensure_entrypoint_dataset(beaker: Beaker) -> Dataset:
 
     # Get hash of the local entrypoint source file.
     sha256_hash = hashlib.sha256()
-    contents = read_binary(gantry, constants.ENTRYPOINT)
-    tag_start = contents.find(b"${{")
-    while tag_start != -1:
-        tag_end = contents.find(b"}}") + 2
-        tag = contents[tag_start:tag_end]
-        constant_name = tag.split(b" ")[1].decode()
-        contents = contents.replace(tag, getattr(constants, constant_name).encode())  # type: ignore
-        tag_start = contents.find(b"${{", tag_end)
-    assert b"${{" not in contents
+    contents = replace_tags(read_binary(gantry, constants.ENTRYPOINT))
     sha256_hash.update(contents)
 
     entrypoint_dataset_name = f"gantry-v{VERSION}-{workspace_id}-{sha256_hash.hexdigest()[:6]}"
@@ -264,6 +256,7 @@ def build_experiment_spec(
     leader_selection: bool = False,
     host_networking: bool = False,
     mounts: Optional[List[Tuple[str, str]]] = None,
+    hostnames: Optional[List[str]] = None,
 ):
     task_spec = (
         TaskSpec.new(
@@ -279,12 +272,17 @@ def build_experiment_spec(
             leader_selection=leader_selection,
             host_networking=host_networking,
         )
-        .with_constraint(cluster=clusters)
         .with_env_var(name="GANTRY_VERSION", value=VERSION)
         .with_env_var(name="GITHUB_REPO", value=f"{github_account}/{github_repo}")
         .with_env_var(name="GIT_REF", value=git_ref)
         .with_dataset("/gantry", beaker=entrypoint_dataset)
     )
+
+    if clusters:
+        task_spec = task_spec.with_constraint(cluster=clusters)
+
+    if hostnames:
+        task_spec = task_spec.with_constraint(hostname=hostnames)
 
     if gh_token_secret is not None:
         task_spec = task_spec.with_env_var(name="GITHUB_TOKEN", secret=gh_token_secret)
@@ -401,3 +399,15 @@ def ensure_workspace(
             "'--workspace' option is required since you don't have a default workspace set"
         )
     return beaker
+
+
+def replace_tags(contents: bytes) -> bytes:
+    tag_start = contents.find(b"${{")
+    while tag_start != -1:
+        tag_end = contents.find(b"}}") + 2
+        tag = contents[tag_start:tag_end]
+        constant_name = tag.split(b" ")[1].decode()
+        contents = contents.replace(tag, getattr(constants, constant_name).encode())  # type: ignore
+        tag_start = contents.find(b"${{", tag_end)
+    assert b"${{" not in contents
+    return contents
