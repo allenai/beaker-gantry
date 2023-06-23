@@ -130,6 +130,15 @@ def main():
     show_default=True,
 )
 @click.option(
+    "--hostname",
+    type=str,
+    multiple=True,
+    default=None,
+    help="""Hostname constraints to apply to the experiment spec. This option can be used multiple times to alllow
+    multiple hosts.""",
+    show_default=True,
+)
+@click.option(
     "--beaker-image",
     type=str,
     default=constants.DEFAULT_IMAGE,
@@ -293,6 +302,7 @@ def run(
     task_name: str = "main",
     workspace: Optional[str] = None,
     cluster: Optional[Tuple[str, ...]] = None,
+    hostname: Optional[Tuple[str, ...]] = None,
     beaker_image: Optional[str] = constants.DEFAULT_IMAGE,
     docker_image: Optional[str] = None,
     cpus: Optional[float] = None,
@@ -453,6 +463,7 @@ def run(
         leader_selection=leader_selection,
         host_networking=host_networking or (bool(replicas) and leader_selection),
         mounts=mounts,
+        hostnames=None if hostname is None else list(hostname),
     )
 
     if save_spec:
