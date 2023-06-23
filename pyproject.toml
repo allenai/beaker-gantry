@@ -46,7 +46,7 @@ dev = [
 ]
 
 [project.scripts]
-tango = "gantry.__main__:main"
+gantry = "gantry.__main__:main"
 
 [project.urls]
 homepage = "https://github.com/allenai/beaker-gantry"
