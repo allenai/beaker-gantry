@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Fixed
+
+- Fixed bug when workspace permissions are `None`.
+
 ## [v0.17.0](https://github.com/allenai/beaker-gantry/releases/tag/v0.17.0) - 2023-06-23
 
 ### Added
