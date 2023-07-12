@@ -62,7 +62,7 @@ def handle_sigterm(sig, frame):
     raise TermInterrupt
 
 
-@click.group(**_CLICK_GROUP_DEFAULTS)
+@click.group(**_CLICK_GROUP_DEFAULTS)  # type: ignore
 @click.version_option(version=VERSION)
 def main():
     # Configure rich.
@@ -93,7 +93,7 @@ def main():
     util.check_for_upgrades()
 
 
-@main.command(**_CLICK_COMMAND_DEFAULTS)
+@main.command(**_CLICK_COMMAND_DEFAULTS)  # type: ignore
 @click.argument("arg", nargs=-1)
 @click.option(
     "-n",
@@ -579,7 +579,7 @@ def config():
     """
 
 
-@config.command(**_CLICK_COMMAND_DEFAULTS)
+@config.command(**_CLICK_COMMAND_DEFAULTS)  # type: ignore
 @click.argument("token")
 @click.option(
     "-w",
