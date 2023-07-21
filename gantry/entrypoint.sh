@@ -72,6 +72,14 @@ if [[ -z "$PIP_REQUIREMENTS_FILE" ]]; then
     PIP_REQUIREMENTS_FILE="${{ PIP_REQUIREMENTS_FILE }}"
 fi
 
+# Check if VENV_NAME is a path. If so, it should exist.
+if [[ "$VENV_NAME" == */* ]]; then
+    if [[ ! -d "$VENV_NAME" ]]; then
+        echo >&2 "error: venv '$VENV_NAME' looks like a path but it doesn't exist"
+        exit 1
+    fi
+fi
+
 if conda activate $VENV_NAME; then
     echo "[GANTRY] Using existing conda environment '$VENV_NAME'"
     # The virtual environment already exists. Possibly update it based on an environment file.
