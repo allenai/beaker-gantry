@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Fixed
+
+- Provide a more useful error message when you pass a path to `--venv` and that path doesn't exist.
+
 ## [v0.17.1](https://github.com/allenai/beaker-gantry/releases/tag/v0.17.1) - 2023-07-12
 
 ### Fixed
