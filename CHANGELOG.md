@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [v0.18.0](https://github.com/allenai/beaker-gantry/releases/tag/v0.18.0) - 2023-08-23
+
 ### Added
 
 - Added `gantry follow [EXPERIMENT]` command for following the logs of a running experiment.
