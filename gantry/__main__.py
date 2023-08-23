@@ -1,7 +1,6 @@
 import os
 import signal
 import sys
-import time
 from fnmatch import fnmatch
 from pathlib import Path
 from typing import Optional, Tuple
@@ -9,6 +8,7 @@ from typing import Optional, Tuple
 import click
 import rich
 from beaker import (
+    Beaker,
     ImageNotFound,
     Job,
     JobTimeoutError,
@@ -91,6 +91,19 @@ def main():
     )
 
     util.check_for_upgrades()
+
+
+@main.command(**_CLICK_COMMAND_DEFAULTS)  # type: ignore
+@click.argument("experiment", nargs=1, required=True, type=str)
+def follow(experiment: str):
+    """
+    Follow the logs for a running experiment.
+    """
+    beaker = Beaker.from_env(session=True)
+    beaker.experiment.follow
+    exp = beaker.experiment.get(experiment)
+    job = util.follow_experiment(beaker, exp)
+    util.display_results(beaker, exp, job)
 
 
 @main.command(**_CLICK_COMMAND_DEFAULTS)  # type: ignore
@@ -503,73 +516,22 @@ def run(
         return
 
     job: Optional[Job] = None
-    exit_code: Optional[int] = None
-
     try:
         if show_logs:
-            start = time.monotonic()
-
-            print("Waiting for job to launch..", end="")
-            while job is None:
-                time.sleep(1.0)
-                print(".", end="")
-                job = beaker.experiment.tasks(experiment.id)[0].latest_job  # type: ignore
-
-            # Stream the logs.
-            print()
-            rich.get_console().rule("Logs")
-
-            last_timestamp: Optional[str] = None
-            while exit_code is None:
-                job = beaker.experiment.tasks(experiment.id)[0].latest_job  # type: ignore
-                assert job is not None
-                exit_code = job.status.exit_code
-                last_timestamp = util.display_logs(
-                    beaker.job.logs(job, quiet=True, since=last_timestamp),
-                    ignore_timestamp=last_timestamp,
-                )
-                time.sleep(2.0)
-                if timeout > 0 and time.monotonic() - start >= timeout:
-                    raise JobTimeoutError(f"Job did not finish within {timeout} seconds")
-
-            rich.get_console().rule("End logs")
-            print()
+            job = util.follow_experiment(beaker, experiment, timeout=timeout)
         else:
             experiment = beaker.experiment.wait_for(
                 experiment, timeout=timeout if timeout > 0 else None
             )[0]
             job = beaker.experiment.tasks(experiment)[0].latest_job  # type: ignore
             assert job is not None
-            exit_code = job.status.exit_code
     except (KeyboardInterrupt, TermInterrupt, JobTimeoutError) as exc:
         print_stderr(f"[red][bold]{exc.__class__.__name__}:[/] [i]{exc}[/][/]")
         beaker.experiment.stop(experiment)
         print_stderr("[yellow]Experiment cancelled.[/]")
         sys.exit(1)
 
-    assert job is not None
-    assert exit_code is not None
-
-    if exit_code > 0:
-        raise ExperimentFailedError(f"Experiment exited with non-zero code ({exit_code})")
-
-    assert job.execution is not None
-    assert job.status.started is not None
-    assert job.status.exited is not None
-    result_dataset = None
-    if job.result is not None and job.result.beaker is not None:
-        result_dataset = job.result.beaker
-
-    print(
-        f"[b green]\N{check mark}[/] [b cyan]{name}[/] completed successfully\n"
-        f"[b]Experiment:[/] {beaker.experiment.url(experiment)}\n"
-        f"[b]Runtime:[/] {util.format_timedelta(job.status.exited - job.status.started)}\n"
-        f"[b]Results:[/] {None if result_dataset is None else beaker.dataset.url(result_dataset)}"
-    )
-
-    metrics = beaker.experiment.metrics(experiment)
-    if metrics is not None:
-        print("[b]Metrics:[/]", metrics)
+    util.display_results(beaker, experiment, job)
 
 
 @main.group(**_CLICK_GROUP_DEFAULTS)

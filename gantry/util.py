@@ -1,6 +1,7 @@
 import platform
 import tempfile
 import time
+from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Iterable, List, Optional, Tuple, Union, cast
 
@@ -12,7 +13,10 @@ from beaker import (
     DatasetConflict,
     DatasetNotFound,
     Digest,
+    Experiment,
     ExperimentSpec,
+    Job,
+    JobTimeoutError,
     Priority,
     SecretNotFound,
     TaskResources,
@@ -103,6 +107,71 @@ def display_logs(logs: Iterable[bytes], ignore_timestamp: Optional[str] = None) 
 
     print_line(line_buffer)
     return latest_timestamp
+
+
+def follow_experiment(beaker: Beaker, experiment: Experiment, timeout: int = 0) -> Job:
+    start = time.monotonic()
+
+    # Wait for job to start...
+    job: Optional[Job] = beaker.experiment.tasks(experiment.id)[0].latest_job  # type: ignore
+    if job is None:
+        print("Waiting for job to launch..", end="")
+        while job is None:
+            time.sleep(1.0)
+            print(".", end="")
+            job = beaker.experiment.tasks(experiment.id)[0].latest_job  # type: ignore
+
+    exit_code: Optional[int] = job.status.exit_code
+
+    stream_logs = exit_code is None
+    if stream_logs:
+        print()
+        rich.get_console().rule("Logs")
+
+    last_timestamp: Optional[str] = None
+    since: Optional[Union[str, datetime]] = datetime.utcnow()
+    while stream_logs and exit_code is None:
+        job = beaker.experiment.tasks(experiment.id)[0].latest_job  # type: ignore
+        assert job is not None
+        exit_code = job.status.exit_code
+        last_timestamp = display_logs(
+            beaker.job.logs(job, quiet=True, since=since),
+            ignore_timestamp=last_timestamp,
+        )
+        since = last_timestamp or since
+        time.sleep(2.0)
+        if timeout > 0 and time.monotonic() - start >= timeout:
+            raise JobTimeoutError(f"Job did not finish within {timeout} seconds")
+
+    if stream_logs:
+        rich.get_console().rule("End logs")
+        print()
+
+    return job
+
+
+def display_results(beaker: Beaker, experiment: Experiment, job: Job):
+    exit_code = job.status.exit_code
+    assert exit_code is not None
+    if exit_code > 0:
+        raise ExperimentFailedError(f"Experiment exited with non-zero code ({exit_code})")
+    assert job.execution is not None
+    assert job.status.started is not None
+    assert job.status.exited is not None
+    result_dataset = None
+    if job.result is not None and job.result.beaker is not None:
+        result_dataset = job.result.beaker
+
+    print(
+        f"[b green]\N{check mark}[/] [b cyan]{experiment.name}[/] completed successfully\n"
+        f"[b]Experiment:[/] {beaker.experiment.url(experiment)}\n"
+        f"[b]Runtime:[/] {format_timedelta(job.status.exited - job.status.started)}\n"
+        f"[b]Results:[/] {None if result_dataset is None else beaker.dataset.url(result_dataset)}"
+    )
+
+    metrics = beaker.experiment.metrics(experiment)
+    if metrics is not None:
+        print("[b]Metrics:[/]", metrics)
 
 
 def ensure_repo(allow_dirty: bool = False) -> Tuple[str, str, str, bool]:
