@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- Added commands `gantry cluster list` and `gantry cluster util` for listing clusters and showing cluster utilization, respectively.
+
 ## [v0.18.0](https://github.com/allenai/beaker-gantry/releases/tag/v0.18.0) - 2023-08-23
 
 ### Added
