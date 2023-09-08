@@ -650,8 +650,10 @@ def cluster_util(cluster: str):
     for node in sorted(cluster_util.nodes, key=lambda n: n.hostname):
         print(
             f"  [i cyan]{node.hostname}[/] - {node.running_jobs} jobs ({node.running_preemptible_jobs} preemptible)\n"
-            f"    CPUs free: [{'green' if node.free.cpu_count else 'red'}]{node.free.cpu_count} / {node.limits.cpu_count}[/]\n"
-            f"    GPUs free: [{'green' if node.free.gpu_count else 'red'}]{node.free.gpu_count or 0} / {node.limits.gpu_count}[/] {node.free.gpu_type or ''}\n"
+            f"    CPUs free: [{'green' if node.free.cpu_count else 'red'}]"
+            f"{node.free.cpu_count} / {node.limits.cpu_count}[/]\n"
+            f"    GPUs free: [{'green' if node.free.gpu_count else 'red'}]"
+            f"{node.free.gpu_count or 0} / {node.limits.gpu_count}[/] {node.free.gpu_type or ''}\n"
         )
 
 
