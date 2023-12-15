@@ -1,5 +1,7 @@
 import os
+import random
 import signal
+import string
 import sys
 from fnmatch import fnmatch
 from pathlib import Path
@@ -9,6 +11,7 @@ import click
 import rich
 from beaker import (
     Beaker,
+    ExperimentConflict,
     ImageNotFound,
     Job,
     JobTimeoutError,
@@ -508,7 +511,17 @@ def run(
     if not name:
         raise ConfigurationError("Experiment name cannot be empty!")
 
-    experiment = beaker.experiment.create(name, spec)
+    name_prefix = name
+    while True:
+        try:
+            experiment = beaker.experiment.create(name, spec)
+            break
+        except ExperimentConflict:
+            name = (
+                name_prefix
+                + "-"
+                + "".join([random.choice(string.ascii_lowercase + string.digits) for _ in range(4)])
+            )
     print(f"Experiment submitted, see progress at {beaker.experiment.url(experiment)}")
 
     # Can return right away if timeout is 0.
