@@ -520,8 +520,12 @@ def run(
             name = (
                 name_prefix
                 + "-"
-                + "".join([random.choice(string.ascii_lowercase + string.digits) for _ in range(4)])
+                + random.choice(string.ascii_lowercase)
+                + random.choice(string.ascii_lowercase)
+                + random.choice(string.digits)
+                + random.choice(string.digits)
             )
+
     print(f"Experiment submitted, see progress at {beaker.experiment.url(experiment)}")
 
     # Can return right away if timeout is 0.

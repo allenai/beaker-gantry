@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Fixed
+
+- Changed how unique names are generated so always 2 characters plus 2 digits.
+
 ## [v0.20.0](https://github.com/allenai/beaker-gantry/releases/tag/v0.20.0) - 2023-12-15
 
 ### Changed
