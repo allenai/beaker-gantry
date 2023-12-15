@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [v0.20.0](https://github.com/allenai/beaker-gantry/releases/tag/v0.20.0) - 2023-12-15
+
 ### Changed
 
 - When you try to launch an experiment through `gantry` with a `--name` that already exists on Beaker, `gantry` will now add a few random characters to the end of the name instead of throwing an error.
