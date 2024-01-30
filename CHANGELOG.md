@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- Added `--budget` option (required).
+
 ## [v0.20.1](https://github.com/allenai/beaker-gantry/releases/tag/v0.20.1) - 2023-12-15
 
 ### Fixed
