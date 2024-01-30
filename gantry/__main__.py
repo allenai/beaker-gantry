@@ -311,6 +311,9 @@ def follow(experiment: str):
     similar to the '-v' option with 'docker run'.""",
     multiple=True,
 )
+@click.option(
+    "-b", "--budget", type=str, help="""The budget account to associate with the experiment."""
+)
 def run(
     arg: Tuple[str, ...],
     name: Optional[str] = None,
@@ -345,6 +348,7 @@ def run(
     leader_selection: bool = False,
     host_networking: bool = False,
     mount: Optional[Tuple[str, ...]] = None,
+    budget: Optional[str] = None,
 ):
     """
     Run an experiment on Beaker.
@@ -361,6 +365,13 @@ def run(
     if (beaker_image is None) == (docker_image is None):
         raise ConfigurationError(
             "Either --beaker-image or --docker-image must be specified, but not both."
+        )
+
+    if budget is None:
+        budget = prompt.Prompt.ask(
+            "[yellow]Missing '--budget' option, "
+            "see https://beaker-docs.apps.allenai.org/concept/budgets.html for more information.[/]\n"
+            "[i]Please enter the budget account to associate with this experiment[/]",
         )
 
     task_resources = TaskResources(
@@ -480,6 +491,7 @@ def run(
         host_networking=host_networking or (bool(replicas) and leader_selection),
         mounts=mounts,
         hostnames=None if hostname is None else list(hostname),
+        budget=budget,
     )
 
     if save_spec:

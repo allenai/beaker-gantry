@@ -67,6 +67,7 @@ jobs:
               run: |
                 run_name=$(python conftest.py run_name)
                 gantry run \
+                  --budget AllenNLP \
                   --workspace "$BEAKER_WORKSPACE" \
                   --name "$run_name" \
                   --timeout -1 \
@@ -79,6 +80,7 @@ jobs:
               run: |
                 run_name=$(python conftest.py run_name)
                 gantry run \
+                  --budget AllenNLP \
                   --workspace "$BEAKER_WORKSPACE" \
                   --name "$run_name" \
                   --timeout -1 \
@@ -91,6 +93,7 @@ jobs:
               run: |
                 run_name=$(python conftest.py run_name)
                 gantry run \
+                  --budget AllenNLP \
                   --workspace "$BEAKER_WORKSPACE" \
                   --name "$run_name" \
                   --timeout -1 \
@@ -172,7 +175,7 @@ jobs:
 
       - name: Publish package to PyPI
         run: |
-          twine upload -u ${{ env.PYPI_USERNAME }} -p ${{ secrets.PYPI_PASSWORD }} dist/*
+          twine upload -u __token__ -p ${{ secrets.PYPI_PASSWORD }} dist/*
 
       - name: Publish GitHub release
         uses: softprops/action-gh-release@v1

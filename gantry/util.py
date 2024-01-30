@@ -326,6 +326,7 @@ def build_experiment_spec(
     host_networking: bool = False,
     mounts: Optional[List[Tuple[str, str]]] = None,
     hostnames: Optional[List[str]] = None,
+    budget: Optional[str] = None,
 ):
     task_spec = (
         TaskSpec.new(
@@ -411,7 +412,7 @@ def build_experiment_spec(
         for source, target in mounts:
             task_spec = task_spec.with_dataset(target, host_path=source)
 
-    return ExperimentSpec(description=description, tasks=[task_spec])
+    return ExperimentSpec(description=description, budget=budget, tasks=[task_spec])
 
 
 def check_for_upgrades():
