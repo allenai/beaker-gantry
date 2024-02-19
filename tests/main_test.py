@@ -20,7 +20,7 @@ def test_dry_run(workspace_name: str, beaker_cluster_name: str, run_name: str):
             "gantry",
             "run",
             "--dry-run",
-            "--budget=AllenNLP",
+            "--budget=ai2/allennlp",
             "--allow-dirty",
             "--name",
             run_name,
