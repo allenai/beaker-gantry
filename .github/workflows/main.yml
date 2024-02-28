@@ -67,7 +67,7 @@ jobs:
               run: |
                 run_name=$(python conftest.py run_name)
                 gantry run \
-                  --budget AllenNLP \
+                  --budget ai2/allennlp \
                   --workspace "$BEAKER_WORKSPACE" \
                   --name "$run_name" \
                   --timeout -1 \
@@ -80,7 +80,7 @@ jobs:
               run: |
                 run_name=$(python conftest.py run_name)
                 gantry run \
-                  --budget AllenNLP \
+                  --budget ai2/allennlp \
                   --workspace "$BEAKER_WORKSPACE" \
                   --name "$run_name" \
                   --timeout -1 \
@@ -93,7 +93,7 @@ jobs:
               run: |
                 run_name=$(python conftest.py run_name)
                 gantry run \
-                  --budget AllenNLP \
+                  --budget ai2/allennlp \
                   --workspace "$BEAKER_WORKSPACE" \
                   --name "$run_name" \
                   --timeout -1 \

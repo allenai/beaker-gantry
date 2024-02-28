@@ -376,6 +376,9 @@ def run(
             "[i]Please enter the budget account to associate with this experiment[/]",
         )
 
+    if not budget:
+        raise ConfigurationError("Budget account must be specified!")
+
     task_resources = TaskResources(
         cpu_count=cpus, gpu_count=gpus, memory=memory, shared_memory=shared_memory
     )
@@ -475,6 +478,7 @@ def run(
         github_account=github_account,
         github_repo=github_repo,
         git_ref=git_ref,
+        budget=budget,
         description=description,
         beaker_image=beaker_image,
         docker_image=docker_image,
@@ -493,7 +497,6 @@ def run(
         host_networking=host_networking or (bool(replicas) and leader_selection),
         mounts=mounts,
         hostnames=None if hostname is None else list(hostname),
-        budget=budget,
     )
 
     if save_spec:

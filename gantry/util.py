@@ -308,6 +308,7 @@ def build_experiment_spec(
     github_account: str,
     github_repo: str,
     git_ref: str,
+    budget: str,
     description: Optional[str] = None,
     beaker_image: Optional[str] = None,
     docker_image: Optional[str] = None,
@@ -326,7 +327,6 @@ def build_experiment_spec(
     host_networking: bool = False,
     mounts: Optional[List[Tuple[str, str]]] = None,
     hostnames: Optional[List[str]] = None,
-    budget: Optional[str] = None,
 ):
     task_spec = (
         TaskSpec.new(
