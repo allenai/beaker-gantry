@@ -308,6 +308,7 @@ def build_experiment_spec(
     github_account: str,
     github_repo: str,
     git_ref: str,
+    budget: str,
     description: Optional[str] = None,
     beaker_image: Optional[str] = None,
     docker_image: Optional[str] = None,
@@ -326,7 +327,6 @@ def build_experiment_spec(
     host_networking: bool = False,
     mounts: Optional[List[Tuple[str, str]]] = None,
     hostnames: Optional[List[str]] = None,
-    budget: Optional[str] = None,
 ):
     task_spec = (
         TaskSpec.new(
@@ -430,7 +430,7 @@ def check_for_upgrades():
                     f":warning: [yellow]You're using [b]gantry v{VERSION}[/], "
                     f"but a newer version ([b]v{latest_version}[/]) is available: "
                     f"https://github.com/allenai/beaker-gantry/releases/tag/v{latest_version}[/]\n"
-                    f"[yellow i]You can upgrade by running:[/] pip install --upgrade beaker-gantry\n",
+                    f"[yellow i]You can upgrade by running:[/] pip install --upgrade beaker-gantry beaker-py\n",
                 )
     except (requests.exceptions.Timeout, requests.exceptions.ConnectionError):
         pass

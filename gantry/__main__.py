@@ -314,6 +314,7 @@ def follow(experiment: str):
 @click.option(
     "-b", "--budget", type=str, help="""The budget account to associate with the experiment."""
 )
+@click.option("--stop-preemptible", is_flag=True, help="""Stop all preemptible on the cluster.""")
 def run(
     arg: Tuple[str, ...],
     name: Optional[str] = None,
@@ -349,6 +350,7 @@ def run(
     host_networking: bool = False,
     mount: Optional[Tuple[str, ...]] = None,
     budget: Optional[str] = None,
+    stop_preemptible: bool = False,
 ):
     """
     Run an experiment on Beaker.
@@ -373,6 +375,9 @@ def run(
             "see https://beaker-docs.apps.allenai.org/concept/budgets.html for more information.[/]\n"
             "[i]Please enter the budget account to associate with this experiment[/]",
         )
+
+    if not budget:
+        raise ConfigurationError("Budget account must be specified!")
 
     task_resources = TaskResources(
         cpu_count=cpus, gpu_count=gpus, memory=memory, shared_memory=shared_memory
@@ -473,6 +478,7 @@ def run(
         github_account=github_account,
         github_repo=github_repo,
         git_ref=git_ref,
+        budget=budget,
         description=description,
         beaker_image=beaker_image,
         docker_image=docker_image,
@@ -491,7 +497,6 @@ def run(
         host_networking=host_networking or (bool(replicas) and leader_selection),
         mounts=mounts,
         hostnames=None if hostname is None else list(hostname),
-        budget=budget,
     )
 
     if save_spec:
@@ -507,21 +512,28 @@ def run(
         spec.to_file(save_spec)
         print(f"Experiment spec saved to {save_spec}")
 
+    if not name:
+        default_name = util.unique_name()
+        if yes:
+            name = default_name
+        else:
+            name = prompt.Prompt.ask(
+                "[i]What would you like to call this experiment?[/]", default=util.unique_name()
+            )
+
+    if not name:
+        raise ConfigurationError("Experiment name cannot be empty!")
+
     if dry_run:
         rich.get_console().rule("[b]Dry run[/]")
         print(
             f"[b]Workspace:[/] {beaker.workspace.url()}\n"
             f"[b]Commit:[/] https://github.com/{github_account}/{github_repo}/commit/{git_ref}\n"
+            f"[b]Name:[/] {name}\n"
             f"[b]Experiment spec:[/]",
             spec.to_json(),
         )
         return
-
-    name = name or prompt.Prompt.ask(
-        "[i]What would you like to call this experiment?[/]", default=util.unique_name()
-    )
-    if not name:
-        raise ConfigurationError("Experiment name cannot be empty!")
 
     name_prefix = name
     while True:
@@ -539,6 +551,21 @@ def run(
             )
 
     print(f"Experiment submitted, see progress at {beaker.experiment.url(experiment)}")
+
+    if stop_preemptible:
+        if priority == Priority.preemptible:
+            print_stderr("[yellow]You cannot preempt other jobs when your job is preemptible.[/]")
+        elif not cluster:
+            print_stderr("[yellow]Preempt jobs requires specifying a cluster.[/]")
+        elif len(cluster) > 1:
+            print_stderr("[yellow]Preempt jobs requires specifying a single cluster.[/]")
+        elif not dry_run:
+            print(f"Preempting jobs on cluster {cluster[0]}...")
+            preempted = beaker.cluster.preempt_jobs(cluster[0])
+            if preempted:
+                print(f"Preempted {len(preempted)} jobs on cluster {cluster[0]}")
+            else:
+                print("No jobs to preempt")
 
     # Can return right away if timeout is 0.
     if timeout == 0:
@@ -684,6 +711,28 @@ def cluster_util(cluster: str):
             f"    GPUs free: [{'green' if node.free.gpu_count else 'red'}]"
             f"{node.free.gpu_count or 0} / {node.limits.gpu_count}[/] {node.free.gpu_type or ''}\n"
         )
+
+
+@cluster.command(name="allow-preemptible", **_CLICK_COMMAND_DEFAULTS)  # type: ignore
+@click.argument("cluster", nargs=1, required=True, type=str)
+def cluster_allow_preemptible(cluster: str):
+    """
+    Allow preemptible jobs on the cluster.
+    """
+    beaker = Beaker.from_env(session=True)
+    beaker.cluster.update(cluster, allow_preemptible=True)
+    print("[green]\N{check mark} Preemptible jobs allowed[/]")
+
+
+@cluster.command(name="disallow-preemptible", **_CLICK_COMMAND_DEFAULTS)  # type: ignore
+@click.argument("cluster", nargs=1, required=True, type=str)
+def cluster_disallow_preemptible(cluster: str):
+    """
+    Disallow preemptible jobs on the cluster.
+    """
+    beaker = Beaker.from_env(session=True)
+    beaker.cluster.update(cluster, allow_preemptible=False)
+    print("[yellow]\N{ballot x} Preemptible jobs disallowed[/]")
 
 
 if __name__ == "__main__":

@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- Added flag `--stop-preemptible` to `gantry run` for stopping all preemptible jobs on the cluster. This requires that your job is not preemptible and you've specified a single cluster.
+- Added subcommands `gantry cluster allow-preemptible [CLUSTER]` and `gantry cluster disallow-preemptible [CLUSTER]`.
+
+### Changed
+
+- Won't prompt for name if `--yes` flag is given.
+
 ## [v0.21.0](https://github.com/allenai/beaker-gantry/releases/tag/v0.21.0) - 2024-01-30
 
 ### Added
