@@ -430,7 +430,7 @@ def check_for_upgrades():
                     f":warning: [yellow]You're using [b]gantry v{VERSION}[/], "
                     f"but a newer version ([b]v{latest_version}[/]) is available: "
                     f"https://github.com/allenai/beaker-gantry/releases/tag/v{latest_version}[/]\n"
-                    f"[yellow i]You can upgrade by running:[/] pip install --upgrade beaker-gantry\n",
+                    f"[yellow i]You can upgrade by running:[/] pip install --upgrade beaker-gantry beaker-py\n",
                 )
     except (requests.exceptions.Timeout, requests.exceptions.ConnectionError):
         pass
