@@ -507,21 +507,28 @@ def run(
         spec.to_file(save_spec)
         print(f"Experiment spec saved to {save_spec}")
 
+    if not name:
+        default_name = util.unique_name()
+        if yes:
+            name = default_name
+        else:
+            name = prompt.Prompt.ask(
+                "[i]What would you like to call this experiment?[/]", default=util.unique_name()
+            )
+
+    if not name:
+        raise ConfigurationError("Experiment name cannot be empty!")
+
     if dry_run:
         rich.get_console().rule("[b]Dry run[/]")
         print(
             f"[b]Workspace:[/] {beaker.workspace.url()}\n"
             f"[b]Commit:[/] https://github.com/{github_account}/{github_repo}/commit/{git_ref}\n"
+            f"[b]Name:[/] {name}\n"
             f"[b]Experiment spec:[/]",
             spec.to_json(),
         )
         return
-
-    name = name or prompt.Prompt.ask(
-        "[i]What would you like to call this experiment?[/]", default=util.unique_name()
-    )
-    if not name:
-        raise ConfigurationError("Experiment name cannot be empty!")
 
     name_prefix = name
     while True:
