@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Fixed
+
+- Don't consider default "ai2" account a workspace contributor.
+
 ## [v0.22.0](https://github.com/allenai/beaker-gantry/releases/tag/v0.22.0) - 2024-02-28
 
 ### Added

@@ -452,7 +452,8 @@ def ensure_workspace(
         if (
             not public_repo
             and permissions.authorizations is not None
-            and len(permissions.authorizations) > 1
+            # a default user called "ai2" gets added to every workspace
+            and len(permissions.authorizations) > 2
         ):
             print_stderr(
                 f"[yellow]Your workspace [b]{beaker.workspace.url()}[/] has multiple contributors! "
