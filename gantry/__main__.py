@@ -561,11 +561,11 @@ def run(
             print_stderr("[yellow]Preempt jobs requires specifying a single cluster.[/]")
         elif not dry_run:
             print(f"Preempting jobs on cluster {cluster[0]}...")
-            preempted = beaker.cluster.preempt_jobs(cluster[0])
+            preempted = beaker.cluster.preempt_jobs(cluster[0], ignore_failures=True)
             if preempted:
                 print(f"Preempted {len(preempted)} jobs on cluster {cluster[0]}")
             else:
-                print("No jobs to preempt")
+                print("No more jobs to preempt")
 
     # Can return right away if timeout is 0.
     if timeout == 0:

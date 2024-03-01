@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Fixed
+
+- Warn instead of fail when we can't preempt jobs.
+
 ## [v0.22.1](https://github.com/allenai/beaker-gantry/releases/tag/v0.22.1) - 2024-02-28
 
 ### Fixed
