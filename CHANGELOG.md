@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [v0.22.3](https://github.com/allenai/beaker-gantry/releases/tag/v0.22.3) - 2024-04-24
+
 ### Added
 
 - Added `--propagate-failure` flag.
