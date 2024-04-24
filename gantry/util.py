@@ -325,6 +325,7 @@ def build_experiment_spec(
     replicas: Optional[int] = None,
     leader_selection: bool = False,
     host_networking: bool = False,
+    propagate_failure: Optional[bool] = None,
     mounts: Optional[List[Tuple[str, str]]] = None,
     hostnames: Optional[List[str]] = None,
 ):
@@ -341,6 +342,7 @@ def build_experiment_spec(
             replicas=replicas,
             leader_selection=leader_selection,
             host_networking=host_networking,
+            propagate_failure=propagate_failure,
         )
         .with_env_var(name="GANTRY_VERSION", value=VERSION)
         .with_env_var(name="GITHUB_REPO", value=f"{github_account}/{github_repo}")
