@@ -304,6 +304,9 @@ def follow(experiment: str):
     other using their hostnames.""",
 )
 @click.option(
+    "--propagate-failure", is_flag=True, help="""Stop the experiment if any task fails."""
+)
+@click.option(
     "-m",
     "--mount",
     type=str,
@@ -348,6 +351,7 @@ def run(
     replicas: Optional[int] = None,
     leader_selection: bool = False,
     host_networking: bool = False,
+    propagate_failure: Optional[bool] = None,
     mount: Optional[Tuple[str, ...]] = None,
     budget: Optional[str] = None,
     stop_preemptible: bool = False,
@@ -495,6 +499,7 @@ def run(
         replicas=replicas,
         leader_selection=leader_selection,
         host_networking=host_networking or (bool(replicas) and leader_selection),
+        propagate_failure=propagate_failure,
         mounts=mounts,
         hostnames=None if hostname is None else list(hostname),
     )
