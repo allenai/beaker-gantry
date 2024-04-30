@@ -307,6 +307,13 @@ def follow(experiment: str):
     "--propagate-failure", is_flag=True, help="""Stop the experiment if any task fails."""
 )
 @click.option(
+    "--synchronized-start-timeout",
+    type=str,
+    help="""
+    If set, jobs in the replicated task will wait this long to start until all other jobs are also ready.
+    """,
+)
+@click.option(
     "-m",
     "--mount",
     type=str,
@@ -352,6 +359,7 @@ def run(
     leader_selection: bool = False,
     host_networking: bool = False,
     propagate_failure: Optional[bool] = None,
+    synchronized_start_timeout: Optional[str] = None,
     mount: Optional[Tuple[str, ...]] = None,
     budget: Optional[str] = None,
     stop_preemptible: bool = False,
@@ -500,6 +508,7 @@ def run(
         leader_selection=leader_selection,
         host_networking=host_networking or (bool(replicas) and leader_selection),
         propagate_failure=propagate_failure,
+        synchronized_start_timeout=synchronized_start_timeout,
         mounts=mounts,
         hostnames=None if hostname is None else list(hostname),
     )

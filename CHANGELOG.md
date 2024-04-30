@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- Added `--synchronized-start-timeout` option.
+
 ## [v0.22.3](https://github.com/allenai/beaker-gantry/releases/tag/v0.22.3) - 2024-04-24
 
 ### Added
