@@ -324,6 +324,7 @@ def follow(experiment: str):
 @click.option(
     "-b", "--budget", type=str, help="""The budget account to associate with the experiment."""
 )
+@click.option("--preemptible", is_flag=True, help="""Mark the job as preemptible.""")
 @click.option("--stop-preemptible", is_flag=True, help="""Stop all preemptible on the cluster.""")
 def run(
     arg: Tuple[str, ...],
@@ -362,6 +363,7 @@ def run(
     synchronized_start_timeout: Optional[str] = None,
     mount: Optional[Tuple[str, ...]] = None,
     budget: Optional[str] = None,
+    preemptible: bool = False,
     stop_preemptible: bool = False,
 ):
     """
@@ -511,6 +513,7 @@ def run(
         synchronized_start_timeout=synchronized_start_timeout,
         mounts=mounts,
         hostnames=None if hostname is None else list(hostname),
+        preemptible=preemptible,
     )
 
     if save_spec:

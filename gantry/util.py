@@ -329,6 +329,7 @@ def build_experiment_spec(
     synchronized_start_timeout: Optional[str] = None,
     mounts: Optional[List[Tuple[str, str]]] = None,
     hostnames: Optional[List[str]] = None,
+    preemptible: bool = False,
 ):
     task_spec = (
         TaskSpec.new(
@@ -351,6 +352,9 @@ def build_experiment_spec(
         .with_env_var(name="GIT_REF", value=git_ref)
         .with_dataset("/gantry", beaker=entrypoint_dataset)
     )
+
+    if preemptible:
+        task_spec.context.preemptible = True
 
     if clusters:
         task_spec = task_spec.with_constraint(cluster=clusters)
