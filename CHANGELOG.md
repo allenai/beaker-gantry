@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Changed
+
+- Retry `git clone` a few times in the entrypoint script to be more robust to issues on the Jupiter cluster.
+
 ## [v0.23.0](https://github.com/allenai/beaker-gantry/releases/tag/v0.23.0) - 2024-05-10
 
 ### Added
