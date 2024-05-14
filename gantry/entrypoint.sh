@@ -46,10 +46,23 @@ echo "
 mkdir -p "${{ RUNTIME_DIR }}"
 cd "${{ RUNTIME_DIR }}"
 
-if [[ -n "$GITHUB_TOKEN" ]]; then
-    gh repo clone "$GITHUB_REPO" .
-else
-    git clone "https://github.com/$GITHUB_REPO" .
+# `git clone` occasionally fails on some cirrascale clusters due to "dusty cables" or something,
+# so we retry a few times automatically.
+attempts=1
+until [ "$attempts" -eq 5 ]
+do
+    if [[ -n "$GITHUB_TOKEN" ]]; then
+        gh repo clone "$GITHUB_REPO" . && break
+    else
+        git clone "https://github.com/$GITHUB_REPO" . && break
+    fi
+    attempts=$((attempts+1)) 
+    sleep 0.1
+done
+
+if [ $attempts -eq 5 ]; then
+  echo >&2 "error: failed to clone $GITHUB_REPO after $attempts tries"
+  exit 1
 fi
 
 git checkout "$GIT_REF"
