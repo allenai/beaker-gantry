@@ -46,8 +46,7 @@ echo "
 mkdir -p "${{ RUNTIME_DIR }}"
 cd "${{ RUNTIME_DIR }}"
 
-# `git clone` occasionally fails on some cirrascale clusters due to "dusty cables" or something,
-# so we retry a few times automatically.
+# `git clone` might occasionally fail, so we retry a couple times.
 attempts=1
 until [ "$attempts" -eq 5 ]
 do
