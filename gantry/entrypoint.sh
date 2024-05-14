@@ -56,7 +56,7 @@ do
         git clone "https://github.com/$GITHUB_REPO" . && break
     fi
     attempts=$((attempts+1)) 
-    sleep 0.1
+    sleep 10
 done
 
 if [ $attempts -eq 5 ]; then
