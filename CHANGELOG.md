@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Added `--no-python` flag to skip setting up a Python environment entirely.
+- Added `GANTRY_TASK_NAME` runtime environment variable, which will always match the `--task-name` argument.
 
 ### Changed
 

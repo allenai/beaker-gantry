@@ -605,10 +605,16 @@ def run(
             )[0]
             job = beaker.experiment.tasks(experiment)[0].latest_job  # type: ignore
             assert job is not None
-    except (KeyboardInterrupt, TermInterrupt, JobTimeoutError) as exc:
+    except (TermInterrupt, JobTimeoutError) as exc:
         print_stderr(f"[red][bold]{exc.__class__.__name__}:[/] [i]{exc}[/][/]")
-        #  beaker.experiment.stop(experiment)
-        #  print_stderr("[yellow]Experiment cancelled.[/]")
+        beaker.experiment.stop(experiment)
+        print_stderr("[yellow]Experiment cancelled.[/]")
+        sys.exit(1)
+    except KeyboardInterrupt as exc:
+        print_stderr(f"[red][bold]{exc.__class__.__name__}:[/] [i]{exc}[/][/]")
+        print_stderr(
+            f"[yellow]To cancel the experiment, run 'beaker experiment stop {experiment.id}'.[/]"
+        )
         sys.exit(1)
 
     util.display_results(beaker, experiment, job)

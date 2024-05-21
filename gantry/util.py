@@ -300,6 +300,7 @@ def ensure_datasets(beaker: Beaker, *datasets: str) -> List[Tuple[str, Optional[
 
 
 def build_experiment_spec(
+    *,
     task_name: str,
     clusters: List[str],
     task_resources: TaskResources,
@@ -351,6 +352,7 @@ def build_experiment_spec(
         .with_env_var(name="GANTRY_VERSION", value=VERSION)
         .with_env_var(name="GITHUB_REPO", value=f"{github_account}/{github_repo}")
         .with_env_var(name="GIT_REF", value=git_ref)
+        .with_env_var(name="GANTRY_TASK_NAME", value=task_name)
         .with_dataset("/gantry", beaker=entrypoint_dataset)
     )
 
