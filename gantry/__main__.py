@@ -284,6 +284,11 @@ def follow(experiment: str):
     help="""Override the default installation command, e.g. '--install "python setup.py install"'""",
 )
 @click.option(
+    "--no-python",
+    is_flag=True,
+    help="""If set, gantry will skip setting up a Python environment altogether.""",
+)
+@click.option(
     "--replicas",
     type=int,
     help="""The number of task replicas to run.""",
@@ -356,6 +361,7 @@ def run(
     save_spec: Optional[PathOrStr] = None,
     priority: Optional[str] = None,
     install: Optional[str] = None,
+    no_python: bool = False,
     replicas: Optional[int] = None,
     leader_selection: bool = False,
     host_networking: bool = False,
@@ -506,6 +512,7 @@ def run(
         env_secrets=env_secrets,
         priority=priority,
         install=install,
+        no_python=no_python,
         replicas=replicas,
         leader_selection=leader_selection,
         host_networking=host_networking or (bool(replicas) and leader_selection),
@@ -598,10 +605,17 @@ def run(
             )[0]
             job = beaker.experiment.tasks(experiment)[0].latest_job  # type: ignore
             assert job is not None
-    except (KeyboardInterrupt, TermInterrupt, JobTimeoutError) as exc:
+    except (TermInterrupt, JobTimeoutError) as exc:
         print_stderr(f"[red][bold]{exc.__class__.__name__}:[/] [i]{exc}[/][/]")
         beaker.experiment.stop(experiment)
         print_stderr("[yellow]Experiment cancelled.[/]")
+        sys.exit(1)
+    except KeyboardInterrupt as exc:
+        print_stderr(f"[red][bold]{exc.__class__.__name__}:[/] [i]{exc}[/][/]")
+        print(f"See the experiment at {beaker.experiment.url(experiment)}")
+        print_stderr(
+            f"[yellow]To cancel the experiment, run:\n[i]$ beaker experiment stop {experiment.id}[/][/]"
+        )
         sys.exit(1)
 
     util.display_results(beaker, experiment, job)

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 set -eo pipefail
 
@@ -23,13 +23,12 @@ fi
 # See https://stackoverflow.com/a/58081608/4151392
 eval "$(command conda 'shell.bash' 'hook' 2> /dev/null)"
 
-echo "
-##############################################
-# [GANTRY] [1/3] Installing prerequisites... #
-##############################################
-"
-
 if [[ -n "$GITHUB_TOKEN" ]]; then
+    echo "
+########################################
+# [GANTRY] Installing prerequisites... #
+########################################
+"
     # Install GitHub CLI.
     conda install -y gh --channel conda-forge
     
@@ -38,12 +37,14 @@ if [[ -n "$GITHUB_TOKEN" ]]; then
 fi
 
 echo "
-#########################################
-# [GANTRY] [2/3] Cloning source code... #
-#########################################
+###################################
+# [GANTRY] Cloning source code... #
+###################################
 "
 
+# shellcheck disable=SC2296
 mkdir -p "${{ RUNTIME_DIR }}"
+# shellcheck disable=SC2296
 cd "${{ RUNTIME_DIR }}"
 
 # `git clone` might occasionally fail, so we retry a couple times.
@@ -66,97 +67,100 @@ fi
 
 git checkout "$GIT_REF"
 
-echo "
-###############################################
-# [GANTRY] [3/3] Reconstructing Python env... #
-###############################################
-"
-
-if [[ -z "$VENV_NAME" ]]; then
-    VENV_NAME=venv
-fi
-if [[ -z "$CONDA_ENV_FILE" ]]; then
-    # shellcheck disable=SC2296
-    CONDA_ENV_FILE="${{ CONDA_ENV_FILE }}"
-fi
-if [[ -z "$PIP_REQUIREMENTS_FILE" ]]; then
-    # shellcheck disable=SC2296
-    PIP_REQUIREMENTS_FILE="${{ PIP_REQUIREMENTS_FILE }}"
-fi
-
-# Check if VENV_NAME is a path. If so, it should exist.
-if [[ "$VENV_NAME" == */* ]]; then
-    if [[ ! -d "$VENV_NAME" ]]; then
-        echo >&2 "error: venv '$VENV_NAME' looks like a path but it doesn't exist"
-        exit 1
+if [[ -z "$NO_PYTHON" ]]; then
+    echo "
+    ###################################
+    # [GANTRY] Building Python env... #
+    ###################################
+    "
+    
+    if [[ -z "$VENV_NAME" ]]; then
+        VENV_NAME=venv
     fi
-fi
-
-if conda activate $VENV_NAME; then
-    echo "[GANTRY] Using existing conda environment '$VENV_NAME'"
-    # The virtual environment already exists. Possibly update it based on an environment file.
-    if [[ -f "$CONDA_ENV_FILE" ]]; then
-        echo "[GANTRY] Updating environment from conda env file '$CONDA_ENV_FILE'..."
-        conda env update -f "$CONDA_ENV_FILE"
+    if [[ -z "$CONDA_ENV_FILE" ]]; then
+        # shellcheck disable=SC2296
+        CONDA_ENV_FILE="${{ CONDA_ENV_FILE }}"
     fi
-else
-    # The virtual environment doesn't exist yet. Create it.
-    if [[ -f "$CONDA_ENV_FILE" ]]; then
-        # Create from the environment file.
-        echo "[GANTRY] Initializing environment from conda env file '$CONDA_ENV_FILE'..."
-        conda env create -n "$VENV_NAME" -f "$CONDA_ENV_FILE" 
-    elif [[ -z "$PYTHON_VERSION" ]]; then
-        # Create a new empty environment with the whatever the default Python version is.
-        echo "[GANTRY] Initializing environment with default Python version..."
-        conda create -y -n "$VENV_NAME" pip
+    if [[ -z "$PIP_REQUIREMENTS_FILE" ]]; then
+        # shellcheck disable=SC2296
+        PIP_REQUIREMENTS_FILE="${{ PIP_REQUIREMENTS_FILE }}"
+    fi
+    
+    # Check if VENV_NAME is a path. If so, it should exist.
+    if [[ "$VENV_NAME" == */* ]]; then
+        if [[ ! -d "$VENV_NAME" ]]; then
+            echo >&2 "error: venv '$VENV_NAME' looks like a path but it doesn't exist"
+            exit 1
+        fi
+    fi
+    
+    if conda activate "$VENV_NAME"; then
+        echo "[GANTRY] Using existing conda environment '$VENV_NAME'"
+        # The virtual environment already exists. Possibly update it based on an environment file.
+        if [[ -f "$CONDA_ENV_FILE" ]]; then
+            echo "[GANTRY] Updating environment from conda env file '$CONDA_ENV_FILE'..."
+            conda env update -f "$CONDA_ENV_FILE"
+        fi
     else
-        # Create a new empty environment with the specific Python version.
-        echo "[GANTRY] Initializing environment with Python $PYTHON_VERSION..."
-        conda create -y -n "$VENV_NAME" "python=$PYTHON_VERSION" pip
+        # The virtual environment doesn't exist yet. Create it.
+        if [[ -f "$CONDA_ENV_FILE" ]]; then
+            # Create from the environment file.
+            echo "[GANTRY] Initializing environment from conda env file '$CONDA_ENV_FILE'..."
+            conda env create -n "$VENV_NAME" -f "$CONDA_ENV_FILE" 
+        elif [[ -z "$PYTHON_VERSION" ]]; then
+            # Create a new empty environment with the whatever the default Python version is.
+            echo "[GANTRY] Initializing environment with default Python version..."
+            conda create -y -n "$VENV_NAME" pip
+        else
+            # Create a new empty environment with the specific Python version.
+            echo "[GANTRY] Initializing environment with Python $PYTHON_VERSION..."
+            conda create -y -n "$VENV_NAME" "python=$PYTHON_VERSION" pip
+        fi
+        conda activate "$VENV_NAME"
     fi
-    conda activate "$VENV_NAME"
-fi
-
-if [[ -z "$INSTALL_CMD" ]]; then
-    # Check for a 'requirements.txt' and/or 'setup.py/pyproject.toml/setup.cfg' file.
-    if ( [[ -f 'setup.py' ]] || [[ -f 'pyproject.toml' ]] || [[ -f 'setup.cfg' ]] ) && [[ -f "$PIP_REQUIREMENTS_FILE" ]]; then
-        echo "[GANTRY] Installing local project and packages from '$PIP_REQUIREMENTS_FILE'..."
-        pip install . -r "$PIP_REQUIREMENTS_FILE"
-    elif ( [[ -f 'setup.py' ]] || [[ -f 'pyproject.toml' ]] || [[ -f 'setup.cfg' ]] ); then
-        echo "[GANTRY] Installing local project..."
-        pip install .
-    elif [[ -f "$PIP_REQUIREMENTS_FILE" ]]; then
-        echo "[GANTRY] Installing packages from '$PIP_REQUIREMENTS_FILE'..."
-        pip install -r "$PIP_REQUIREMENTS_FILE"
+    
+    if [[ -z "$INSTALL_CMD" ]]; then
+        # Check for a 'requirements.txt' and/or 'setup.py/pyproject.toml/setup.cfg' file.
+        if { [[ -f 'setup.py' ]] || [[ -f 'pyproject.toml' ]] || [[ -f 'setup.cfg' ]]; } && [[ -f "$PIP_REQUIREMENTS_FILE" ]]; then
+            echo "[GANTRY] Installing local project and packages from '$PIP_REQUIREMENTS_FILE'..."
+            pip install . -r "$PIP_REQUIREMENTS_FILE"
+        elif [[ -f 'setup.py' ]] || [[ -f 'pyproject.toml' ]] || [[ -f 'setup.cfg' ]]; then
+            echo "[GANTRY] Installing local project..."
+            pip install .
+        elif [[ -f "$PIP_REQUIREMENTS_FILE" ]]; then
+            echo "[GANTRY] Installing packages from '$PIP_REQUIREMENTS_FILE'..."
+            pip install -r "$PIP_REQUIREMENTS_FILE"
+        fi
+    else
+        echo "[GANTRY] Installing packages with given command: $INSTALL_CMD"
+        eval "$INSTALL_CMD"
     fi
-else
-    echo "[GANTRY] Installing packages with given command: $INSTALL_CMD"
-    eval "$INSTALL_CMD"
-fi
-
-if [[ -z "$PYTHONPATH" ]]; then
-    export PYTHONPATH="$(pwd)"
-else
-    export PYTHONPATH="${PYTHONPATH}:$(pwd)"
-fi
-
-# Create directory for results.
-# shellcheck disable=SC2296
-mkdir -p "${{ RESULTS_DIR }}/.gantry"
-
-
-echo "
-#############################
-# [GANTRY] Environment info #
-#############################
-"
-
-echo "Using $(python --version) from $(which python)"
-echo "Packages:"
-if which sed >/dev/null; then
-    pip freeze | sed 's/^/- /'
-else
-    pip freeze
+    
+    if [[ -z "$PYTHONPATH" ]]; then
+        PYTHONPATH="$(pwd)"
+    else
+        PYTHONPATH="${PYTHONPATH}:$(pwd)"
+    fi
+    export PYTHONPATH
+    
+    # Create directory for results.
+    # shellcheck disable=SC2296
+    mkdir -p "${{ RESULTS_DIR }}/.gantry"
+    
+    
+    echo "
+    #############################
+    # [GANTRY] Environment info #
+    #############################
+    "
+    
+    echo "Using $(python --version) from $(which python)"
+    echo "Packages:"
+    if which sed >/dev/null; then
+        pip freeze | sed 's/^/- /'
+    else
+        pip freeze
+    fi
 fi
 
 echo "

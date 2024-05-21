@@ -300,6 +300,7 @@ def ensure_datasets(beaker: Beaker, *datasets: str) -> List[Tuple[str, Optional[
 
 
 def build_experiment_spec(
+    *,
     task_name: str,
     clusters: List[str],
     task_resources: TaskResources,
@@ -322,6 +323,7 @@ def build_experiment_spec(
     env_secrets: Optional[List[Tuple[str, str]]] = None,
     priority: Optional[Union[str, Priority]] = None,
     install: Optional[str] = None,
+    no_python: bool = False,
     replicas: Optional[int] = None,
     leader_selection: bool = False,
     host_networking: bool = False,
@@ -350,6 +352,7 @@ def build_experiment_spec(
         .with_env_var(name="GANTRY_VERSION", value=VERSION)
         .with_env_var(name="GITHUB_REPO", value=f"{github_account}/{github_repo}")
         .with_env_var(name="GIT_REF", value=git_ref)
+        .with_env_var(name="GANTRY_TASK_NAME", value=task_name)
         .with_dataset("/gantry", beaker=entrypoint_dataset)
     )
 
@@ -371,40 +374,43 @@ def build_experiment_spec(
     for name, secret in env_secrets or []:
         task_spec = task_spec.with_env_var(name=name, secret=secret)
 
-    if conda is not None:
-        task_spec = task_spec.with_env_var(
-            name="CONDA_ENV_FILE",
-            value=str(conda),
-        )
-    elif Path(constants.CONDA_ENV_FILE).is_file():
-        task_spec = task_spec.with_env_var(
-            name="CONDA_ENV_FILE",
-            value=constants.CONDA_ENV_FILE,
-        )
-    elif Path(constants.CONDA_ENV_FILE_ALTERNATE).is_file():
-        task_spec = task_spec.with_env_var(
-            name="CONDA_ENV_FILE",
-            value=constants.CONDA_ENV_FILE_ALTERNATE,
-        )
+    if no_python:
+        task_spec = task_spec.with_env_var(name="NO_PYTHON", value="1")
     else:
-        task_spec = task_spec.with_env_var(
-            name="PYTHON_VERSION", value=".".join(platform.python_version_tuple()[:-1])
-        )
+        if conda is not None:
+            task_spec = task_spec.with_env_var(
+                name="CONDA_ENV_FILE",
+                value=str(conda),
+            )
+        elif Path(constants.CONDA_ENV_FILE).is_file():
+            task_spec = task_spec.with_env_var(
+                name="CONDA_ENV_FILE",
+                value=constants.CONDA_ENV_FILE,
+            )
+        elif Path(constants.CONDA_ENV_FILE_ALTERNATE).is_file():
+            task_spec = task_spec.with_env_var(
+                name="CONDA_ENV_FILE",
+                value=constants.CONDA_ENV_FILE_ALTERNATE,
+            )
+        else:
+            task_spec = task_spec.with_env_var(
+                name="PYTHON_VERSION", value=".".join(platform.python_version_tuple()[:-1])
+            )
 
-    if pip is not None:
-        task_spec = task_spec.with_env_var(
-            name="PIP_REQUIREMENTS_FILE",
-            value=str(pip),
-        )
+        if pip is not None:
+            task_spec = task_spec.with_env_var(
+                name="PIP_REQUIREMENTS_FILE",
+                value=str(pip),
+            )
 
-    if venv is not None:
-        task_spec = task_spec.with_env_var(
-            name="VENV_NAME",
-            value=venv,
-        )
+        if venv is not None:
+            task_spec = task_spec.with_env_var(
+                name="VENV_NAME",
+                value=venv,
+            )
 
-    if install is not None:
-        task_spec = task_spec.with_env_var(name="INSTALL_CMD", value=install)
+        if install is not None:
+            task_spec = task_spec.with_env_var(name="INSTALL_CMD", value=install)
 
     if (
         nfs is None
