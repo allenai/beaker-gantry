@@ -612,8 +612,9 @@ def run(
         sys.exit(1)
     except KeyboardInterrupt as exc:
         print_stderr(f"[red][bold]{exc.__class__.__name__}:[/] [i]{exc}[/][/]")
+        print(f"See the experiment at {beaker.experiment.url(experiment)}")
         print_stderr(
-            f"[yellow]To cancel the experiment, run 'beaker experiment stop {experiment.id}'.[/]"
+            f"[yellow]To cancel the experiment, run:\n[i]$ beaker experiment stop {experiment.id}[/][/]"
         )
         sys.exit(1)
 
