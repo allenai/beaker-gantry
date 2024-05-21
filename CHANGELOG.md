@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added `--no-python` flag to skip setting up a Python environment entirely.
 
+### Changed
+
+- Gantry no longer cancels an experiment on keyboard interrupt.
+
 ## [v0.23.2](https://github.com/allenai/beaker-gantry/releases/tag/v0.23.2) - 2024-05-16
 
 ### Fixed

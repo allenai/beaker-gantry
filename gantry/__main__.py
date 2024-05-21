@@ -607,8 +607,8 @@ def run(
             assert job is not None
     except (KeyboardInterrupt, TermInterrupt, JobTimeoutError) as exc:
         print_stderr(f"[red][bold]{exc.__class__.__name__}:[/] [i]{exc}[/][/]")
-        beaker.experiment.stop(experiment)
-        print_stderr("[yellow]Experiment cancelled.[/]")
+        #  beaker.experiment.stop(experiment)
+        #  print_stderr("[yellow]Experiment cancelled.[/]")
         sys.exit(1)
 
     util.display_results(beaker, experiment, job)
