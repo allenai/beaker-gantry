@@ -150,7 +150,7 @@ def follow(experiment: str):
     type=str,
     multiple=True,
     default=None,
-    help="""Hostname constraints to apply to the experiment spec. This option can be used multiple times to alllow
+    help="""Hostname constraints to apply to the experiment spec. This option can be used multiple times to allow
     multiple hosts.""",
     show_default=True,
 )
