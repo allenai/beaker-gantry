@@ -49,7 +49,7 @@ def handle_sigterm(sig, frame):
     raise TermInterrupt
 
 
-@click.group(**CLICK_GROUP_DEFAULTS)
+@click.group(**CLICK_GROUP_DEFAULTS)  # type: ignore[call-overload]
 @click.version_option(version=VERSION)
 def main():
     # Configure rich.
