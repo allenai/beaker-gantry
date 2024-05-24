@@ -1,9 +1,8 @@
-import platform
 import tempfile
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Iterable, List, Optional, Tuple, Union, cast
+from typing import TYPE_CHECKING, Iterable, Optional, Tuple, Union, cast
 
 import requests
 import rich
@@ -14,20 +13,15 @@ from beaker import (
     DatasetNotFound,
     Digest,
     Experiment,
-    ExperimentSpec,
     Job,
     JobTimeoutError,
-    Priority,
     SecretNotFound,
-    TaskResources,
-    TaskSpec,
     WorkspaceNotSet,
 )
 from rich import print, prompt
 from rich.console import Console
 
 from . import constants
-from .aliases import PathOrStr
 from .constants import GITHUB_TOKEN_SECRET
 from .exceptions import *
 from .version import VERSION
@@ -276,166 +270,6 @@ def format_timedelta(td: "timedelta") -> str:
     if seconds:
         parts.append(format_value_and_unit(seconds, "second"))
     return ", ".join(parts)
-
-
-def ensure_datasets(beaker: Beaker, *datasets: str) -> List[Tuple[str, Optional[str], str]]:
-    out = []
-    for dataset_str in datasets:
-        dataset_name: str
-        path: str
-        sub_path: Optional[str] = None
-        if dataset_str.count(":") == 1:
-            dataset_name, path = dataset_str.split(":")
-        elif dataset_str.count(":") == 2:
-            dataset_name, sub_path, path = dataset_str.split(":")
-        else:
-            raise ValueError(
-                f"Bad '--dataset' specification: '{dataset_str}'\n"
-                f"Datasets should be in the form of 'dataset-name:/mount/location'"
-                f"or 'dataset-name:sub/path:/mount/location'"
-            )
-        dataset_id = beaker.dataset.get(dataset_name).id
-        out.append((dataset_id, sub_path, path))
-    return out
-
-
-def build_experiment_spec(
-    *,
-    task_name: str,
-    clusters: List[str],
-    task_resources: TaskResources,
-    arguments: List[str],
-    entrypoint_dataset: str,
-    github_account: str,
-    github_repo: str,
-    git_ref: str,
-    budget: str,
-    description: Optional[str] = None,
-    beaker_image: Optional[str] = None,
-    docker_image: Optional[str] = None,
-    gh_token_secret: Optional[str] = constants.GITHUB_TOKEN_SECRET,
-    conda: Optional[PathOrStr] = None,
-    pip: Optional[PathOrStr] = None,
-    venv: Optional[str] = None,
-    nfs: Optional[bool] = None,
-    datasets: Optional[List[Tuple[str, Optional[str], str]]] = None,
-    env: Optional[List[Tuple[str, str]]] = None,
-    env_secrets: Optional[List[Tuple[str, str]]] = None,
-    priority: Optional[Union[str, Priority]] = None,
-    install: Optional[str] = None,
-    no_python: bool = False,
-    replicas: Optional[int] = None,
-    leader_selection: bool = False,
-    host_networking: bool = False,
-    propagate_failure: Optional[bool] = None,
-    synchronized_start_timeout: Optional[str] = None,
-    mounts: Optional[List[Tuple[str, str]]] = None,
-    hostnames: Optional[List[str]] = None,
-    preemptible: bool = False,
-):
-    task_spec = (
-        TaskSpec.new(
-            task_name,
-            beaker_image=beaker_image,
-            docker_image=docker_image,
-            result_path=constants.RESULTS_DIR,
-            command=["bash", "/gantry/entrypoint.sh"],
-            arguments=arguments,
-            resources=task_resources,
-            priority=priority,
-            replicas=replicas,
-            leader_selection=leader_selection,
-            host_networking=host_networking,
-            propagate_failure=propagate_failure,
-            synchronized_start_timeout=synchronized_start_timeout,
-        )
-        .with_env_var(name="GANTRY_VERSION", value=VERSION)
-        .with_env_var(name="GITHUB_REPO", value=f"{github_account}/{github_repo}")
-        .with_env_var(name="GIT_REF", value=git_ref)
-        .with_env_var(name="GANTRY_TASK_NAME", value=task_name)
-        .with_dataset("/gantry", beaker=entrypoint_dataset)
-    )
-
-    if preemptible:
-        task_spec.context.preemptible = True
-
-    if clusters:
-        task_spec = task_spec.with_constraint(cluster=clusters)
-
-    if hostnames:
-        task_spec = task_spec.with_constraint(hostname=hostnames)
-
-    if gh_token_secret is not None:
-        task_spec = task_spec.with_env_var(name="GITHUB_TOKEN", secret=gh_token_secret)
-
-    for name, val in env or []:
-        task_spec = task_spec.with_env_var(name=name, value=val)
-
-    for name, secret in env_secrets or []:
-        task_spec = task_spec.with_env_var(name=name, secret=secret)
-
-    if no_python:
-        task_spec = task_spec.with_env_var(name="NO_PYTHON", value="1")
-    else:
-        if conda is not None:
-            task_spec = task_spec.with_env_var(
-                name="CONDA_ENV_FILE",
-                value=str(conda),
-            )
-        elif Path(constants.CONDA_ENV_FILE).is_file():
-            task_spec = task_spec.with_env_var(
-                name="CONDA_ENV_FILE",
-                value=constants.CONDA_ENV_FILE,
-            )
-        elif Path(constants.CONDA_ENV_FILE_ALTERNATE).is_file():
-            task_spec = task_spec.with_env_var(
-                name="CONDA_ENV_FILE",
-                value=constants.CONDA_ENV_FILE_ALTERNATE,
-            )
-        else:
-            task_spec = task_spec.with_env_var(
-                name="PYTHON_VERSION", value=".".join(platform.python_version_tuple()[:-1])
-            )
-
-        if pip is not None:
-            task_spec = task_spec.with_env_var(
-                name="PIP_REQUIREMENTS_FILE",
-                value=str(pip),
-            )
-
-        if venv is not None:
-            task_spec = task_spec.with_env_var(
-                name="VENV_NAME",
-                value=venv,
-            )
-
-        if install is not None:
-            task_spec = task_spec.with_env_var(name="INSTALL_CMD", value=install)
-
-    if (
-        nfs is None
-        and clusters
-        and all(
-            [
-                "cirrascale" in cluster and cluster not in constants.CLUSTERS_WITHOUT_NFS
-                for cluster in clusters
-            ]
-        )
-    ):
-        nfs = True
-
-    if nfs:
-        task_spec = task_spec.with_dataset(constants.NFS_MOUNT, host_path=constants.NFS_MOUNT)
-
-    if datasets:
-        for dataset_id, sub_path, path in datasets:
-            task_spec = task_spec.with_dataset(path, beaker=dataset_id, sub_path=sub_path)
-
-    if mounts:
-        for source, target in mounts:
-            task_spec = task_spec.with_dataset(target, host_path=source)
-
-    return ExperimentSpec(description=description, budget=budget, tasks=[task_spec])
 
 
 def check_for_upgrades():
