@@ -1,5 +1,6 @@
 import click
 from beaker import Beaker
+from rich import print
 
 from .main import CLICK_COMMAND_DEFAULTS, CLICK_GROUP_DEFAULTS, main
 
@@ -27,8 +28,9 @@ def list_clusters(cloud: bool = False):
     clusters = [c for c in beaker.cluster.list() if c.is_cloud == cloud]
     for cluster in clusters:
         icon = "☁️" if cluster.is_cloud else "🏠"
-        print(f"{icon} [b magenta]{cluster.full_name}[/]")
-        for node in sorted(beaker.cluster.nodes(cluster), key=lambda node: node.hostname):
+        nodes = sorted(beaker.cluster.nodes(cluster), key=lambda node: node.hostname)
+        print(f"{icon} [b magenta]{cluster.full_name}[/], {len(nodes)} nodes")
+        for node in nodes:
             print(
                 f"   [i cyan]{node.hostname}[/] - "
                 f"CPUs: {node.limits.cpu_count}, "
