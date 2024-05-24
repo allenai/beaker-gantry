@@ -1,17 +1,17 @@
 import click
 from beaker import Beaker
+from rich import print
 
-from .. import util
 from .main import CLICK_COMMAND_DEFAULTS, main
 
 
 @main.command(**CLICK_COMMAND_DEFAULTS)
 @click.argument("experiment", nargs=1, required=True, type=str)
-def follow(experiment: str):
+def stop(experiment: str):
     """
-    Follow the logs for a running experiment.
+    Stop a running experiment.
     """
     beaker = Beaker.from_env(session=True)
     exp = beaker.experiment.get(experiment)
-    job = util.follow_experiment(beaker, exp)
-    util.display_results(beaker, exp, job)
+    beaker.experiment.stop(exp)
+    print(f"[b green]\N{check mark}[/] [b cyan]{exp.name}[/] stopped")
