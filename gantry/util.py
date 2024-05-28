@@ -124,7 +124,7 @@ def follow_experiment(beaker: Beaker, experiment: Experiment, timeout: int = 0) 
 
     last_timestamp: Optional[str] = None
     since: Optional[Union[str, datetime]] = datetime.utcnow()
-    while stream_logs and exit_code is None:
+    while stream_logs and exit_code is None and not job.is_finalized:
         job = beaker.experiment.tasks(experiment.id)[0].latest_job  # type: ignore
         assert job is not None
         exit_code = job.status.exit_code
@@ -146,8 +146,9 @@ def follow_experiment(beaker: Beaker, experiment: Experiment, timeout: int = 0) 
 
 def display_results(beaker: Beaker, experiment: Experiment, job: Job):
     exit_code = job.status.exit_code
-    assert exit_code is not None
-    if exit_code > 0:
+    if exit_code is None:
+        raise ExperimentFailedError("Experiment failed")
+    elif exit_code > 0:
         raise ExperimentFailedError(f"Experiment exited with non-zero code ({exit_code})")
     assert job.execution is not None
     assert job.status.started is not None
