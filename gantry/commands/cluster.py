@@ -1,6 +1,9 @@
+from typing import List
+
 import click
-from beaker import Beaker
+from beaker import Beaker, Cluster, Node
 from rich import print
+from rich.table import Table
 
 from .main import CLICK_COMMAND_DEFAULTS, CLICK_GROUP_DEFAULTS, main
 
@@ -25,23 +28,36 @@ def list_clusters(cloud: bool = False):
     By default only on-premise clusters are displayed.
     """
     beaker = Beaker.from_env(session=True)
+
+    table = Table(title="Clusters", show_lines=True)
+    table.add_column("Cluster", justify="left", no_wrap=True)
+    table.add_column("Nodes")
+
+    def cluster_info(cluster: Cluster) -> str:
+        info = f"{icon} [b magenta]{cluster.full_name}[/], {len(nodes)} nodes"
+        if (limits := cluster.node_spec) is not None:
+            info += f"\nCPUs: {limits.cpu_count}\n"
+            info += f"GPUs: {limits.gpu_count or 0} {'x' if limits.gpu_type else ''} {limits.gpu_type or ''}"
+        return info
+
+    def node_info(nodes: List[Node]) -> str:
+        return "\n".join(
+            f"[i cyan]{node.hostname}[/] - "
+            f"CPUs: {node.limits.cpu_count}, "
+            f"GPUs: {node.limits.gpu_count or 0} {'x' if node.limits.gpu_type else ''} {node.limits.gpu_type or ''}"
+            for node in nodes
+        )
+
     clusters = [c for c in beaker.cluster.list() if c.is_cloud == cloud]
     for cluster in clusters:
         icon = "☁️" if cluster.is_cloud else "🏠"
         nodes = sorted(beaker.cluster.nodes(cluster), key=lambda node: node.hostname)
-        print(f"{icon} [b magenta]{cluster.full_name}[/], {len(nodes)} nodes")
-        for node in nodes:
-            print(
-                f"   [i cyan]{node.hostname}[/] - "
-                f"CPUs: {node.limits.cpu_count}, "
-                f"GPUs: {node.limits.gpu_count or 0} {'x' if node.limits.gpu_type else ''} {node.limits.gpu_type or ''}"
-            )
-        if cluster.node_spec is not None:
-            limits = cluster.node_spec
-            print(
-                f"  CPUs: {limits.cpu_count}, "
-                f"GPUs: {limits.gpu_count or 0} {'x' if limits.gpu_type else ''} {limits.gpu_type or ''}"
-            )
+        table.add_row(
+            cluster_info(cluster),
+            node_info(nodes),
+        )
+
+    print(table)
 
 
 @cluster.command(name="util", **CLICK_COMMAND_DEFAULTS)
@@ -51,43 +67,34 @@ def cluster_util(cluster: str):
     Get the current status and utilization for a cluster.
     """
     beaker = Beaker.from_env(session=True)
+
     cluster_util = beaker.cluster.utilization(cluster)
     cluster = cluster_util.cluster
     icon = "☁️" if cluster.is_cloud else "🏠"
-    print(
-        f"{icon} [b magenta]{cluster.full_name}[/]\n\n"
-        f"running jobs: {cluster_util.running_jobs} ({cluster_util.running_preemptible_jobs} preemptible)\n"
-        f"queued jobs: {cluster_util.queued_jobs}"
+
+    table = Table(
+        title=(
+            f"{icon} [b magenta]{cluster.full_name}[/]\n"
+            f"[i u blue]{beaker.cluster.url(cluster)}[/]\n"
+            f"running jobs: {cluster_util.running_jobs} ({cluster_util.running_preemptible_jobs} preemptible)\n"
+            f"queued jobs: {cluster_util.queued_jobs}"
+        ),
+        show_lines=True,
     )
-    if cluster_util.nodes:
-        print("nodes:")
-    for node in sorted(cluster_util.nodes, key=lambda n: n.hostname):
-        print(
-            f"  [i cyan]{node.hostname}[/] - {node.running_jobs} jobs ({node.running_preemptible_jobs} preemptible)\n"
-            f"    CPUs free: [{'green' if node.free.cpu_count else 'red'}]"
-            f"{node.free.cpu_count} / {node.limits.cpu_count}[/]\n"
-            f"    GPUs free: [{'green' if node.free.gpu_count else 'red'}]"
-            f"{node.free.gpu_count or 0} / {node.limits.gpu_count}[/] {node.free.gpu_type or ''}\n"
+    table.add_column("Node", justify="left", no_wrap=True)
+    table.add_column("Jobs")
+    table.add_column("Utilization")
+
+    for node_util in sorted(cluster_util.nodes, key=lambda n: n.hostname):
+        table.add_row(
+            f"[i cyan]{node_util.hostname}[/]",
+            f"{node_util.running_jobs} jobs ({node_util.running_preemptible_jobs} preemptible)",
+            "[red]\N{ballot x} cordoned[/]"
+            if node_util.cordoned
+            else f"CPUs free: [{'green' if node_util.free.cpu_count else 'red'}]"
+            f"{node_util.free.cpu_count} / {node_util.limits.cpu_count}[/]\n"
+            f"GPUs free: [{'green' if node_util.free.gpu_count else 'red'}]"
+            f"{node_util.free.gpu_count or 0} / {node_util.limits.gpu_count}[/] {node_util.free.gpu_type or ''}",
         )
 
-
-@cluster.command(name="allow-preemptible", **CLICK_COMMAND_DEFAULTS)
-@click.argument("cluster", nargs=1, required=True, type=str)
-def cluster_allow_preemptible(cluster: str):
-    """
-    Allow preemptible jobs on the cluster.
-    """
-    beaker = Beaker.from_env(session=True)
-    beaker.cluster.update(cluster, allow_preemptible=True)
-    print("[green]\N{check mark} Preemptible jobs allowed[/]")
-
-
-@cluster.command(name="disallow-preemptible", **CLICK_COMMAND_DEFAULTS)
-@click.argument("cluster", nargs=1, required=True, type=str)
-def cluster_disallow_preemptible(cluster: str):
-    """
-    Disallow preemptible jobs on the cluster.
-    """
-    beaker = Beaker.from_env(session=True)
-    beaker.cluster.update(cluster, allow_preemptible=False)
-    print("[yellow]\N{ballot x} Preemptible jobs disallowed[/]")
+    print(table)

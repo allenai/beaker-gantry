@@ -14,6 +14,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Improve handling of jobs that fail without an exit code.
+- Improved output format of `gantry cluster *` commands.
+
+### Removed
+
+- Removed `gantry cluster allow-preemptible` and `gantry cluster disallow-preemptible` commands.
 
 ## [v1.0.1](https://github.com/allenai/beaker-gantry/releases/tag/v1.0.1) - 2024-05-24
 
