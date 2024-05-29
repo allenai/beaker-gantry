@@ -3,6 +3,7 @@ from typing import List
 import click
 from beaker import Beaker, Cluster, Node
 from rich import print
+from rich.progress import Progress
 from rich.table import Table
 
 from .main import CLICK_COMMAND_DEFAULTS, CLICK_GROUP_DEFAULTS, main
@@ -48,7 +49,11 @@ def list_clusters(cloud: bool = False):
             for node in nodes
         )
 
-    clusters = [c for c in beaker.cluster.list() if c.is_cloud == cloud]
+    with Progress(transient=True) as progress:
+        task = progress.add_task("Collecting clusters...", start=False, total=None)
+        clusters = [c for c in beaker.cluster.list() if c.is_cloud == cloud]
+        progress.update(task, completed=True)
+
     for cluster in clusters:
         icon = "☁️" if cluster.is_cloud else "🏠"
         nodes = sorted(beaker.cluster.nodes(cluster), key=lambda node: node.hostname)
@@ -61,16 +66,19 @@ def list_clusters(cloud: bool = False):
 
 
 @cluster.command(name="util", **CLICK_COMMAND_DEFAULTS)
-@click.argument("cluster", nargs=1, required=True, type=str)
-def cluster_util(cluster: str):
+@click.argument("cluster_name", nargs=1, required=True, type=str)
+def cluster_util(cluster_name: str):
     """
     Get the current status and utilization for a cluster.
     """
     beaker = Beaker.from_env(session=True)
 
-    cluster_util = beaker.cluster.utilization(cluster)
-    cluster = cluster_util.cluster
-    icon = "☁️" if cluster.is_cloud else "🏠"
+    with Progress(transient=True) as progress:
+        task = progress.add_task("Pulling cluster data...", start=False, total=None)
+        cluster_util = beaker.cluster.utilization(cluster_name)
+        cluster = cluster_util.cluster
+        icon = "☁️" if cluster.is_cloud else "🏠"
+        progress.update(task, completed=True)
 
     table = Table(
         title=(

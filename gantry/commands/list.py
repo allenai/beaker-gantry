@@ -5,6 +5,7 @@ from typing import Generator, Optional, Tuple
 import click
 from beaker import Beaker, Experiment, Task, Tasks
 from rich import print
+from rich.progress import Progress
 from rich.table import Table
 
 from ..exceptions import ConfigurationError
@@ -89,18 +90,23 @@ def list_cmd(
         else:
             author = beaker.account.whoami().name
 
-    for exp, tasks in islice(
-        iter_experiments(
-            beaker, workspace=workspace, author=author, status=status, max_age=max_age
-        ),
-        limit,
-    ):
-        table.add_row(
-            f"[b cyan]{exp.display_name}[/]\n[u i blue]{beaker.experiment.url(exp)}[/]",
-            exp.author.name,
-            exp.created.astimezone(tz=None).strftime("%I:%M %p on %a, %b %-d"),
-            "\n".join(format_task(task) for task in tasks),
-        )
+    with Progress(transient=True) as progress:
+        task = progress.add_task("Collecting experiments...", total=limit)
+        for exp, tasks in islice(
+            iter_experiments(
+                beaker, workspace=workspace, author=author, status=status, max_age=max_age
+            ),
+            limit,
+        ):
+            table.add_row(
+                f"[b cyan]{exp.display_name}[/]\n[u i blue]{beaker.experiment.url(exp)}[/]",
+                exp.author.name,
+                exp.created.astimezone(tz=None).strftime("%I:%M %p on %a, %b %-d"),
+                "\n".join(format_task(task) for task in tasks),
+            )
+            progress.update(task, advance=1)
+
+        progress.update(task, completed=True)
 
     print(table)
 
