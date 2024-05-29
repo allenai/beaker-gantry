@@ -1,6 +1,7 @@
 import tempfile
 import time
 from datetime import datetime
+from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING, Iterable, Optional, Tuple, Union, cast
 
@@ -28,6 +29,11 @@ from .version import VERSION
 
 if TYPE_CHECKING:
     from datetime import timedelta
+
+
+class StrEnum(str, Enum):
+    def __str__(self) -> str:
+        return self.value
 
 
 def unique_name() -> str:

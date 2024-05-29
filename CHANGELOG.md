@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- Added `gantry list` command for listing gantry experiments.
+
 ### Fixed
 
 - Improve handling of jobs that fail without an exit code.
