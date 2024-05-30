@@ -67,7 +67,7 @@ def list_clusters(cloud: bool = False):
 
 @cluster.command(name="util", **CLICK_COMMAND_DEFAULTS)
 @click.argument("cluster_name", nargs=1, required=True, type=str)
-@click.option("--nodes", is_flag=True, help="Show node details.")
+@click.option("--nodes", is_flag=True, help="Show details of each node.")
 def cluster_util(cluster_name: str, nodes: bool = False):
     """
     Get the current status and utilization for a cluster.
