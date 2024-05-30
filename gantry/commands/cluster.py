@@ -67,7 +67,8 @@ def list_clusters(cloud: bool = False):
 
 @cluster.command(name="util", **CLICK_COMMAND_DEFAULTS)
 @click.argument("cluster_name", nargs=1, required=True, type=str)
-def cluster_util(cluster_name: str):
+@click.option("--nodes", is_flag=True, help="Show node details.")
+def cluster_util(cluster_name: str, nodes: bool = False):
     """
     Get the current status and utilization for a cluster.
     """
@@ -80,29 +81,75 @@ def cluster_util(cluster_name: str):
         icon = "☁️" if cluster.is_cloud else "🏠"
         progress.update(task, completed=True)
 
-    table = Table(
-        title=(
-            f"{icon} [b magenta]{cluster.full_name}[/]\n"
-            f"[i u blue]{beaker.cluster.url(cluster)}[/]\n"
-            f"running jobs: {cluster_util.running_jobs} ({cluster_util.running_preemptible_jobs} preemptible)\n"
-            f"queued jobs: {cluster_util.queued_jobs}"
-        ),
+    free_nodes = 0
+    total_nodes = len(cluster_util.nodes)
+    cordoned_nodes = 0
+    free_gpus = 0
+    total_gpus = 0
+    for node_util in cluster_util.nodes:
+        total_gpus += node_util.limits.gpu_count or 0
+        if not node_util.cordoned:
+            if node_util.running_jobs == 0:
+                free_nodes += 1
+            free_gpus += node_util.free.gpu_count or 0
+        else:
+            cordoned_nodes += 1
+
+    def get_node_notes() -> str:
+        notes = []
+        if cluster.require_preemptible_tasks:
+            notes.append("[yellow]All tasks must be preemptible.[/]")
+        if cordoned_nodes == 1:
+            notes.append(f"[yellow]{cordoned_nodes} node is cordoned.[/]")
+        elif cordoned_nodes > 1:
+            notes.append(f"[yellow]{cordoned_nodes} nodes are cordoned.[/]")
+        return "\n".join(notes)
+
+    summary_table = Table(
+        title=f"{icon} [b magenta]{cluster.full_name}[/]\nSummary",
         show_lines=True,
+        show_header=False,
     )
-    table.add_column("Node", justify="left", no_wrap=True)
-    table.add_column("Jobs")
-    table.add_column("Utilization")
+    summary_table.add_column("Name", justify="left", no_wrap=True)
+    summary_table.add_column("Value")
+    summary_table.add_row("[cyan]URL[/]", f"[i u blue]{beaker.cluster.url(cluster)}[/]")
+    summary_table.add_row("[cyan]Notes[/]", get_node_notes())
+    summary_table.add_row(
+        "[cyan]Running jobs[/]",
+        f"{cluster_util.running_jobs} ({cluster_util.running_preemptible_jobs} preemptible)",
+    )
+    summary_table.add_row(
+        "[cyan]Queued jobs[/]",
+        f"[{'yellow' if cluster_util.queued_jobs else 'green'}]{cluster_util.queued_jobs}[/]",
+    )
+    summary_table.add_row(
+        "[cyan]Free nodes[/]", f"[{'green' if free_nodes else 'red'}]{free_nodes}/{total_nodes}[/]"
+    )
+    summary_table.add_row(
+        "[cyan]Free GPUs[/]", f"[{'green' if free_gpus else 'red'}]{free_gpus}/{total_gpus}[/]"
+    )
 
-    for node_util in sorted(cluster_util.nodes, key=lambda n: n.hostname):
-        table.add_row(
-            f"[i cyan]{node_util.hostname}[/]",
-            f"{node_util.running_jobs} jobs ({node_util.running_preemptible_jobs} preemptible)",
-            "[red]\N{ballot x} cordoned[/]"
-            if node_util.cordoned
-            else f"CPUs free: [{'green' if node_util.free.cpu_count else 'red'}]"
-            f"{node_util.free.cpu_count} / {node_util.limits.cpu_count}[/]\n"
-            f"GPUs free: [{'green' if node_util.free.gpu_count else 'red'}]"
-            f"{node_util.free.gpu_count or 0} / {node_util.limits.gpu_count}[/] {node_util.free.gpu_type or ''}",
+    print(summary_table)
+
+    if nodes:
+        node_table = Table(
+            title=f"{icon} [b magenta]{cluster.full_name}[/]\nNodes",
+            show_lines=True,
         )
+        node_table.add_column("Node", justify="left", no_wrap=True)
+        node_table.add_column("Jobs")
+        node_table.add_column("Utilization")
 
-    print(table)
+        for node_util in sorted(cluster_util.nodes, key=lambda n: n.hostname):
+            node_table.add_row(
+                f"[i cyan]{node_util.hostname}[/]",
+                f"{node_util.running_jobs} jobs ({node_util.running_preemptible_jobs} preemptible)",
+                "[red]\N{ballot x} cordoned[/]"
+                if node_util.cordoned
+                else f"CPUs free: [{'green' if node_util.free.cpu_count else 'red'}]"
+                f"{node_util.free.cpu_count} / {node_util.limits.cpu_count}[/]\n"
+                f"GPUs free: [{'green' if node_util.free.gpu_count else 'red'}]"
+                f"{node_util.free.gpu_count or 0} / {node_util.limits.gpu_count}[/] {node_util.free.gpu_type or ''}",
+            )
+
+        print(node_table)
