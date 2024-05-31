@@ -3,7 +3,7 @@ import time
 from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
-from typing import TYPE_CHECKING, Optional, Tuple, cast
+from typing import Optional, Tuple, cast
 
 import requests
 import rich
@@ -25,9 +25,6 @@ from . import constants
 from .constants import GITHUB_TOKEN_SECRET
 from .exceptions import *
 from .version import VERSION
-
-if TYPE_CHECKING:
-    from datetime import timedelta
 
 
 class StrEnum(str, Enum):
