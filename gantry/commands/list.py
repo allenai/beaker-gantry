@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
 from itertools import islice
-from typing import Generator, Optional, Tuple
+from typing import Generator, List, Optional, Tuple
 
 import click
 from beaker import Beaker, Experiment, Task, Tasks
@@ -58,6 +58,7 @@ class Defaults:
     "--status",
     type=click.Choice(list(JobStatus)),
     help="Filter by status.",
+    multiple=True,
 )
 @click.option(
     "--max-age",
@@ -70,7 +71,7 @@ def list_cmd(
     limit: int = Defaults.limit,
     author: Optional[str] = None,
     me: bool = False,
-    status: Optional[str] = None,
+    status: Optional[List[str]] = None,
     max_age: int = Defaults.max_age,
 ):
     """
@@ -94,7 +95,7 @@ def list_cmd(
         task = progress.add_task("Collecting experiments...", total=limit)
         for exp, tasks in islice(
             iter_experiments(
-                beaker, workspace=workspace, author=author, status=status, max_age=max_age
+                beaker, workspace=workspace, author=author, statuses=status, max_age=max_age
             ),
             limit,
         ):
@@ -116,7 +117,7 @@ def iter_experiments(
     *,
     workspace: Optional[str],
     author: Optional[str],
-    status: Optional[str],
+    statuses: Optional[List[str]],
     max_age: int,
 ) -> Generator[Tuple[Experiment, Tasks], None, None]:
     now = datetime.now(tz=timezone.utc).astimezone()
@@ -142,9 +143,9 @@ def iter_experiments(
         tasks = beaker.experiment.tasks(exp)
 
         # Maybe filter by status.
-        if status is not None:
+        if statuses:
             for task in tasks:
-                if get_status(task) == status:
+                if get_status(task) in statuses:
                     break
             else:
                 continue

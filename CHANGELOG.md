@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Changed what info is displayed by default from `gantry cluster util`. Now only a succinct summary is shown by default, but you can still get node details by adding the flag `--nodes`.
+- Allow multiple `--status` options with `gantry list` command.
 
 ## [v1.1.0](https://github.com/allenai/beaker-gantry/releases/tag/v1.1.0) - 2024-05-29
 
