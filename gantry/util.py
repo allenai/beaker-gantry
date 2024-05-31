@@ -1,9 +1,9 @@
 import tempfile
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
-from typing import TYPE_CHECKING, Iterable, Optional, Tuple, Union, cast
+from typing import TYPE_CHECKING, Optional, Tuple, cast
 
 import requests
 import rich
@@ -15,7 +15,6 @@ from beaker import (
     Digest,
     Experiment,
     Job,
-    JobTimeoutError,
     SecretNotFound,
     WorkspaceNotSet,
 )
@@ -74,43 +73,10 @@ def parse_git_remote_url(url: str) -> Tuple[str, str]:
     return account, repo
 
 
-def display_logs(logs: Iterable[bytes], ignore_timestamp: Optional[str] = None) -> Optional[str]:
+def follow_experiment(
+    beaker: Beaker, experiment: Experiment, timeout: int = 0, tail: bool = False
+) -> Job:
     console = rich.get_console()
-    latest_timestamp: Optional[str] = None
-
-    def print_line(line: str):
-        if not line:
-            return
-        nonlocal latest_timestamp
-        # Remove timestamp
-        try:
-            timestamp, line = line.split("Z ", maxsplit=1)
-            latest_timestamp = f"{timestamp}Z"
-            if ignore_timestamp is not None and latest_timestamp == ignore_timestamp:
-                return
-        except ValueError:
-            pass
-        console.print(line, highlight=False, markup=False)
-
-    line_buffer = ""
-    for bytes_chunk in logs:
-        chunk = line_buffer + bytes_chunk.decode(errors="ignore")
-        chunk = chunk.replace("\r", "\n")
-        lines = chunk.split("\n")
-        if chunk.endswith("\n"):
-            line_buffer = ""
-        else:
-            # Last line chunk is probably incomplete.
-            lines, line_buffer = lines[:-1], lines[-1]
-        for line in lines:
-            print_line(line)
-
-    print_line(line_buffer)
-    return latest_timestamp
-
-
-def follow_experiment(beaker: Beaker, experiment: Experiment, timeout: int = 0) -> Job:
-    start = time.monotonic()
 
     # Wait for job to start...
     job: Optional[Job] = beaker.experiment.tasks(experiment.id)[0].latest_job  # type: ignore
@@ -123,27 +89,20 @@ def follow_experiment(beaker: Beaker, experiment: Experiment, timeout: int = 0) 
 
     exit_code: Optional[int] = job.status.exit_code
 
-    stream_logs = exit_code is None
+    stream_logs = exit_code is None and not job.is_finalized
     if stream_logs:
         print()
         rich.get_console().rule("Logs")
-
-    last_timestamp: Optional[str] = None
-    since: Optional[Union[str, datetime]] = datetime.utcnow()
-    while stream_logs and exit_code is None and not job.is_finalized:
-        job = beaker.experiment.tasks(experiment.id)[0].latest_job  # type: ignore
-        assert job is not None
-        exit_code = job.status.exit_code
-        last_timestamp = display_logs(
-            beaker.job.logs(job, quiet=True, since=since),
-            ignore_timestamp=last_timestamp,
-        )
-        since = last_timestamp or since
-        time.sleep(2.0)
-        if timeout > 0 and time.monotonic() - start >= timeout:
-            raise JobTimeoutError(f"Job did not finish within {timeout} seconds")
-
-    if stream_logs:
+        for line_bytes in beaker.job.follow(
+            job,
+            timeout=timeout if timeout > 0 else None,
+            include_timestamps=False,
+            since=datetime.utcnow() - timedelta(seconds=5) if tail else None,
+        ):
+            line = line_bytes.decode(errors="ignore")
+            if line.endswith("\n"):
+                line = line[:-1]
+            console.print(line, highlight=False, markup=False)
         rich.get_console().rule("End logs")
         print()
 
