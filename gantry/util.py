@@ -103,6 +103,9 @@ def follow_experiment(
         rich.get_console().rule("End logs")
         print()
 
+        # Refresh the job.
+        job = beaker.job.get(job)
+
     return job
 
 
