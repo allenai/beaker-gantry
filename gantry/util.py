@@ -104,7 +104,7 @@ def follow_experiment(
         print()
 
         # Refresh the job.
-        job = beaker.job.get(job)
+        job = beaker.job.get(job.id)
 
     return job
 
