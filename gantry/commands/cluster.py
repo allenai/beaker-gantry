@@ -65,8 +65,16 @@ def list_clusters(cloud: bool = False):
     print(table)
 
 
+def complete_cluster_name(ctx, param, incomplete) -> List[str]:
+    del ctx, param
+    beaker = Beaker.from_env()
+    return [c.full_name for c in beaker.cluster.list() if c.full_name.startswith(incomplete)]
+
+
 @cluster.command(name="util", **CLICK_COMMAND_DEFAULTS)
-@click.argument("cluster_name", nargs=1, required=True, type=str)
+@click.argument(
+    "cluster_name", nargs=1, required=True, type=str, shell_complete=complete_cluster_name
+)
 @click.option("--nodes", is_flag=True, help="Show details of each node.")
 def cluster_util(cluster_name: str, nodes: bool = False):
     """

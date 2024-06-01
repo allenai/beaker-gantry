@@ -51,7 +51,12 @@ def handle_sigterm(sig, frame):
 
 @click.group(**CLICK_GROUP_DEFAULTS)  # type: ignore[call-overload]
 @click.version_option(version=VERSION)
-def main():
+@click.option(
+    "--quiet",
+    is_flag=True,
+    help="Don't display the gantry logo.",
+)
+def main(quiet: bool = False):
     # Configure rich.
     if os.environ.get("GANTRY_GITHUB_TESTING"):
         # Force a broader terminal when running tests in GitHub Actions.
@@ -64,8 +69,9 @@ def main():
     # Handle SIGTERM just like KeyboardInterrupt
     signal.signal(signal.SIGTERM, handle_sigterm)
 
-    rich.get_console().print(
-        r'''
+    if not quiet:
+        print_stderr(
+            r'''
 [cyan b]                                             o=======[]   [/]
 [cyan b]   __ _                    _               _ |_      []   [/]
 [cyan b]  / _` |  __ _    _ _     | |_      _ _   | || |     []   [/]
@@ -74,7 +80,7 @@ def main():
 [blue b]_|"""""|_|"""""|_|"""""|_|"""""|_|"""""|_| """"| [/]
 [blue b] `---------------------------------------------' [/]
 ''',  # noqa: W605
-        highlight=False,
-    )
+            highlight=False,
+        )
 
     util.check_for_upgrades()
