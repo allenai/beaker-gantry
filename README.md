@@ -139,18 +139,13 @@ Then (from the root of your repository) run:
 gantry run --workspace {WORKSPACE} --cluster {CLUSTER} -- python -c 'print("Hello, World!")'
 ```
 
-Just replace `{WORKSPACE}` with the name of your own Beaker [*non-public*](#use-your-own-non-public-beaker-workspace) workspace and `{CLUSTER}` with the name of the Beaker cluster you want to run on.
+Just replace `{WORKSPACE}` with the name of your own Beaker workspace and `{CLUSTER}` with the name of the Beaker cluster you want to run on.
 
 *❗Note: Everything after the `--` is the command + arguments you want to run on Beaker. It's necessary to include the `--` if any of your arguments look like options themselves (like `-c` in this example) so gantry can differentiate them from its own options.*
 
 Try `gantry run --help` to see all of the available options.
 
 ## Best practices
-
-### Use your own non-public Beaker workspace
-
-Any authorized contributors to your workspace will have access to the secrets in your workspace, and Gantry needs to store your GitHub personal access token (PAT) as a secret in the workspace (for non-public repos).
-That's also why it's important to [limit the scope and lifetime of your GitHub token](#limit-the-scope-and-lifetime-of-your-github-token).
 
 ### Limit the scope and lifetime of your GitHub token
 
