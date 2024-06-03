@@ -66,6 +66,7 @@ if [ $attempts -eq 5 ]; then
 fi
 
 git checkout "$GIT_REF"
+git submodule update --init --recursive
 
 if [[ -z "$NO_PYTHON" ]]; then
     echo "

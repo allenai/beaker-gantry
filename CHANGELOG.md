@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- Git submodules of your repo will be automatically cloned.
+
 ## [v1.4.0](https://github.com/allenai/beaker-gantry/releases/tag/v1.4.0) - 2024-05-31
 
 ### Added
