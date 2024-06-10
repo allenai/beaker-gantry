@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Git submodules of your repo will be automatically cloned.
 - Added `-l/--latest`, `-w/--workspace`, and `--dry-run` options to `gantry stop` command.
 
 ### Fixed
