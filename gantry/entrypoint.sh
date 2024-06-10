@@ -70,10 +70,10 @@ git submodule update --init --recursive
 
 if [[ -z "$NO_PYTHON" ]]; then
     echo "
-    ###################################
-    # [GANTRY] Building Python env... #
-    ###################################
-    "
+###################################
+# [GANTRY] Building Python env... #
+###################################
+"
     
     if [[ -z "$VENV_NAME" ]]; then
         VENV_NAME=venv
@@ -150,10 +150,10 @@ if [[ -z "$NO_PYTHON" ]]; then
     
     
     echo "
-    #############################
-    # [GANTRY] Environment info #
-    #############################
-    "
+#############################
+# [GANTRY] Environment info #
+#############################
+"
     
     echo "Using $(python --version) from $(which python)"
     echo "Packages:"
