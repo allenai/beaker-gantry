@@ -34,3 +34,7 @@ class GitHubTokenSecretNotFound(GantryError):
 
 class TermInterrupt(GantryError):
     pass
+
+
+class NotFoundError(GantryError):
+    pass
