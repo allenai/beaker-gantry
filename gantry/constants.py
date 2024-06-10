@@ -18,4 +18,4 @@ METRICS_FILE = f"{RESULTS_DIR}/metrics.json"
 
 NFS_MOUNT = "/net/nfs.cirrascale"
 
-CLUSTERS_WITHOUT_NFS = {"ai2/jupiter-cirrascale"}
+CLUSTERS_WITHOUT_NFS = {"ai2/jupiter-cirrascale", "ai2/jupiter-cirrascale-2"}
