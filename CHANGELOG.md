@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [v1.5.1](https://github.com/allenai/beaker-gantry/releases/tag/v1.5.1) - 2024-06-13
+
 ### Added
 
 - Added a breakdown of jobs by priority in `gantry cluster util` command.
