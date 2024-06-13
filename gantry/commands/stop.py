@@ -54,10 +54,6 @@ def stop(
             print("[yellow]No running experiments to stop[/]")
         else:
             experiments.append(exp)
-    else:
-        raise ConfigurationError(
-            "A filter such as -l/--latest is required when no [EXPERIMENT] is specified"
-        )
 
     for exp in experiments:
         if dry_run:
