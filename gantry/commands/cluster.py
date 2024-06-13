@@ -1,7 +1,8 @@
-from typing import List
+from collections import defaultdict
+from typing import Dict, List
 
 import click
-from beaker import Beaker, Cluster, Node
+from beaker import Beaker, Cluster, Node, Priority
 from rich import print
 from rich.progress import Progress
 from rich.table import Table
@@ -103,6 +104,19 @@ def cluster_util(cluster_name: str, nodes: bool = False):
         else:
             cordoned_nodes += 1
 
+    running_jobs_by_priority: Dict[Priority, int] = defaultdict(int)
+    running_preemptible_jobs_by_priority: Dict[Priority, int] = defaultdict(int)
+    queued_jobs_by_priority: Dict[Priority, int] = defaultdict(int)
+    for job in cluster_util.jobs:
+        if job.priority is None:
+            continue
+        if job.is_running:
+            running_jobs_by_priority[job.priority] += 1
+            if job.is_preemptible:
+                running_preemptible_jobs_by_priority[job.priority] += 1
+        elif job.is_queued:
+            queued_jobs_by_priority[job.priority] += 1
+
     def get_node_notes() -> str:
         notes = []
         if cluster.require_preemptible_tasks:
@@ -124,11 +138,23 @@ def cluster_util(cluster_name: str, nodes: bool = False):
     summary_table.add_row("[cyan]Notes[/]", get_node_notes())
     summary_table.add_row(
         "[cyan]Running jobs[/]",
-        f"{cluster_util.running_jobs} ({cluster_util.running_preemptible_jobs} preemptible)",
+        f"[bold]{cluster_util.running_jobs} total ({cluster_util.running_preemptible_jobs} preemptible)[/]\n"
+        "------------------------------------------\n"
+        f"[red bold i]Urgent priority:.....[/] {running_jobs_by_priority[Priority.urgent]} ({running_preemptible_jobs_by_priority[Priority.urgent]} preemptible)\n"
+        f"[red i]High priority:.......[/] {running_jobs_by_priority[Priority.high]} ({running_preemptible_jobs_by_priority[Priority.high]} preemptible)\n"
+        f"[green i]Normal priority:.....[/] {running_jobs_by_priority[Priority.normal]} ({running_preemptible_jobs_by_priority[Priority.normal]} preemptible)\n"
+        f"[cyan i]Low priority:........[/] {running_jobs_by_priority[Priority.low]} ({running_preemptible_jobs_by_priority[Priority.low]} preemptible)\n"
+        f"[blue i]Preemptible priority:[/] {running_jobs_by_priority[Priority.preemptible]}",
     )
     summary_table.add_row(
         "[cyan]Queued jobs[/]",
-        f"[{'yellow' if cluster_util.queued_jobs else 'green'}]{cluster_util.queued_jobs}[/]",
+        f"[bold]{cluster_util.queued_jobs} total[/]\n"
+        "------------------------------------------\n"
+        f"[red bold i]Urgent priority:.....[/] {queued_jobs_by_priority[Priority.urgent]}\n"
+        f"[red i]High priority:.......[/] {queued_jobs_by_priority[Priority.high]}\n"
+        f"[green i]Normal priority:.....[/] {queued_jobs_by_priority[Priority.normal]}\n"
+        f"[cyan i]Low priority:........[/] {queued_jobs_by_priority[Priority.low]}\n"
+        f"[blue i]Preemptible priority:[/] {queued_jobs_by_priority[Priority.preemptible]}",
     )
     summary_table.add_row(
         "[cyan]Free nodes[/]", f"[{'green' if free_nodes else 'red'}]{free_nodes}/{total_nodes}[/]"
