@@ -15,6 +15,7 @@ from beaker import (
     Digest,
     Experiment,
     Job,
+    JobKind,
     SecretNotFound,
     WorkspaceNotSet,
 )
@@ -68,6 +69,43 @@ def parse_git_remote_url(url: str) -> Tuple[str, str]:
     except ValueError:
         raise InvalidRemoteError(f"Failed to parse GitHub repo path from remote '{url}'")
     return account, repo
+
+
+def get_latest_experiment(
+    beaker: Beaker,
+    *,
+    author: Optional[str] = None,
+    workspace: Optional[str] = None,
+    running: bool = False,
+) -> Optional[Experiment]:
+    workspace_id = beaker.workspace.get(workspace=workspace).id
+
+    jobs = [
+        job
+        for job in beaker.job.list(
+            author=author if author is not None else beaker.account.whoami(),
+            kind=JobKind.execution,
+            finalized=False,
+        )
+        if job.workspace == workspace_id
+    ]
+
+    if running:
+        jobs = [job for job in jobs if job.is_running]
+        jobs = sorted(
+            jobs,
+            key=lambda j: j.status.started,  # type: ignore
+            reverse=True,
+        )
+    else:
+        jobs = sorted(jobs, key=lambda j: j.status.created, reverse=True)
+
+    if jobs:
+        job = jobs[0]
+        assert job.execution is not None
+        return beaker.experiment.get(job.execution.experiment)
+    else:
+        return None
 
 
 def follow_experiment(

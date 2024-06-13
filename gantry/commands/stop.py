@@ -1,10 +1,10 @@
 from typing import List, Optional, Sequence
 
 import click
-from beaker import Beaker, Experiment, ExperimentNotFound
-from rich import print
-from rich.progress import Progress
+from beaker import Beaker, Experiment, ExperimentConflict, ExperimentNotFound
+from rich import print, prompt
 
+from .. import util
 from ..exceptions import ConfigurationError, NotFoundError
 from .main import CLICK_COMMAND_DEFAULTS, main
 
@@ -20,11 +20,18 @@ from .main import CLICK_COMMAND_DEFAULTS, main
     If not specified, your default workspace will be used.""",
 )
 @click.option("--dry-run", is_flag=True, help="Do a dry-run without stopping any experiments.")
+@click.option(
+    "-y",
+    "--yes",
+    is_flag=True,
+    help="""Skip all confirmation prompts.""",
+)
 def stop(
     experiment: Sequence[str],
     latest: bool = False,
     workspace: Optional[str] = None,
     dry_run: bool = False,
+    yes: bool = False,
 ):
     """
     Stop a running experiment.
@@ -42,22 +49,27 @@ def stop(
             except ExperimentNotFound:
                 raise NotFoundError(f"Experiment '{experiment_name}' not found")
     elif latest:
-        with Progress(transient=True) as progress:
-            task = progress.add_task("Finding latest experiment...", start=False, total=None)
-            user = beaker.account.whoami().name
-            for exp in beaker.workspace.iter_experiments(workspace=workspace):
-                if exp.author.name == user:
-                    experiments.append(exp)
-                    break
-            progress.update(task, completed=True)
+        exp = util.get_latest_experiment(beaker, workspace=workspace, running=True)
+        if exp is None:
+            print("[yellow]No running experiments to stop[/]")
+        else:
+            experiments.append(exp)
 
     for exp in experiments:
         if dry_run:
             print(f"[b yellow]Dry run:[/] would stop [b cyan]{exp.name}[/]")
         else:
+            if not yes and not prompt.Confirm.ask(
+                f"Stop experiment [b cyan]{exp.name}[/] at [blue u]{beaker.experiment.url(exp)}[/]?"
+            ):
+                print("[yellow]Skipping experiment...[/]")
+                continue
+
             try:
                 beaker.experiment.stop(exp)
-            except ExperimentNotFound:
+            except (ExperimentNotFound, ExperimentConflict):
                 # Beaker API may return 404 if the experiment was already canceled.
                 pass
-            print(f"[b green]\N{check mark}[/] [b cyan]{exp.name}[/] stopped")
+            print(
+                f"[b green]\N{check mark}[/] [b cyan]{exp.name}[/] at {beaker.experiment.url(exp)} stopped"
+            )

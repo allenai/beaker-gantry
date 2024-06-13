@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- Added `-l/--latest`, `-w/--workspace`, `-a/--author` options to `gantry follow` command.
+- Added a confirmation prompt to `gantry stop` command.
+
 ## [v1.5.1](https://github.com/allenai/beaker-gantry/releases/tag/v1.5.1) - 2024-06-13
 
 ### Added
