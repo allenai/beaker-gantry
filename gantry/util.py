@@ -1,5 +1,7 @@
+import json
 import tempfile
 import time
+from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
@@ -27,10 +29,43 @@ from .constants import GITHUB_TOKEN_SECRET
 from .exceptions import *
 from .version import VERSION
 
+VERSION_CHECK_INTERVAL = 12 * 3600  # 12 hours
+DEFAULT_INTERNAL_CONFIG_LOCATION: Optional[Path] = None
+try:
+    DEFAULT_INTERNAL_CONFIG_LOCATION = Path.home() / ".beaker" / ".beaker-gantry.json"
+except RuntimeError:
+    # Can't locate home directory.
+    pass
+
 
 class StrEnum(str, Enum):
     def __str__(self) -> str:
         return self.value
+
+
+@dataclass
+class InternalConfig:
+    version_checked: Optional[float] = None
+
+    @classmethod
+    def load(cls) -> Optional["InternalConfig"]:
+        path = DEFAULT_INTERNAL_CONFIG_LOCATION
+        if path is None:
+            return None
+        elif path.is_file():
+            with open(path, "r") as f:
+                return cls(**json.load(f))
+        else:
+            return cls()
+
+    def save(self):
+        path = DEFAULT_INTERNAL_CONFIG_LOCATION
+        if path is None:
+            return None
+        else:
+            path.parent.mkdir(exist_ok=True, parents=True)
+            with open(path, "w") as f:
+                json.dump(asdict(self), f)
 
 
 def unique_name() -> str:
@@ -277,6 +312,14 @@ def format_timedelta(td: "timedelta") -> str:
 
 
 def check_for_upgrades():
+    config = InternalConfig.load()
+    if (
+        config is not None
+        and config.version_checked is not None
+        and (time.time() - config.version_checked <= VERSION_CHECK_INTERVAL)
+    ):
+        return
+
     import packaging.version
     import requests
 
@@ -293,6 +336,9 @@ def check_for_upgrades():
                     f"https://github.com/allenai/beaker-gantry/releases/tag/v{latest_version}[/]\n"
                     f"[yellow i]You can upgrade by running:[/] pip install --upgrade beaker-gantry beaker-py\n",
                 )
+            if config is not None:
+                config.version_checked = time.time()
+                config.save()
     except (requests.exceptions.Timeout, requests.exceptions.ConnectionError):
         pass
 
