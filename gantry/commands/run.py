@@ -248,6 +248,13 @@ from .main import CLICK_COMMAND_DEFAULTS, main
     multiple=True,
 )
 @click.option(
+    "--weka",
+    type=str,
+    multiple=True,
+    help="""A weka bucket to mount in the form of 'bucket-name:/mount/location',
+    e.g. --weka=oe-training-default:/data""",
+)
+@click.option(
     "-b", "--budget", type=str, help="""The budget account to associate with the experiment."""
 )
 @click.option("--preemptible", is_flag=True, help="""Mark the job as preemptible.""")
@@ -289,6 +296,7 @@ def run(
     propagate_failure: Optional[bool] = None,
     synchronized_start_timeout: Optional[str] = None,
     mount: Optional[Tuple[str, ...]] = None,
+    weka: Optional[str] = None,
     budget: Optional[str] = None,
     preemptible: bool = False,
     stop_preemptible: bool = False,
@@ -393,6 +401,14 @@ def run(
             raise ValueError(f"Invalid --mount option: '{m}'")
         mounts.append((source, target))
 
+    weka_buckets = []
+    for m in weka or []:
+        try:
+            source, target = m.split(":")
+        except ValueError:
+            raise ValueError(f"Invalid --weka option: '{m}'")
+        weka_buckets.append((source, target))
+
     # Validate clusters.
     if cluster:
         cl_objects = beaker.cluster.list()
@@ -440,6 +456,7 @@ def run(
         propagate_failure=propagate_failure,
         synchronized_start_timeout=synchronized_start_timeout,
         mounts=mounts,
+        weka_buckets=weka_buckets,
         hostnames=None if hostname is None else list(hostname),
         preemptible=preemptible,
     )
@@ -573,6 +590,7 @@ def build_experiment_spec(
     propagate_failure: Optional[bool] = None,
     synchronized_start_timeout: Optional[str] = None,
     mounts: Optional[List[Tuple[str, str]]] = None,
+    weka_buckets: Optional[List[Tuple[str, str]]] = None,
     hostnames: Optional[List[str]] = None,
     preemptible: bool = False,
 ):
@@ -677,6 +695,10 @@ def build_experiment_spec(
     if mounts:
         for source, target in mounts:
             task_spec = task_spec.with_dataset(target, host_path=source)
+
+    if weka_buckets:
+        for source, target in weka_buckets:
+            task_spec = task_spec.with_dataset(target, weka=source)
 
     return ExperimentSpec(description=description, budget=budget, tasks=[task_spec])
 
