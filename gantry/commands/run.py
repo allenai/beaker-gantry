@@ -233,6 +233,9 @@ from .main import CLICK_COMMAND_DEFAULTS, main
     "--propagate-failure", is_flag=True, help="""Stop the experiment if any task fails."""
 )
 @click.option(
+    "--propagate-preemption", is_flag=True, help="""Stop the experiment if any task is preempted."""
+)
+@click.option(
     "--synchronized-start-timeout",
     type=str,
     help="""
@@ -294,6 +297,7 @@ def run(
     leader_selection: bool = False,
     host_networking: bool = False,
     propagate_failure: Optional[bool] = None,
+    propagate_preemption: Optional[bool] = None,
     synchronized_start_timeout: Optional[str] = None,
     mount: Optional[Tuple[str, ...]] = None,
     weka: Optional[str] = None,
@@ -454,6 +458,7 @@ def run(
         leader_selection=leader_selection,
         host_networking=host_networking or (bool(replicas) and leader_selection),
         propagate_failure=propagate_failure,
+        propagate_preemption=propagate_preemption,
         synchronized_start_timeout=synchronized_start_timeout,
         mounts=mounts,
         weka_buckets=weka_buckets,
@@ -588,6 +593,7 @@ def build_experiment_spec(
     leader_selection: bool = False,
     host_networking: bool = False,
     propagate_failure: Optional[bool] = None,
+    propagate_preemption: Optional[bool] = None,
     synchronized_start_timeout: Optional[str] = None,
     mounts: Optional[List[Tuple[str, str]]] = None,
     weka_buckets: Optional[List[Tuple[str, str]]] = None,
@@ -608,6 +614,7 @@ def build_experiment_spec(
             leader_selection=leader_selection,
             host_networking=host_networking,
             propagate_failure=propagate_failure,
+            propagate_preemption=propagate_preemption,
             synchronized_start_timeout=synchronized_start_timeout,
         )
         .with_env_var(name="GANTRY_VERSION", value=VERSION)
