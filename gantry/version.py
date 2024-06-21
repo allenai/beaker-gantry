@@ -1,5 +1,5 @@
 _MAJOR = "1"
-_MINOR = "6"
+_MINOR = "7"
 _PATCH = "0"
 _SUFFIX = ""
 
