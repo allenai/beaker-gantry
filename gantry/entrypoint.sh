@@ -170,6 +170,6 @@ echo "
 #############################
 "
 
-# Execute the arguments to this script as commands themselves, piping output into a log file.
+# Execute the arguments to this script as commands themselves.
 # shellcheck disable=SC2296
-exec "$@" 2>&1 | tee "${{ RESULTS_DIR }}/.gantry/out.log"
+exec "$@" 2>&1

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Fixed
+
+- Fixed bug where successful experiments would exit with non-zero exit code due to `tee`-ing the output to a logs file that wasn't used anyway.
+
 ## [v1.7.0](https://github.com/allenai/beaker-gantry/releases/tag/v1.7.0) - 2024-06-21
 
 ### Added
