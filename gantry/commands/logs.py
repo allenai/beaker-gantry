@@ -2,6 +2,7 @@ from typing import Optional
 
 import click
 from beaker import Beaker, Job
+from rich import print
 
 from .. import util
 from ..exceptions import ConfigurationError
@@ -20,7 +21,7 @@ def logs(experiment: str, replica: Optional[int] = None):
     exp = beaker.experiment.get(experiment)
     tasks = beaker.experiment.tasks(exp)
 
-    job: Job
+    job: Optional[Job] = None
     if replica is not None:
         for task in tasks:
             if (
@@ -34,6 +35,10 @@ def logs(experiment: str, replica: Optional[int] = None):
             raise ConfigurationError(f"Invalid replica rank '{replica}'")
     else:
         job = beaker.experiment.latest_job(exp)
+
+    if job is None:
+        print("[y]Experiment has not started yet[/]")
+        return
 
     job = util.display_logs(beaker, job)
     util.display_results(beaker, exp, job)
