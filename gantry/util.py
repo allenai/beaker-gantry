@@ -182,12 +182,33 @@ def follow_experiment(
     return job
 
 
+def display_logs(beaker: Beaker, job: Job) -> Job:
+    console = rich.get_console()
+    print()
+    rich.get_console().rule("Logs")
+    for line_bytes in beaker.job.logs(job, quiet=True):
+        line = line_bytes.decode(errors="ignore")
+        if line.endswith("\n"):
+            line = line[:-1]
+        console.print(line, highlight=False, markup=False)
+    rich.get_console().rule("End logs")
+    print()
+
+    # Refresh the job.
+    job = beaker.job.get(job.id)
+    return job
+
+
 def display_results(beaker: Beaker, experiment: Experiment, job: Job):
     exit_code = job.status.exit_code
     if exit_code is None:
-        raise ExperimentFailedError("Experiment failed")
+        raise ExperimentFailedError(
+            f"Experiment failed, see {beaker.experiment.url(experiment)} for details"
+        )
     elif exit_code > 0:
-        raise ExperimentFailedError(f"Experiment exited with non-zero code ({exit_code})")
+        raise ExperimentFailedError(
+            f"Experiment exited with non-zero code ({exit_code}), see {beaker.experiment.url(experiment)} for details"
+        )
     assert job.execution is not None
     assert job.status.started is not None
     assert job.status.exited is not None
