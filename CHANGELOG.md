@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [v1.8.2](https://github.com/allenai/beaker-gantry/releases/tag/v1.8.2) - 2024-07-17
+
 ### Fixed
 
 - Fixed a bug with displaying experiment results when there are replicas.
