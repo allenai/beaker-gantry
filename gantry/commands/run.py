@@ -384,7 +384,7 @@ def run(
     env_vars = []
     for e in env or []:
         try:
-            env_name, val = e.split("=")
+            env_name, val = e.split("=", 1)
         except ValueError:
             raise ValueError("Invalid --env option: {e}")
         env_vars.append((env_name, val))
@@ -392,7 +392,7 @@ def run(
     env_secrets = []
     for e in env_secret or []:
         try:
-            env_secret_name, secret = e.split("=")
+            env_secret_name, secret = e.split("=", 1)
         except ValueError:
             raise ValueError(f"Invalid --env-secret option: '{e}'")
         env_secrets.append((env_secret_name, secret))
@@ -400,7 +400,7 @@ def run(
     mounts = []
     for m in mount or []:
         try:
-            source, target = m.split(":")
+            source, target = m.split(":", 1)
         except ValueError:
             raise ValueError(f"Invalid --mount option: '{m}'")
         mounts.append((source, target))
@@ -408,7 +408,7 @@ def run(
     weka_buckets = []
     for m in weka or []:
         try:
-            source, target = m.split(":")
+            source, target = m.split(":", 1)
         except ValueError:
             raise ValueError(f"Invalid --weka option: '{m}'")
         weka_buckets.append((source, target))
