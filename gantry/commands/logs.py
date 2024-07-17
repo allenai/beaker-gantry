@@ -40,5 +40,4 @@ def logs(experiment: str, replica: Optional[int] = None):
         print("[y]Experiment has not started yet[/]")
         return
 
-    job = util.display_logs(beaker, job)
-    util.display_results(beaker, exp, job)
+    util.display_logs(beaker, job)
