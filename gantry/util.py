@@ -223,7 +223,7 @@ def display_results(beaker: Beaker, experiment: Experiment, job: Job):
         f"[b]Results:[/] {None if result_dataset is None else beaker.dataset.url(result_dataset)}"
     )
 
-    metrics = beaker.experiment.metrics(experiment)
+    metrics = beaker.experiment.metrics(experiment, task=job.execution.task)
     if metrics is not None:
         print("[b]Metrics:[/]", metrics)
 
