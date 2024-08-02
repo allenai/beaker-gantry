@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [v1.8.3](https://github.com/allenai/beaker-gantry/releases/tag/v1.8.3) - 2024-08-02
+
 ### Fixed
 
 - Fixed a bug where `--docker-image` was raising an error due to default value assigned to `--beaker-image`.
