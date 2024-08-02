@@ -30,6 +30,18 @@ from ..version import VERSION
 from .main import CLICK_COMMAND_DEFAULTS, main
 
 
+def beaker_docker_image_check(
+    ctx: click.Context,
+    param: click.Parameter,
+    value: Optional[str]
+) -> Optional[str]:
+    if value and ctx.params.get("docker_image"):
+        raise click.BadParameter("Cannot use --beaker-image and --docker-image at the same time.")
+    if not value and not ctx.params.get("docker_image"):
+        return constants.DEFAULT_IMAGE
+    return value
+
+
 @main.command(**CLICK_COMMAND_DEFAULTS)
 @click.argument("arg", nargs=-1)
 @click.option(
@@ -78,10 +90,9 @@ from .main import CLICK_COMMAND_DEFAULTS, main
 @click.option(
     "--beaker-image",
     type=str,
-    default=constants.DEFAULT_IMAGE,
+    callback=beaker_docker_image_check,
     help="""The name or ID of an image on Beaker to use for your experiment.
     Mutually exclusive with --docker-image.""",
-    show_default=True,
 )
 @click.option(
     "--docker-image",
@@ -321,7 +332,7 @@ def run(
         raise ConfigurationError(
             "Either --beaker-image or --docker-image must be specified, but not both."
         )
-
+g
     if budget is None:
         budget = prompt.Prompt.ask(
             "[yellow]Missing '--budget' option, "
