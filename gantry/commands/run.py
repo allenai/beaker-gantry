@@ -30,16 +30,6 @@ from ..version import VERSION
 from .main import CLICK_COMMAND_DEFAULTS, main
 
 
-def beaker_docker_image_check(
-    ctx: click.Context, param: click.Parameter, value: Optional[str]
-) -> Optional[str]:
-    if value and ctx.params.get("docker_image"):
-        raise click.BadParameter("Cannot use --beaker-image and --docker-image at the same time.")
-    if not value and not ctx.params.get("docker_image"):
-        return constants.DEFAULT_IMAGE
-    return value
-
-
 @main.command(**CLICK_COMMAND_DEFAULTS)
 @click.argument("arg", nargs=-1)
 @click.option(
@@ -88,9 +78,8 @@ def beaker_docker_image_check(
 @click.option(
     "--beaker-image",
     type=str,
-    callback=beaker_docker_image_check,
-    help="""The name or ID of an image on Beaker to use for your experiment.
-    Mutually exclusive with --docker-image.""",
+    help=f"""The name or ID of an image on Beaker to use for your experiment.
+    Mutually exclusive with --docker-image. Defaults to '{constants.DEFAULT_IMAGE}' if neither is set.""",
 )
 @click.option(
     "--docker-image",
@@ -279,7 +268,7 @@ def run(
     workspace: Optional[str] = None,
     cluster: Optional[Tuple[str, ...]] = None,
     hostname: Optional[Tuple[str, ...]] = None,
-    beaker_image: Optional[str] = constants.DEFAULT_IMAGE,
+    beaker_image: Optional[str] = None,
     docker_image: Optional[str] = None,
     cpus: Optional[float] = None,
     gpus: Optional[int] = None,
@@ -326,7 +315,9 @@ def run(
             "[ARGS]... are required! For example:\n$ gantry run -- python -c 'print(\"Hello, World!\")'"
         )
 
-    if (beaker_image is None) == (docker_image is None):
+    if beaker_image is None and docker_image is None:
+        beaker_image = constants.DEFAULT_IMAGE
+    elif (beaker_image is None) == (docker_image is None):
         raise ConfigurationError(
             "Either --beaker-image or --docker-image must be specified, but not both."
         )
