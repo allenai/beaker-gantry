@@ -31,9 +31,7 @@ from .main import CLICK_COMMAND_DEFAULTS, main
 
 
 def beaker_docker_image_check(
-    ctx: click.Context,
-    param: click.Parameter,
-    value: Optional[str]
+    ctx: click.Context, param: click.Parameter, value: Optional[str]
 ) -> Optional[str]:
     if value and ctx.params.get("docker_image"):
         raise click.BadParameter("Cannot use --beaker-image and --docker-image at the same time.")
