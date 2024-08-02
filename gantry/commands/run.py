@@ -332,7 +332,7 @@ def run(
         raise ConfigurationError(
             "Either --beaker-image or --docker-image must be specified, but not both."
         )
-g
+
     if budget is None:
         budget = prompt.Prompt.ask(
             "[yellow]Missing '--budget' option, "
