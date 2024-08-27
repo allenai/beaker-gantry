@@ -149,7 +149,7 @@ Try `gantry run --help` to see all of the available options.
 
 ### Limit the scope and lifetime of your GitHub token
 
-Your PAT only needs to have the `repo` scope and should have a short expiration time (e.g. 30 days).
+Your [GitHub personal access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token) (PAT) only needs to have the `repo` scope and should have a short expiration time (e.g. 30 days).
 This limits the harm a bad actor could cause if they were able to read your PAT from your Beaker workspace somehow.
 
 ### Use conda
