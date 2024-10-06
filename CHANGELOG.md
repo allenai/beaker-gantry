@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [v1.8.4](https://github.com/allenai/beaker-gantry/releases/tag/v1.8.4) - 2024-10-06
+
+### Fixed
+
+- Exclude saturn and neptune clusters from auto NFS
+
 ## [v1.8.3](https://github.com/allenai/beaker-gantry/releases/tag/v1.8.3) - 2024-08-02
 
 ### Fixed
