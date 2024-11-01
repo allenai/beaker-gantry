@@ -16,6 +16,7 @@ from beaker import (
     Job,
     JobTimeoutError,
     Priority,
+    RetrySpec,
     SecretNotFound,
     TaskResources,
     TaskSpec,
@@ -260,6 +261,9 @@ from .main import CLICK_COMMAND_DEFAULTS, main
 )
 @click.option("--preemptible", is_flag=True, help="""Mark the job as preemptible.""")
 @click.option("--stop-preemptible", is_flag=True, help="""Stop all preemptible on the cluster.""")
+@click.option(
+    "--retries", type=int, help="""Specify the number of automatic retries for the experiment."""
+)
 def run(
     arg: Tuple[str, ...],
     name: Optional[str] = None,
@@ -302,6 +306,7 @@ def run(
     budget: Optional[str] = None,
     preemptible: bool = False,
     stop_preemptible: bool = False,
+    retries: Optional[int] = None,
 ):
     """
     Run an experiment on Beaker.
@@ -464,6 +469,7 @@ def run(
         weka_buckets=weka_buckets,
         hostnames=None if hostname is None else list(hostname),
         preemptible=preemptible,
+        retries=retries,
     )
 
     if save_spec:
@@ -599,6 +605,7 @@ def build_experiment_spec(
     weka_buckets: Optional[List[Tuple[str, str]]] = None,
     hostnames: Optional[List[str]] = None,
     preemptible: bool = False,
+    retries: Optional[int] = None,
 ):
     task_spec = (
         TaskSpec.new(
@@ -707,7 +714,12 @@ def build_experiment_spec(
         for source, target in weka_buckets:
             task_spec = task_spec.with_dataset(target, weka=source)
 
-    return ExperimentSpec(description=description, budget=budget, tasks=[task_spec])
+    return ExperimentSpec(
+        description=description,
+        budget=budget,
+        tasks=[task_spec],
+        retry=None if not retries else RetrySpec(allowed_task_retries=retries),
+    )
 
 
 def ensure_datasets(beaker: Beaker, *datasets: str) -> List[Tuple[str, Optional[str], str]]:
