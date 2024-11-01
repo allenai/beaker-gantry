@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- Added `--retries` option to `gantry run` command.
+
 ## [v1.8.4](https://github.com/allenai/beaker-gantry/releases/tag/v1.8.4) - 2024-10-06
 
 ### Fixed
