@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Fixed
+
+- Use Beaker image ID instead of assigned name.
+
 ## [v1.9.0](https://github.com/allenai/beaker-gantry/releases/tag/v1.9.0) - 2024-11-01
 
 ### Added
