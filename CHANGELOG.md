@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [v1.9.1](https://github.com/allenai/beaker-gantry/releases/tag/v1.9.1) - 2024-11-20
+
 ### Fixed
 
 - Use Beaker image ID instead of assigned name.
