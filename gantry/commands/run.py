@@ -351,7 +351,7 @@ def run(
 
     if beaker_image is not None and beaker_image != constants.DEFAULT_IMAGE:
         try:
-            beaker_image = beaker.image.get(beaker_image).full_name
+            beaker_image = beaker.image.get(beaker_image).id
         except ImageNotFound:
             raise ConfigurationError(f"Beaker image '{beaker_image}' not found")
 
