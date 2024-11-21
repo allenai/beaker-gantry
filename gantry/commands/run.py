@@ -124,6 +124,11 @@ from .main import CLICK_COMMAND_DEFAULTS, main
     show_default=True,
 )
 @click.option(
+    "--ref",
+    type=str,
+    help="""The target git ref to use. This defaults to the current commit.""",
+)
+@click.option(
     "--conda",
     type=click.Path(exists=True, dir_okay=False),
     help=f"""Path to a conda environment file for reconstructing your Python environment.
@@ -280,6 +285,7 @@ def run(
     shared_memory: Optional[str] = None,
     dataset: Optional[Tuple[str, ...]] = None,
     gh_token_secret: str = constants.GITHUB_TOKEN_SECRET,
+    ref: Optional[str] = None,
     conda: Optional[PathOrStr] = None,
     pip: Optional[PathOrStr] = None,
     venv: Optional[str] = None,
@@ -342,7 +348,11 @@ def run(
     )
 
     # Get repository account, name, and current ref.
-    github_account, github_repo, git_ref, is_public = util.ensure_repo(allow_dirty)
+    github_account, github_repo, git_ref, is_public = util.ensure_repo(
+        allow_dirty=ref is not None or allow_dirty
+    )
+    if ref is not None:
+        git_ref = ref
 
     # Initialize Beaker client and validate workspace.
     beaker = util.ensure_workspace(
