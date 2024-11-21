@@ -126,7 +126,7 @@ from .main import CLICK_COMMAND_DEFAULTS, main
 @click.option(
     "--ref",
     type=str,
-    help="""The target git ref to use. This default to the current commit.""",
+    help="""The target git ref to use. This defaults to the current commit.""",
 )
 @click.option(
     "--conda",
