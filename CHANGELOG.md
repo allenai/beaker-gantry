@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [v1.10.0](https://github.com/allenai/beaker-gantry/releases/tag/v1.10.0) - 2024-11-21
+
 ### Added
 
 - Added `--ref` command-line argument to `gantry run` for overriding the target git ref (commit/branch/tag) to use.
