@@ -10,18 +10,21 @@ for env_var in "$GITHUB_REPO" "$GIT_REF"; do
     fi
 done
 
-# Check for conda, install it if needed.
-if ! command -v conda &> /dev/null; then
-    echo "installing conda"
-    curl -fsSL -v -o ~/miniconda.sh -O  https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
-    chmod +x ~/miniconda.sh
-    ~/miniconda.sh -b -p /opt/conda
-    rm ~/miniconda.sh
-fi
+# Function to check for conda, install it if needed.
+function ensure_conda {
+    if ! command -v conda &> /dev/null; then
+        echo "installing conda..."
+        curl -fsSL -o ~/miniconda.sh -O  https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+        chmod +x ~/miniconda.sh
+        ~/miniconda.sh -b -p /opt/conda
+        rm ~/miniconda.sh
+        export PATH="/opt/conda/bin:$PATH"
+    fi
 
-# Initialize conda for bash.
-# See https://stackoverflow.com/a/58081608/4151392
-eval "$(command conda 'shell.bash' 'hook' 2> /dev/null)"
+    # Initialize conda for bash.
+    # See https://stackoverflow.com/a/58081608/4151392
+    eval "$(command conda 'shell.bash' 'hook' 2> /dev/null)"
+}
 
 if [[ -n "$GITHUB_TOKEN" ]]; then
     echo "
@@ -29,8 +32,12 @@ if [[ -n "$GITHUB_TOKEN" ]]; then
 # [GANTRY] Installing prerequisites... #
 ########################################
 "
-    # Install GitHub CLI.
-    conda install -y gh --channel conda-forge
+    if ! command -v gh &> /dev/null; then
+        ensure_conda
+
+        # Install GitHub CLI.
+        conda install -y gh --channel conda-forge
+    fi
     
     # Configure git to use GitHub CLI as a credential helper so that we can clone private repos.
     gh auth setup-git
@@ -94,8 +101,10 @@ if [[ -z "$NO_PYTHON" ]]; then
             exit 1
         fi
     fi
+
+    ensure_conda
     
-    if conda activate "$VENV_NAME"; then
+    if conda activate "$VENV_NAME" &> /dev/null; then
         echo "[GANTRY] Using existing conda environment '$VENV_NAME'"
         # The virtual environment already exists. Possibly update it based on an environment file.
         if [[ -f "$CONDA_ENV_FILE" ]]; then

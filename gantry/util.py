@@ -279,17 +279,27 @@ def ensure_entrypoint_dataset(beaker: Beaker) -> Dataset:
             gantry_entrypoint_dataset = beaker.dataset.get(entrypoint_dataset_name)
 
     # Verify contents.
-    err_msg = (
-        f"Checksum failed for entrypoint dataset {beaker.dataset.url(gantry_entrypoint_dataset)}\n"
-        f"This could be a bug, or it could mean someone has tampered with the dataset.\n"
-        f"If you're sure no one has tampered with it, you can delete the dataset from "
-        f"the Beaker dashboard and try again."
-    )
     ds_files = list(beaker.dataset.ls(gantry_entrypoint_dataset))
+    for retry in range(1, 4):
+        ds_files = list(beaker.dataset.ls(gantry_entrypoint_dataset))
+        if len(ds_files) >= 1:
+            break
+        else:
+            time.sleep(1.5**retry)
+
     if len(ds_files) != 1:
-        raise EntrypointChecksumError(err_msg)
+        raise EntrypointChecksumError(
+            f"Entrypoint dataset {beaker.dataset.url(gantry_entrypoint_dataset)} is missing the "
+            f"required entrypoint file. Please run again."
+        )
+
     if ds_files[0].digest != Digest.from_decoded(sha256_hash.digest(), "SHA256"):
-        raise EntrypointChecksumError(err_msg)
+        raise EntrypointChecksumError(
+            f"Checksum failed for entrypoint dataset {beaker.dataset.url(gantry_entrypoint_dataset)}\n"
+            f"This could be a bug, or it could mean someone has tampered with the dataset.\n"
+            f"If you're sure no one has tampered with it, you can delete the dataset from "
+            f"the Beaker dashboard and try again."
+        )
 
     return gantry_entrypoint_dataset
 
