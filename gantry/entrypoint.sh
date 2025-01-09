@@ -31,9 +31,9 @@ if [[ -n "$GITHUB_TOKEN" ]]; then
 # [GANTRY] Installing prerequisites... #
 ########################################
 "
-    ensure_conda
-
     if ! command -v gh &> /dev/null; then
+        ensure_conda
+
         # Install GitHub CLI.
         conda install -y gh --channel conda-forge
     fi
