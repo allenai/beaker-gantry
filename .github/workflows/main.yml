@@ -186,3 +186,7 @@ jobs:
           prerelease: ${{ contains(env.TAG, 'rc') }}
           files: |
             dist/*
+
+      - name: Add PR comments on release
+        run: |
+          ./scripts/add_pr_comments_on_release.sh
