@@ -14,7 +14,7 @@ def test_version():
     assert VERSION in result.stdout
 
 
-def test_dry_run(workspace_name: str, beaker_cluster_name: str, run_name: str):
+def test_dry_run(workspace_name: str, run_name: str):
     result = subprocess.run(
         [
             "gantry",
@@ -26,8 +26,6 @@ def test_dry_run(workspace_name: str, beaker_cluster_name: str, run_name: str):
             run_name,
             "--workspace",
             workspace_name,
-            "--cluster",
-            beaker_cluster_name,
             "--yes",
             "--",
             "python",
