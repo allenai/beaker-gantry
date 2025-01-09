@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-## [v1.11.1](https://github.com/allenai/beaker-gantry/releases/tag/v1.11.1) - 2025-01-09
+## [v1.11.2](https://github.com/allenai/beaker-gantry/releases/tag/v1.11.2) - 2025-01-09
 
 ## [v1.11.0](https://github.com/allenai/beaker-gantry/releases/tag/v1.11.0) - 2025-01-09
 
