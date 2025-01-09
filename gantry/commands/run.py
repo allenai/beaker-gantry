@@ -697,6 +697,8 @@ def build_experiment_spec(
                     name="VENV_NAME",
                     value=venv,
                 )
+        else:
+            task_spec = task_spec.with_env_var(name="NO_CONDA", value="1")
 
         if pip is not None:
             task_spec = task_spec.with_env_var(
