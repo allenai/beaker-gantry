@@ -103,7 +103,7 @@ if [[ -z "$NO_PYTHON" ]]; then
 
     ensure_conda
     
-    if conda activate "$VENV_NAME"; then
+    if conda activate "$VENV_NAME" &> /dev/null; then
         echo "[GANTRY] Using existing conda environment '$VENV_NAME'"
         # The virtual environment already exists. Possibly update it based on an environment file.
         if [[ -f "$CONDA_ENV_FILE" ]]; then
