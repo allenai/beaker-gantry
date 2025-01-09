@@ -13,7 +13,7 @@ done
 # Function to check for conda, install it if needed.
 function ensure_conda {
     if ! command -v conda &> /dev/null; then
-        echo "installing conda..."
+        echo "[GANTRY] Installing conda..."
         curl -fsSL -o ~/miniconda.sh -O  https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
         chmod +x ~/miniconda.sh
         ~/miniconda.sh -b -p /opt/conda
