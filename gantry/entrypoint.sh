@@ -33,7 +33,11 @@ if [[ -n "$GITHUB_TOKEN" ]]; then
 ########################################
 "
     if ! command -v gh &> /dev/null; then
-        ensure_conda
+        if [[ -z "$NO_CONDA" ]]; then
+            ensure_conda
+        else
+            echo >&2 "error: you specified '--no-conda' but conda is needed to install the GitHub CLI. To avoid this error please ensure the GitHub CLI is already installed on your image."
+        fi
 
         # Install GitHub CLI.
         conda install -y gh --channel conda-forge
@@ -94,39 +98,41 @@ if [[ -z "$NO_PYTHON" ]]; then
         PIP_REQUIREMENTS_FILE="${{ PIP_REQUIREMENTS_FILE }}"
     fi
     
-    # Check if VENV_NAME is a path. If so, it should exist.
-    if [[ "$VENV_NAME" == */* ]]; then
-        if [[ ! -d "$VENV_NAME" ]]; then
-            echo >&2 "error: venv '$VENV_NAME' looks like a path but it doesn't exist"
-            exit 1
-        fi
-    fi
+    if [[ -z "$NO_CONDA" ]]; then
+        ensure_conda
 
-    ensure_conda
-    
-    if conda activate "$VENV_NAME" &> /dev/null; then
-        echo "[GANTRY] Using existing conda environment '$VENV_NAME'"
-        # The virtual environment already exists. Possibly update it based on an environment file.
-        if [[ -f "$CONDA_ENV_FILE" ]]; then
-            echo "[GANTRY] Updating environment from conda env file '$CONDA_ENV_FILE'..."
-            conda env update -f "$CONDA_ENV_FILE"
+        # Check if VENV_NAME is a path. If so, it should exist.
+        if [[ "$VENV_NAME" == */* ]]; then
+            if [[ ! -d "$VENV_NAME" ]]; then
+                echo >&2 "error: venv '$VENV_NAME' looks like a path but it doesn't exist"
+                exit 1
+            fi
         fi
-    else
-        # The virtual environment doesn't exist yet. Create it.
-        if [[ -f "$CONDA_ENV_FILE" ]]; then
-            # Create from the environment file.
-            echo "[GANTRY] Initializing environment from conda env file '$CONDA_ENV_FILE'..."
-            conda env create -n "$VENV_NAME" -f "$CONDA_ENV_FILE" 
-        elif [[ -z "$PYTHON_VERSION" ]]; then
-            # Create a new empty environment with the whatever the default Python version is.
-            echo "[GANTRY] Initializing environment with default Python version..."
-            conda create -y -n "$VENV_NAME" pip
+        
+        if conda activate "$VENV_NAME" &> /dev/null; then
+            echo "[GANTRY] Using existing conda environment '$VENV_NAME'"
+            # The virtual environment already exists. Possibly update it based on an environment file.
+            if [[ -f "$CONDA_ENV_FILE" ]]; then
+                echo "[GANTRY] Updating environment from conda env file '$CONDA_ENV_FILE'..."
+                conda env update -f "$CONDA_ENV_FILE"
+            fi
         else
-            # Create a new empty environment with the specific Python version.
-            echo "[GANTRY] Initializing environment with Python $PYTHON_VERSION..."
-            conda create -y -n "$VENV_NAME" "python=$PYTHON_VERSION" pip
+            # The virtual environment doesn't exist yet. Create it.
+            if [[ -f "$CONDA_ENV_FILE" ]]; then
+                # Create from the environment file.
+                echo "[GANTRY] Initializing environment from conda env file '$CONDA_ENV_FILE'..."
+                conda env create -n "$VENV_NAME" -f "$CONDA_ENV_FILE" 
+            elif [[ -z "$PYTHON_VERSION" ]]; then
+                # Create a new empty environment with the whatever the default Python version is.
+                echo "[GANTRY] Initializing environment with default Python version..."
+                conda create -y -n "$VENV_NAME" pip
+            else
+                # Create a new empty environment with the specific Python version.
+                echo "[GANTRY] Initializing environment with Python $PYTHON_VERSION..."
+                conda create -y -n "$VENV_NAME" "python=$PYTHON_VERSION" pip
+            fi
+            conda activate "$VENV_NAME"
         fi
-        conda activate "$VENV_NAME"
     fi
     
     if [[ -z "$INSTALL_CMD" ]]; then

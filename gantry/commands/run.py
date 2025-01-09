@@ -214,6 +214,12 @@ from .main import CLICK_COMMAND_DEFAULTS, main
     help="""If set, gantry will skip setting up a Python environment altogether.""",
 )
 @click.option(
+    "--no-conda",
+    is_flag=True,
+    help="""If set, gantry will not use conda to construct a Python environment,
+    and instead will potentially use the default Python environment on the image.""",
+)
+@click.option(
     "--replicas",
     type=int,
     help="""The number of task replicas to run.""",
@@ -301,6 +307,7 @@ def run(
     priority: Optional[str] = None,
     install: Optional[str] = None,
     no_python: bool = False,
+    no_conda: bool = False,
     replicas: Optional[int] = None,
     leader_selection: bool = False,
     host_networking: bool = False,
@@ -469,6 +476,7 @@ def run(
         priority=priority,
         install=install,
         no_python=no_python,
+        no_conda=no_conda,
         replicas=replicas,
         leader_selection=leader_selection,
         host_networking=host_networking or (bool(replicas) and leader_selection),
@@ -605,6 +613,7 @@ def build_experiment_spec(
     priority: Optional[Union[str, Priority]] = None,
     install: Optional[str] = None,
     no_python: bool = False,
+    no_conda: bool = False,
     replicas: Optional[int] = None,
     leader_selection: bool = False,
     host_networking: bool = False,
@@ -662,36 +671,37 @@ def build_experiment_spec(
     if no_python:
         task_spec = task_spec.with_env_var(name="NO_PYTHON", value="1")
     else:
-        if conda is not None:
-            task_spec = task_spec.with_env_var(
-                name="CONDA_ENV_FILE",
-                value=str(conda),
-            )
-        elif Path(constants.CONDA_ENV_FILE).is_file():
-            task_spec = task_spec.with_env_var(
-                name="CONDA_ENV_FILE",
-                value=constants.CONDA_ENV_FILE,
-            )
-        elif Path(constants.CONDA_ENV_FILE_ALTERNATE).is_file():
-            task_spec = task_spec.with_env_var(
-                name="CONDA_ENV_FILE",
-                value=constants.CONDA_ENV_FILE_ALTERNATE,
-            )
-        else:
-            task_spec = task_spec.with_env_var(
-                name="PYTHON_VERSION", value=".".join(platform.python_version_tuple()[:-1])
-            )
+        if not no_conda:
+            if conda is not None:
+                task_spec = task_spec.with_env_var(
+                    name="CONDA_ENV_FILE",
+                    value=str(conda),
+                )
+            elif Path(constants.CONDA_ENV_FILE).is_file():
+                task_spec = task_spec.with_env_var(
+                    name="CONDA_ENV_FILE",
+                    value=constants.CONDA_ENV_FILE,
+                )
+            elif Path(constants.CONDA_ENV_FILE_ALTERNATE).is_file():
+                task_spec = task_spec.with_env_var(
+                    name="CONDA_ENV_FILE",
+                    value=constants.CONDA_ENV_FILE_ALTERNATE,
+                )
+            else:
+                task_spec = task_spec.with_env_var(
+                    name="PYTHON_VERSION", value=".".join(platform.python_version_tuple()[:-1])
+                )
+
+            if venv is not None:
+                task_spec = task_spec.with_env_var(
+                    name="VENV_NAME",
+                    value=venv,
+                )
 
         if pip is not None:
             task_spec = task_spec.with_env_var(
                 name="PIP_REQUIREMENTS_FILE",
                 value=str(pip),
-            )
-
-        if venv is not None:
-            task_spec = task_spec.with_env_var(
-                name="VENV_NAME",
-                value=venv,
             )
 
         if install is not None:
