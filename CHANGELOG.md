@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [v1.12.0](https://github.com/allenai/beaker-gantry/releases/tag/v1.12.0) - 2025-01-15
+
 ### Added
 
 - Added `--dataset-secret` option for mounting secrets to files as Beaker datasets.
