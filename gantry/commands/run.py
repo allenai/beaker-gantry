@@ -159,6 +159,13 @@ from .main import CLICK_COMMAND_DEFAULTS, main
     multiple=True,
 )
 @click.option(
+    "--dataset-secret",
+    type=str,
+    help="""Mount a Beaker secret to a file as a dataset.
+    Should be in the form '{SECRET_NAME}:{MOUNT_PATH}'.""",
+    multiple=True,
+)
+@click.option(
     "--nfs / --no-nfs",
     default=None,
     help=f"""Whether or not to mount the NFS drive ({constants.NFS_MOUNT}) to the experiment.
@@ -297,6 +304,7 @@ def run(
     venv: Optional[str] = None,
     env: Optional[Tuple[str, ...]] = None,
     env_secret: Optional[Tuple[str, ...]] = None,
+    dataset_secret: Optional[Tuple[str, ...]] = None,
     timeout: int = 0,
     nfs: Optional[bool] = None,
     show_logs: bool = True,
@@ -419,6 +427,14 @@ def run(
             raise ValueError(f"Invalid --env-secret option: '{e}'")
         env_secrets.append((env_secret_name, secret))
 
+    dataset_secrets = []
+    for ds in dataset_secret or []:
+        try:
+            secret, mount_path = ds.split(":", 1)
+        except ValueError:
+            raise ValueError(f"Invalid --dataset-secret option: '{ds}'")
+        dataset_secrets.append((secret, mount_path))
+
     mounts = []
     for m in mount or []:
         try:
@@ -473,6 +489,7 @@ def run(
         datasets=datasets_to_use,
         env=env_vars,
         env_secrets=env_secrets,
+        dataset_secrets=dataset_secrets,
         priority=priority,
         install=install,
         no_python=no_python,
@@ -610,6 +627,7 @@ def build_experiment_spec(
     datasets: Optional[List[Tuple[str, Optional[str], str]]] = None,
     env: Optional[List[Tuple[str, str]]] = None,
     env_secrets: Optional[List[Tuple[str, str]]] = None,
+    dataset_secrets: Optional[List[Tuple[str, str]]] = None,
     priority: Optional[Union[str, Priority]] = None,
     install: Optional[str] = None,
     no_python: bool = False,
@@ -727,6 +745,9 @@ def build_experiment_spec(
     if datasets:
         for dataset_id, sub_path, path in datasets:
             task_spec = task_spec.with_dataset(path, beaker=dataset_id, sub_path=sub_path)
+
+    for secret, mount_path in dataset_secrets or []:
+        task_spec = task_spec.with_dataset(mount_path, secret=secret)
 
     if mounts:
         for source, target in mounts:
