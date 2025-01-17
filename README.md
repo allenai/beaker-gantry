@@ -268,7 +268,7 @@ gantry run --dataset 'petew/squad-train:/input-data' -- ls /input-data
 
 ### How can I run distributed batch jobs with Gantry?
 
-The three options `--replicas` (int), `--leader-selection` (flag), and `--host-networking` (flag) used together give you the ability to run distributed batch jobs. See the [Beaker docs](https://beaker-docs.apps.allenai.org/distributed-training.html#batch-jobs) for more information.
+The three options `--replicas` (int), `--leader-selection` (flag), and `--host-networking` (flag) used together give you the ability to run distributed batch jobs. See the [Beaker docs](https://beaker-docs.apps.allenai.org/experiments/distributed-training.html#batch-jobs) for more information.
 
 ### Why "Gantry"?
 
