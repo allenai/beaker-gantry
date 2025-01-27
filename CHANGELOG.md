@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- Added an additional check at runtime which will raise an error if the current ref doesn't exist on the remote.
+
 ## [v1.12.0](https://github.com/allenai/beaker-gantry/releases/tag/v1.12.0) - 2025-01-15
 
 ### Added
