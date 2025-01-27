@@ -12,6 +12,10 @@ class DirtyRepoError(GitError):
     pass
 
 
+class UnpushedChangesError(GitError):
+    pass
+
+
 class InvalidRemoteError(GitError):
     pass
 
