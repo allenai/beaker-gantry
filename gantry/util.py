@@ -234,13 +234,18 @@ def ensure_repo(allow_dirty: bool = False) -> Tuple[str, str, str, bool]:
     repo = Repo(".")
     if repo.is_dirty() and not allow_dirty:
         raise DirtyRepoError("You have uncommitted changes! Use --allow-dirty to force.")
+
+    # Parse account name, repo name, and current commit.
+    account, repo_name = parse_git_remote_url(repo.remote().url)
     git_ref = str(repo.commit())
-    account, repo = parse_git_remote_url(repo.remote().url)
-    response = requests.get(f"https://github.com/{account}/{repo}")
+
+    # Check if repo is public.
+    response = requests.get(f"https://github.com/{account}/{repo_name}")
     if response.status_code not in {200, 404}:
         response.raise_for_status()
     is_public = response.status_code == 200
-    return account, repo, git_ref, is_public
+
+    return account, repo_name, git_ref, is_public
 
 
 def ensure_entrypoint_dataset(beaker: Beaker) -> Dataset:
