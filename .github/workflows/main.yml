@@ -104,13 +104,13 @@ jobs:
     steps:
       - name: Checkout (PR)
         if: github.event_name == 'pull_request'
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha }}  # check out PR head commit instead of merge commit
 
       - name: Checkout (push or tag)
         if: github.event_name != 'pull_request'
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup Python environment
         uses: ./.github/actions/setup-venv

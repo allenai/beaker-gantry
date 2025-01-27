@@ -371,7 +371,7 @@ def run(
 
     if not util.ref_exists_on_remote(git_ref):
         raise UnpushedChangesError(
-            "Current git ref does exist on the remote! Please push your changes and try again."
+            f"Current git ref '{git_ref}' does not exist on the remote! Please push your changes and try again."
         )
 
     # Initialize Beaker client and validate workspace.
