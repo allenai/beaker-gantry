@@ -245,10 +245,6 @@ By default Gantry uses the `/results` directory on the image as the location of 
 That means that everything your experiment writes to this directory will be persisted as a Beaker dataset when the experiment finalizes.
 And you can also create Beaker metrics for your experiment by writing a JSON file called `metrics.json` in the `/results` directory.
 
-### Can I access data on NFS?
-
-Yes. When you choose an on-premise cluster managed by the Beaker team that supports the NFS drive it will be automatically attached to the experiment's container.
-
 ### How can I just see the Beaker experiment spec that Gantry uses?
 
 You can use the `--dry-run` option with `gantry run` to see what Gantry will submit without actually submitting an experiment.

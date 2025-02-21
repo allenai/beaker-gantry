@@ -166,13 +166,6 @@ from .main import CLICK_COMMAND_DEFAULTS, main
     multiple=True,
 )
 @click.option(
-    "--nfs / --no-nfs",
-    default=None,
-    help=f"""Whether or not to mount the NFS drive ({constants.NFS_MOUNT}) to the experiment.
-    This only works for cirrascale clusters managed by the Beaker team.
-    If not specified, gantry will always mount NFS when it knows the cluster supports it.""",
-)
-@click.option(
     "--show-logs/--no-logs",
     default=True,
     show_default=True,
@@ -306,7 +299,6 @@ def run(
     env_secret: Optional[Tuple[str, ...]] = None,
     dataset_secret: Optional[Tuple[str, ...]] = None,
     timeout: int = 0,
-    nfs: Optional[bool] = None,
     show_logs: bool = True,
     allow_dirty: bool = False,
     dry_run: bool = False,
@@ -491,7 +483,6 @@ def run(
         conda=conda,
         pip=pip,
         venv=venv,
-        nfs=nfs,
         datasets=datasets_to_use,
         env=env_vars,
         env_secrets=env_secrets,
@@ -629,7 +620,6 @@ def build_experiment_spec(
     conda: Optional[PathOrStr] = None,
     pip: Optional[PathOrStr] = None,
     venv: Optional[str] = None,
-    nfs: Optional[bool] = None,
     datasets: Optional[List[Tuple[str, Optional[str], str]]] = None,
     env: Optional[List[Tuple[str, str]]] = None,
     env_secrets: Optional[List[Tuple[str, str]]] = None,
@@ -732,21 +722,6 @@ def build_experiment_spec(
 
         if install is not None:
             task_spec = task_spec.with_env_var(name="INSTALL_CMD", value=install)
-
-    if (
-        nfs is None
-        and clusters
-        and all(
-            [
-                "cirrascale" in cluster and cluster not in constants.CLUSTERS_WITHOUT_NFS
-                for cluster in clusters
-            ]
-        )
-    ):
-        nfs = True
-
-    if nfs:
-        task_spec = task_spec.with_dataset(constants.NFS_MOUNT, host_path=constants.NFS_MOUNT)
 
     if datasets:
         for dataset_id, sub_path, path in datasets:

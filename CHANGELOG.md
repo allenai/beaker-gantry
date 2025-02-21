@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Removed
+
+- Removed NFS option.
+
 ## [v1.12.1](https://github.com/allenai/beaker-gantry/releases/tag/v1.12.1) - 2025-01-27
 
 ### Added
