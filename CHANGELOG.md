@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [v1.13.0](https://github.com/allenai/beaker-gantry/releases/tag/v1.13.0) - 2025-02-25
+
 ### Added
 
 - Added `--task-timeout` option to `gantry run` command.
