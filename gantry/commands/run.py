@@ -182,6 +182,13 @@ from .main import CLICK_COMMAND_DEFAULTS, main
     show_default=True,
 )
 @click.option(
+    "--task-timeout",
+    type=str,
+    help="""The Beaker job timeout, e.g. "24h". If a job runs longer than this it will canceled
+    by Beaker.""",
+    show_default=True,
+)
+@click.option(
     "--allow-dirty",
     is_flag=True,
     help="""Allow submitting the experiment with a dirty working directory.""",
@@ -299,6 +306,7 @@ def run(
     env_secret: Optional[Tuple[str, ...]] = None,
     dataset_secret: Optional[Tuple[str, ...]] = None,
     timeout: int = 0,
+    task_timeout: Optional[str] = None,
     show_logs: bool = True,
     allow_dirty: bool = False,
     dry_run: bool = False,
@@ -497,6 +505,7 @@ def run(
         propagate_failure=propagate_failure,
         propagate_preemption=propagate_preemption,
         synchronized_start_timeout=synchronized_start_timeout,
+        task_timeout=task_timeout,
         mounts=mounts,
         weka_buckets=weka_buckets,
         hostnames=None if hostname is None else list(hostname),
@@ -634,6 +643,7 @@ def build_experiment_spec(
     propagate_failure: Optional[bool] = None,
     propagate_preemption: Optional[bool] = None,
     synchronized_start_timeout: Optional[str] = None,
+    task_timeout: Optional[str] = None,
     mounts: Optional[List[Tuple[str, str]]] = None,
     weka_buckets: Optional[List[Tuple[str, str]]] = None,
     hostnames: Optional[List[str]] = None,
@@ -656,6 +666,7 @@ def build_experiment_spec(
             propagate_failure=propagate_failure,
             propagate_preemption=propagate_preemption,
             synchronized_start_timeout=synchronized_start_timeout,
+            timeout=task_timeout,
         )
         .with_env_var(name="GANTRY_VERSION", value=VERSION)
         .with_env_var(name="GITHUB_REPO", value=f"{github_account}/{github_repo}")
