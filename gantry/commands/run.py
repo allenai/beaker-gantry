@@ -277,7 +277,12 @@ from .main import CLICK_COMMAND_DEFAULTS, main
 @click.option(
     "-b", "--budget", type=str, help="""The budget account to associate with the experiment."""
 )
-@click.option("--preemptible", is_flag=True, help="""Mark the job as preemptible.""")
+@click.option(
+    "--preemptible/--not-preemptible",
+    is_flag=True,
+    help="""Mark the job as preemptible or not.""",
+    default=None,
+)
 @click.option("--stop-preemptible", is_flag=True, help="""Stop all preemptible on the cluster.""")
 @click.option(
     "--retries", type=int, help="""Specify the number of automatic retries for the experiment."""
@@ -325,7 +330,7 @@ def run(
     mount: Optional[Tuple[str, ...]] = None,
     weka: Optional[str] = None,
     budget: Optional[str] = None,
-    preemptible: bool = False,
+    preemptible: Optional[bool] = None,
     stop_preemptible: bool = False,
     retries: Optional[int] = None,
 ):
@@ -647,7 +652,7 @@ def build_experiment_spec(
     mounts: Optional[List[Tuple[str, str]]] = None,
     weka_buckets: Optional[List[Tuple[str, str]]] = None,
     hostnames: Optional[List[str]] = None,
-    preemptible: bool = False,
+    preemptible: Optional[bool] = None,
     retries: Optional[int] = None,
 ):
     task_spec = (
@@ -660,6 +665,7 @@ def build_experiment_spec(
             arguments=arguments,
             resources=task_resources,
             priority=priority,
+            preemptible=preemptible,
             replicas=replicas,
             leader_selection=leader_selection,
             host_networking=host_networking,
@@ -674,9 +680,6 @@ def build_experiment_spec(
         .with_env_var(name="GANTRY_TASK_NAME", value=task_name)
         .with_dataset("/gantry", beaker=entrypoint_dataset)
     )
-
-    if preemptible:
-        task_spec.context.preemptible = True
 
     if clusters:
         task_spec = task_spec.with_constraint(cluster=clusters)
