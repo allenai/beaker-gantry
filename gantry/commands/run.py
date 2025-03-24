@@ -341,10 +341,8 @@ def run(
 
     $ gantry run --name 'hello-world' -- python -c 'print("Hello, World!")'
     """
-    if not arg:
-        raise ConfigurationError(
-            "[ARGS]... are required! For example:\n$ gantry run -- python -c 'print(\"Hello, World!\")'"
-        )
+
+    validate_args(arg)
 
     if beaker_image is None and docker_image is None:
         beaker_image = constants.DEFAULT_IMAGE
@@ -779,3 +777,27 @@ def ensure_datasets(beaker: Beaker, *datasets: str) -> List[Tuple[str, Optional[
         dataset_id = beaker.dataset.get(dataset_name).id
         out.append((dataset_id, sub_path, path))
     return out
+
+
+def validate_args(arg: Tuple[str, ...]):
+    if not arg:
+        raise ConfigurationError(
+            "[ARGS]... are required! For example:\n$ gantry run -- python -c 'print(\"Hello, World!\")'"
+        )
+
+    try:
+        arg_index = sys.argv.index("--")
+    except ValueError:
+        raise ConfigurationError("[ARGS]... are required and must all come after '--'")
+
+    # NOTE: if a value was accidentally provided to a flag, like '--preemptible false', click will
+    # surprisingly add that value to the args. So we do a check here for that situation.
+    given_args = sys.argv[arg_index + 1 :]
+    invalid_args = arg[: -len(given_args)]
+    if invalid_args:
+        raise ConfigurationError(
+            f"Invalid options, found extra arguments before the '--': "
+            f"{', '.join([repr(s) for s in invalid_args])}.\n"
+            "Hint: you might be trying to pass a value to a FLAG option.\n"
+            "Try 'gantry run --help' for help."
+        )
