@@ -796,7 +796,8 @@ def validate_args(arg: Tuple[str, ...]):
     invalid_args = arg[: -len(given_args)]
     if invalid_args:
         raise ConfigurationError(
-            f"Invalid CLI option(s), found extra arguments before the '--': "
+            f"Invalid options, found extra arguments before the '--': "
             f"{', '.join([repr(s) for s in invalid_args])}.\n"
+            "Hint: you might be trying to pass a value to a FLAG option.\n"
             "Try 'gantry run --help' for help."
         )
