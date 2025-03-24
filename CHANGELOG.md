@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [v1.14.1](https://github.com/allenai/beaker-gantry/releases/tag/v1.14.1) - 2025-03-24
+
 ### Fixed
 
 - Made args parsing more robust to catch the scenario where a value is accidentally provided to a flag option.
