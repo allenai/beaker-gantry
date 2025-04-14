@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [v1.15.0](https://github.com/allenai/beaker-gantry/releases/tag/v1.15.0) - 2025-04-14
+
 ### Added
 
 - Added `--secret-env` as an alias for the `--env-secret` option to the `gantry run` command to be consistent with the corresponding flag in `beaker session create`.
