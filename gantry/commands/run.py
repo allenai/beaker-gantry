@@ -153,6 +153,7 @@ from .main import CLICK_COMMAND_DEFAULTS, main
 )
 @click.option(
     "--env-secret",
+    "--secret-env",
     type=str,
     help="""Environment variables to add the Beaker experiment from Beaker secrets.
     Should be in the form '{NAME}={SECRET_NAME}'.""",
