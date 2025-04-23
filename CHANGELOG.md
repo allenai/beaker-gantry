@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Changed
+
+- Gantry now uses the new RPC interface to follow experiments / stream logs.
+
 ## [v1.15.0](https://github.com/allenai/beaker-gantry/releases/tag/v1.15.0) - 2025-04-14
 
 ### Added
