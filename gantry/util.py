@@ -2,7 +2,7 @@ import json
 import tempfile
 import time
 from dataclasses import asdict, dataclass
-from datetime import datetime, timedelta
+from datetime import timedelta
 from enum import Enum
 from pathlib import Path
 from typing import Optional, Tuple, cast
@@ -148,36 +148,44 @@ def follow_experiment(
 ) -> Job:
     console = rich.get_console()
 
-    # Wait for job to start...
-    job: Optional[Job] = beaker.experiment.tasks(experiment.id)[0].latest_job  # type: ignore
-    if job is None:
-        print("Waiting for job to launch..", end="")
-        while job is None:
-            time.sleep(1.0)
-            print(".", end="")
-            job = beaker.experiment.tasks(experiment.id)[0].latest_job  # type: ignore
+    with console.status("[i]waiting...[/]", spinner="point", speed=0.8) as status:
+        # Wait for job to start...
+        job: Optional[Job] = beaker.experiment.tasks(experiment.id)[0].latest_job  # type: ignore
+        if job is None:
+            while job is None:
+                time.sleep(1.0)
+                job = beaker.experiment.tasks(experiment.id)[0].latest_job  # type: ignore
 
-    exit_code: Optional[int] = job.status.exit_code
+        # Pull events until job is running (or fails)...
+        events = set()
+        while not (job.is_finalized or job.is_running):
+            job = beaker.job.get(job.id)
+            for event in sorted(
+                beaker.job.summarized_events(job), key=lambda event: event.latest_occurrence
+            ):
+                if event not in events:
+                    status.update(f"[i]{event.latest_message}[/]")
+                    events.add(event)
+                    if event.status.lower() == "started":
+                        break
+            else:
+                time.sleep(1.0)
+                continue
+            break
 
-    stream_logs = exit_code is None and not job.is_finalized
-    if stream_logs:
-        print()
-        rich.get_console().rule("Logs")
-        for line_bytes in beaker.job.follow(
-            job,
-            timeout=timeout if timeout > 0 else None,
-            include_timestamps=False,
-            since=datetime.utcnow() - timedelta(seconds=5) if tail else None,
-        ):
-            line = line_bytes.decode(errors="ignore")
-            if line.endswith("\n"):
-                line = line[:-1]
-            console.print(line, highlight=False, markup=False)
-        rich.get_console().rule("End logs")
-        print()
+    print()
+    rich.get_console().rule("Logs")
+    time.sleep(2.0)  # wait a moment to make sure logs are available before experiment finishes
+    for job_log in beaker.job.follow_structured(
+        job, tail_lines=10 if tail else None, timeout=timeout if timeout > 0 else None
+    ):
+        console.print(job_log.message, highlight=False, markup=False)
+    print()
+    rich.get_console().rule("End logs")
+    print()
 
-        # Refresh the job.
-        job = beaker.job.get(job.id)
+    # Refresh the job.
+    job = beaker.job.get(job.id)
 
     return job
 
@@ -186,17 +194,11 @@ def display_logs(beaker: Beaker, job: Job) -> Job:
     console = rich.get_console()
     print()
     rich.get_console().rule("Logs")
-    for line_bytes in beaker.job.logs(job, quiet=True):
-        line = line_bytes.decode(errors="ignore")
-        if line.endswith("\n"):
-            line = line[:-1]
-        console.print(line, highlight=False, markup=False)
+    for job_log in beaker.job.structured_logs(job, quiet=True, follow=True):
+        console.print(job_log.message, highlight=False, markup=False)
     rich.get_console().rule("End logs")
     print()
-
-    # Refresh the job.
-    job = beaker.job.get(job.id)
-    return job
+    return beaker.job.get(job.id)
 
 
 def display_results(beaker: Beaker, experiment: Experiment, job: Job):
