@@ -159,15 +159,11 @@ if [[ -z "$NO_PYTHON" ]]; then
     fi
     export PYTHONPATH
     
-    # Create directory for results.
-    # shellcheck disable=SC2296
-    mkdir -p "${{ RESULTS_DIR }}/.gantry"
-    
     
     echo "
-#############################
-# [GANTRY] Environment info #
-#############################
+####################################
+# [GANTRY] Python environment info #
+####################################
 "
     
     echo "Using $(python --version) from $(which python)"
@@ -178,6 +174,15 @@ if [[ -z "$NO_PYTHON" ]]; then
         pip freeze
     fi
 fi
+
+echo "
+######################################
+# [GANTRY] Finalizing environment... #
+######################################
+"
+# Create directory for results.
+echo "Creating results dir at '${RESULTS_DIR}'..."
+mkdir -p "${RESULTS_DIR}/.gantry"
 
 echo "
 #############################

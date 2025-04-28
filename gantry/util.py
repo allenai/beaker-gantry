@@ -150,11 +150,8 @@ def follow_experiment(
 
     with console.status("[i]waiting...[/]", spinner="point", speed=0.8) as status:
         # Wait for job to start...
-        job: Optional[Job] = beaker.experiment.tasks(experiment.id)[0].latest_job  # type: ignore
-        if job is None:
-            while job is None:
-                time.sleep(1.0)
-                job = beaker.experiment.tasks(experiment.id)[0].latest_job  # type: ignore
+        while (job := beaker.experiment.latest_job(experiment, strict=False)) is None:
+            time.sleep(1.0)
 
         # Pull events until job is running (or fails)...
         events = set()

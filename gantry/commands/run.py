@@ -288,6 +288,12 @@ from .main import CLICK_COMMAND_DEFAULTS, main
 @click.option(
     "--retries", type=int, help="""Specify the number of automatic retries for the experiment."""
 )
+@click.option(
+    "--results",
+    type=str,
+    default=constants.RESULTS_DIR,
+    help=f"""Specify the results directory on the container. Defaults to '{constants.RESULTS_DIR}'.""",
+)
 def run(
     arg: Tuple[str, ...],
     name: Optional[str] = None,
@@ -334,6 +340,7 @@ def run(
     preemptible: Optional[bool] = None,
     stop_preemptible: bool = False,
     retries: Optional[int] = None,
+    results: str = constants.RESULTS_DIR,
 ):
     """
     Run an experiment on Beaker.
@@ -515,6 +522,7 @@ def run(
         hostnames=None if hostname is None else list(hostname),
         preemptible=preemptible,
         retries=retries,
+        results=results,
     )
 
     if save_spec:
@@ -653,13 +661,14 @@ def build_experiment_spec(
     hostnames: Optional[List[str]] = None,
     preemptible: Optional[bool] = None,
     retries: Optional[int] = None,
+    results: str = constants.RESULTS_DIR,
 ):
     task_spec = (
         TaskSpec.new(
             task_name,
             beaker_image=beaker_image,
             docker_image=docker_image,
-            result_path=constants.RESULTS_DIR,
+            result_path=results,
             command=["bash", "/gantry/entrypoint.sh"],
             arguments=arguments,
             resources=task_resources,
@@ -677,6 +686,7 @@ def build_experiment_spec(
         .with_env_var(name="GITHUB_REPO", value=f"{github_account}/{github_repo}")
         .with_env_var(name="GIT_REF", value=git_ref)
         .with_env_var(name="GANTRY_TASK_NAME", value=task_name)
+        .with_env_var(name="RESULTS_DIR", value=results)
         .with_dataset("/gantry", beaker=entrypoint_dataset)
     )
 
