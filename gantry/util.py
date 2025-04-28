@@ -213,10 +213,13 @@ def display_results(beaker: Beaker, workload: BeakerWorkload, job: BeakerJob):
     assert job.status.exited is not None
     runtime = job.status.exited - job.status.started  # type: ignore
 
+    results_ds = beaker.dataset.get(job.assignment_details.result_dataset_id)
+
     print(
         f"[b green]\N{check mark}[/] [b cyan]{workload.experiment.name}[/] completed successfully\n"
         f"[b]Experiment:[/] {beaker.workload.url(workload)}\n"
-        f"[b]Runtime:[/] {format_timedelta(runtime)}\n"
+        f"[b]Results:[/] {beaker.dataset.url(results_ds)}\n"
+        f"[b]Runtime:[/] {format_timedelta(runtime)}"
     )
 
     if job.metrics:
@@ -263,20 +266,29 @@ def ensure_entrypoint_dataset(beaker: Beaker) -> BeakerDataset:
 
     import gantry
 
-    workspace_id = beaker.workspace.get().id
+    workspace = beaker.workspace.get()
 
     # Get hash of the local entrypoint source file.
     sha256_hash = hashlib.sha256()
     contents = replace_tags(read_binary(gantry, constants.ENTRYPOINT))
     sha256_hash.update(contents)
 
-    entrypoint_dataset_name = f"gantry-v{VERSION}-{workspace_id}-{sha256_hash.hexdigest()[:6]}"
+    entrypoint_dataset_name = f"gantry-v{VERSION}-{workspace.id}-{sha256_hash.hexdigest()[:6]}"
+
+    def get_dataset() -> Optional[BeakerDataset]:
+        matching_datasets = list(
+            beaker.dataset.list(
+                workspace=workspace, name_or_description=entrypoint_dataset_name, results=False
+            )
+        )
+        if matching_datasets:
+            return matching_datasets[0]
+        else:
+            return None
 
     # Ensure gantry entrypoint dataset exists.
-    gantry_entrypoint_dataset: BeakerDataset
-    try:
-        gantry_entrypoint_dataset = beaker.dataset.get(entrypoint_dataset_name)
-    except BeakerDatasetNotFound:
+    gantry_entrypoint_dataset = get_dataset()
+    if gantry_entrypoint_dataset is None:
         # Create it.
         print(f"Creating entrypoint dataset '{entrypoint_dataset_name}'")
         try:
@@ -290,7 +302,10 @@ def ensure_entrypoint_dataset(beaker: Beaker) -> BeakerDataset:
                 )
         except BeakerDatasetConflict:  # could be in a race with another `gantry` process.
             time.sleep(1.0)
-            gantry_entrypoint_dataset = beaker.dataset.get(entrypoint_dataset_name)
+            gantry_entrypoint_dataset = get_dataset()
+
+    if gantry_entrypoint_dataset is None:
+        raise RuntimeError(f"Failed to resolve entrypoint dataset '{entrypoint_dataset_name}'")
 
     # Verify contents.
     ds_files = list(beaker.dataset.list_files(gantry_entrypoint_dataset))
