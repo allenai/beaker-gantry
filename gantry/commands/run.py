@@ -686,6 +686,7 @@ def build_experiment_spec(
         .with_env_var(name="GITHUB_REPO", value=f"{github_account}/{github_repo}")
         .with_env_var(name="GIT_REF", value=git_ref)
         .with_env_var(name="GANTRY_TASK_NAME", value=task_name)
+        .with_env_var(name="RESULTS_DIR", value=results)
         .with_dataset("/gantry", beaker=entrypoint_dataset)
     )
 

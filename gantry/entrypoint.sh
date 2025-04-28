@@ -161,9 +161,9 @@ if [[ -z "$NO_PYTHON" ]]; then
     
     
     echo "
-#############################
-# [GANTRY] Environment info #
-#############################
+####################################
+# [GANTRY] Python environment info #
+####################################
 "
     
     echo "Using $(python --version) from $(which python)"
@@ -175,8 +175,13 @@ if [[ -z "$NO_PYTHON" ]]; then
     fi
 fi
 
+echo "
+######################################
+# [GANTRY] Finalizing environment... #
+######################################
+"
 # Create directory for results.
-# shellcheck disable=SC2296
+echo "Creating results dir at '${RESULTS_DIR}'..."
 mkdir -p "${RESULTS_DIR}/.gantry"
 
 echo "
