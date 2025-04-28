@@ -7,7 +7,7 @@
 <hr/>
 <!-- TODO: Add badges once this is open source -->
 <a href="https://github.com/allenai/beaker-gantry/actions">
-    <img alt="CI" src="https://github.com/allenai/beaker-gantry/workflows/Main/badge.svg?event=push&branch=main">
+    <img alt="CI" src="https://github.com/allenai/beaker-gantry/actions/workflows/main.yml/badge.svg">
 </a>
 <a href="https://pypi.org/project/beaker-gantry/">
     <img alt="PyPI" src="https://img.shields.io/pypi/v/beaker-gantry">
@@ -15,8 +15,10 @@
 <a href="https://github.com/allenai/beaker-gantry/blob/main/LICENSE">
     <img alt="License" src="https://img.shields.io/github/license/allenai/beaker-gantry.svg?color=blue&cachedrop">
 </a>
-<br/>
+<br/><br/>
 </div>
+
+![2025-04-23 16 40 53](https://github.com/user-attachments/assets/b888c8cb-4df9-49f6-9891-492f56d0df78)
 
 ⚡️*Easy to use*
 
