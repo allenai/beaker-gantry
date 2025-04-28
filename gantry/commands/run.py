@@ -10,16 +10,17 @@ import click
 import rich
 from beaker import (
     Beaker,
-    ExperimentConflict,
-    ExperimentSpec,
-    ImageNotFound,
-    Job,
-    JobTimeoutError,
-    Priority,
-    RetrySpec,
-    SecretNotFound,
-    TaskResources,
-    TaskSpec,
+    BeakerExperimentSpec,
+    BeakerJob,
+    BeakerJobPriority,
+    BeakerRetrySpec,
+    BeakerTaskResources,
+    BeakerTaskSpec,
+)
+from beaker.exceptions import (
+    BeakerExperimentConflict,
+    BeakerImageNotFound,
+    BeakerSecretNotFound,
 )
 from rich import print, prompt
 
@@ -208,7 +209,7 @@ from .main import CLICK_COMMAND_DEFAULTS, main
 )
 @click.option(
     "--priority",
-    type=click.Choice([str(p) for p in Priority]),
+    type=click.Choice([str(p) for p in BeakerJobPriority]),
     help="The job priority. If you don't specify at least one cluster, priority will default to 'preemptible'.",
 )
 @click.option(
@@ -284,7 +285,6 @@ from .main import CLICK_COMMAND_DEFAULTS, main
     help="""Mark the job as preemptible or not.""",
     default=None,
 )
-@click.option("--stop-preemptible", is_flag=True, help="""Stop all preemptible on the cluster.""")
 @click.option(
     "--retries", type=int, help="""Specify the number of automatic retries for the experiment."""
 )
@@ -338,7 +338,6 @@ def run(
     weka: Optional[str] = None,
     budget: Optional[str] = None,
     preemptible: Optional[bool] = None,
-    stop_preemptible: bool = False,
     retries: Optional[int] = None,
     results: str = constants.RESULTS_DIR,
 ):
@@ -369,7 +368,7 @@ def run(
     if not budget:
         raise ConfigurationError("Budget account must be specified!")
 
-    task_resources = TaskResources(
+    task_resources = BeakerTaskResources(
         cpu_count=cpus, gpu_count=gpus, memory=memory, shared_memory=shared_memory
     )
 
@@ -387,247 +386,222 @@ def run(
         )
 
     # Initialize Beaker client and validate workspace.
-    beaker = util.ensure_workspace(
-        workspace=workspace, yes=yes, gh_token_secret=gh_token_secret, public_repo=is_public
-    )
+    with util.init_client(workspace=workspace, yes=yes) as beaker:
+        if beaker_image is not None and beaker_image != constants.DEFAULT_IMAGE:
+            try:
+                beaker_image = beaker.image.get(beaker_image).id
+            except BeakerImageNotFound:
+                raise ConfigurationError(f"Beaker image '{beaker_image}' not found")
 
-    if beaker_image is not None and beaker_image != constants.DEFAULT_IMAGE:
-        try:
-            beaker_image = beaker.image.get(beaker_image).id
-        except ImageNotFound:
-            raise ConfigurationError(f"Beaker image '{beaker_image}' not found")
+        # Get the entrypoint dataset.
+        entrypoint_dataset = util.ensure_entrypoint_dataset(beaker)
 
-    # Get the entrypoint dataset.
-    entrypoint_dataset = util.ensure_entrypoint_dataset(beaker)
+        # Get / set the GitHub token secret.
+        if not is_public:
+            try:
+                beaker.secret.get(gh_token_secret)
+            except BeakerSecretNotFound:
+                print_stderr(
+                    f"[yellow]GitHub token secret '{gh_token_secret}' not found in workspace.[/]\n"
+                    f"You can create a suitable GitHub token by going to https://github.com/settings/tokens/new "
+                    f"and generating a token with the '\N{ballot box with check} repo' scope."
+                )
+                gh_token = prompt.Prompt.ask(
+                    "[i]Please paste your GitHub token here[/]",
+                    password=True,
+                )
+                if not gh_token:
+                    raise ConfigurationError("token cannot be empty!")
+                beaker.secret.write(gh_token_secret, gh_token)
+                print(
+                    f"GitHub token secret uploaded to workspace as '{gh_token_secret}'.\n"
+                    f"If you need to update this secret in the future, use the command:\n"
+                    f"[i]$ gantry config set-gh-token[/]"
+                )
 
-    # Get / set the GitHub token secret.
-    if not is_public:
-        try:
-            beaker.secret.get(gh_token_secret)
-        except SecretNotFound:
-            print_stderr(
-                f"[yellow]GitHub token secret '{gh_token_secret}' not found in workspace.[/]\n"
-                f"You can create a suitable GitHub token by going to https://github.com/settings/tokens/new "
-                f"and generating a token with the '\N{ballot box with check} repo' scope."
-            )
-            gh_token = prompt.Prompt.ask(
-                "[i]Please paste your GitHub token here[/]",
-                password=True,
-            )
-            if not gh_token:
-                raise ConfigurationError("token cannot be empty!")
-            beaker.secret.write(gh_token_secret, gh_token)
+            gh_token_secret = util.ensure_github_token_secret(beaker, gh_token_secret)
+
+        # Validate the input datasets.
+        datasets_to_use = ensure_datasets(beaker, *dataset) if dataset else []
+
+        env_vars = []
+        for e in env or []:
+            try:
+                env_name, val = e.split("=", 1)
+            except ValueError:
+                raise ValueError("Invalid --env option: {e}")
+            env_vars.append((env_name, val))
+
+        env_secrets = []
+        for e in env_secret or []:
+            try:
+                env_secret_name, secret = e.split("=", 1)
+            except ValueError:
+                raise ValueError(f"Invalid --env-secret option: '{e}'")
+            env_secrets.append((env_secret_name, secret))
+
+        dataset_secrets = []
+        for ds in dataset_secret or []:
+            try:
+                secret, mount_path = ds.split(":", 1)
+            except ValueError:
+                raise ValueError(f"Invalid --dataset-secret option: '{ds}'")
+            dataset_secrets.append((secret, mount_path))
+
+        mounts = []
+        for m in mount or []:
+            try:
+                source, target = m.split(":", 1)
+            except ValueError:
+                raise ValueError(f"Invalid --mount option: '{m}'")
+            mounts.append((source, target))
+
+        weka_buckets = []
+        for m in weka or []:
+            try:
+                source, target = m.split(":", 1)
+            except ValueError:
+                raise ValueError(f"Invalid --weka option: '{m}'")
+            weka_buckets.append((source, target))
+
+        # Validate clusters.
+        if cluster:
+            cl_objects = beaker.cluster.list()
+            final_clusters = []
+            for pat in cluster:
+                matching_clusters = [cl.name for cl in cl_objects if fnmatch(cl.name, pat)]
+                if matching_clusters:
+                    final_clusters.extend(matching_clusters)
+                else:
+                    raise ConfigurationError(f"cluster '{pat}' did not match any Beaker clusters")
+            cluster = list(set(final_clusters))  # type: ignore
+
+        # Default to preemptible when no cluster has been specified.
+        if not cluster and preemptible is None:
+            preemptible = True
+
+        # Initialize experiment and task spec.
+        spec = build_experiment_spec(
+            task_name=task_name,
+            clusters=list(cluster or []),
+            task_resources=task_resources,
+            arguments=list(arg),
+            entrypoint_dataset=entrypoint_dataset.id,
+            github_account=github_account,
+            github_repo=github_repo,
+            git_ref=git_ref,
+            budget=budget,
+            description=description,
+            beaker_image=beaker_image,
+            docker_image=docker_image,
+            gh_token_secret=gh_token_secret if not is_public else None,
+            conda=conda,
+            pip=pip,
+            venv=venv,
+            datasets=datasets_to_use,
+            env=env_vars,
+            env_secrets=env_secrets,
+            dataset_secrets=dataset_secrets,
+            priority=priority,
+            install=install,
+            no_python=no_python,
+            no_conda=no_conda,
+            replicas=replicas,
+            leader_selection=leader_selection,
+            host_networking=host_networking or (bool(replicas) and leader_selection),
+            propagate_failure=propagate_failure,
+            propagate_preemption=propagate_preemption,
+            synchronized_start_timeout=synchronized_start_timeout,
+            task_timeout=task_timeout,
+            mounts=mounts,
+            weka_buckets=weka_buckets,
+            hostnames=None if hostname is None else list(hostname),
+            preemptible=preemptible,
+            retries=retries,
+            results=results,
+        )
+
+        if save_spec:
+            if (
+                Path(save_spec).is_file()
+                and not yes
+                and not prompt.Confirm.ask(
+                    f"[yellow]The file '{save_spec}' already exists. "
+                    f"[i]Are you sure you want to overwrite it?[/][/]"
+                )
+            ):
+                raise KeyboardInterrupt
+            spec.to_file(save_spec)
+            print(f"Experiment spec saved to {save_spec}")
+
+        if not name:
+            default_name = util.unique_name()
+            if yes:
+                name = default_name
+            else:
+                name = prompt.Prompt.ask(
+                    "[i]What would you like to call this experiment?[/]", default=util.unique_name()
+                )
+
+        if not name:
+            raise ConfigurationError("Experiment name cannot be empty!")
+
+        if dry_run:
+            rich.get_console().rule("[b]Dry run[/]")
             print(
-                f"GitHub token secret uploaded to workspace as '{gh_token_secret}'.\n"
-                f"If you need to update this secret in the future, use the command:\n"
-                f"[i]$ gantry config set-gh-token[/]"
+                f"[b]Workspace:[/] {beaker.workspace.url()}\n"
+                f"[b]Commit:[/] https://github.com/{github_account}/{github_repo}/commit/{git_ref}\n"
+                f"[b]Name:[/] {name}\n"
+                f"[b]Experiment spec:[/]",
+                spec.to_json(),
             )
+            return
 
-        gh_token_secret = util.ensure_github_token_secret(beaker, gh_token_secret)
+        name_prefix = name
+        while True:
+            try:
+                workload = beaker.experiment.create(name=name, spec=spec)
+                break
+            except BeakerExperimentConflict:
+                name = (
+                    name_prefix
+                    + "-"
+                    + random.choice(string.ascii_lowercase)
+                    + random.choice(string.ascii_lowercase)
+                    + random.choice(string.digits)
+                    + random.choice(string.digits)
+                )
 
-    # Validate the input datasets.
-    datasets_to_use = ensure_datasets(beaker, *dataset) if dataset else []
+        print(f"Experiment submitted, see progress at {beaker.workload.url(workload)}")
 
-    env_vars = []
-    for e in env or []:
+        # Can return right away if timeout is 0.
+        if timeout == 0:
+            return
+
+        job: Optional[BeakerJob] = None
         try:
-            env_name, val = e.split("=", 1)
-        except ValueError:
-            raise ValueError("Invalid --env option: {e}")
-        env_vars.append((env_name, val))
-
-    env_secrets = []
-    for e in env_secret or []:
-        try:
-            env_secret_name, secret = e.split("=", 1)
-        except ValueError:
-            raise ValueError(f"Invalid --env-secret option: '{e}'")
-        env_secrets.append((env_secret_name, secret))
-
-    dataset_secrets = []
-    for ds in dataset_secret or []:
-        try:
-            secret, mount_path = ds.split(":", 1)
-        except ValueError:
-            raise ValueError(f"Invalid --dataset-secret option: '{ds}'")
-        dataset_secrets.append((secret, mount_path))
-
-    mounts = []
-    for m in mount or []:
-        try:
-            source, target = m.split(":", 1)
-        except ValueError:
-            raise ValueError(f"Invalid --mount option: '{m}'")
-        mounts.append((source, target))
-
-    weka_buckets = []
-    for m in weka or []:
-        try:
-            source, target = m.split(":", 1)
-        except ValueError:
-            raise ValueError(f"Invalid --weka option: '{m}'")
-        weka_buckets.append((source, target))
-
-    # Validate clusters.
-    if cluster:
-        cl_objects = beaker.cluster.list()
-        final_clusters = []
-        for pat in cluster:
-            matching_clusters = [cl.full_name for cl in cl_objects if fnmatch(cl.full_name, pat)]
-            if matching_clusters:
-                final_clusters.extend(matching_clusters)
-            else:
-                raise ConfigurationError(f"cluster '{pat}' did not match any Beaker clusters")
-        cluster = list(set(final_clusters))  # type: ignore
-
-    # Default to preemptible priority when no cluster has been specified.
-    if not cluster and priority is None:
-        priority = Priority.preemptible
-
-    # Initialize experiment and task spec.
-    spec = build_experiment_spec(
-        task_name=task_name,
-        clusters=list(cluster or []),
-        task_resources=task_resources,
-        arguments=list(arg),
-        entrypoint_dataset=entrypoint_dataset.id,
-        github_account=github_account,
-        github_repo=github_repo,
-        git_ref=git_ref,
-        budget=budget,
-        description=description,
-        beaker_image=beaker_image,
-        docker_image=docker_image,
-        gh_token_secret=gh_token_secret if not is_public else None,
-        conda=conda,
-        pip=pip,
-        venv=venv,
-        datasets=datasets_to_use,
-        env=env_vars,
-        env_secrets=env_secrets,
-        dataset_secrets=dataset_secrets,
-        priority=priority,
-        install=install,
-        no_python=no_python,
-        no_conda=no_conda,
-        replicas=replicas,
-        leader_selection=leader_selection,
-        host_networking=host_networking or (bool(replicas) and leader_selection),
-        propagate_failure=propagate_failure,
-        propagate_preemption=propagate_preemption,
-        synchronized_start_timeout=synchronized_start_timeout,
-        task_timeout=task_timeout,
-        mounts=mounts,
-        weka_buckets=weka_buckets,
-        hostnames=None if hostname is None else list(hostname),
-        preemptible=preemptible,
-        retries=retries,
-        results=results,
-    )
-
-    if save_spec:
-        if (
-            Path(save_spec).is_file()
-            and not yes
-            and not prompt.Confirm.ask(
-                f"[yellow]The file '{save_spec}' already exists. "
-                f"[i]Are you sure you want to overwrite it?[/][/]"
+            job = util.follow_workload(beaker, workload, timeout=timeout, show_logs=show_logs)
+        except (TermInterrupt, BeakerJobTimeoutError) as exc:
+            print_stderr(f"[red][bold]{exc.__class__.__name__}:[/] [i]{exc}[/][/]")
+            beaker.workload.cancel(workload)
+            print_stderr("[yellow]Experiment cancelled.[/]")
+            sys.exit(1)
+        except KeyboardInterrupt as exc:
+            print_stderr(f"[red][bold]{exc.__class__.__name__}:[/] [i]{exc}[/][/]")
+            print(f"See the experiment at {beaker.workload.url(workload)}")
+            print_stderr(
+                f"[yellow]To cancel the experiment, run:\n[i]$ gantry stop {workload.experiment.id}[/][/]"
             )
-        ):
-            raise KeyboardInterrupt
-        spec.to_file(save_spec)
-        print(f"Experiment spec saved to {save_spec}")
+            sys.exit(1)
 
-    if not name:
-        default_name = util.unique_name()
-        if yes:
-            name = default_name
-        else:
-            name = prompt.Prompt.ask(
-                "[i]What would you like to call this experiment?[/]", default=util.unique_name()
-            )
-
-    if not name:
-        raise ConfigurationError("Experiment name cannot be empty!")
-
-    if dry_run:
-        rich.get_console().rule("[b]Dry run[/]")
-        print(
-            f"[b]Workspace:[/] {beaker.workspace.url()}\n"
-            f"[b]Commit:[/] https://github.com/{github_account}/{github_repo}/commit/{git_ref}\n"
-            f"[b]Name:[/] {name}\n"
-            f"[b]Experiment spec:[/]",
-            spec.to_json(),
-        )
-        return
-
-    name_prefix = name
-    while True:
-        try:
-            experiment = beaker.experiment.create(name, spec)
-            break
-        except ExperimentConflict:
-            name = (
-                name_prefix
-                + "-"
-                + random.choice(string.ascii_lowercase)
-                + random.choice(string.ascii_lowercase)
-                + random.choice(string.digits)
-                + random.choice(string.digits)
-            )
-
-    print(f"Experiment submitted, see progress at {beaker.experiment.url(experiment)}")
-
-    if stop_preemptible:
-        if priority == Priority.preemptible:
-            print_stderr("[yellow]You cannot preempt other jobs when your job is preemptible.[/]")
-        elif not cluster:
-            print_stderr("[yellow]Preempt jobs requires specifying a cluster.[/]")
-        elif len(cluster) > 1:
-            print_stderr("[yellow]Preempt jobs requires specifying a single cluster.[/]")
-        elif not dry_run:
-            print(f"Preempting jobs on cluster {cluster[0]}...")
-            preempted = beaker.cluster.preempt_jobs(cluster[0], ignore_failures=True)
-            if preempted:
-                print(f"Preempted {len(preempted)} jobs on cluster {cluster[0]}")
-            else:
-                print("No more jobs to preempt")
-
-    # Can return right away if timeout is 0.
-    if timeout == 0:
-        return
-
-    job: Optional[Job] = None
-    try:
-        if show_logs:
-            job = util.follow_experiment(beaker, experiment, timeout=timeout)
-        else:
-            experiment = beaker.experiment.wait_for(
-                experiment, timeout=timeout if timeout > 0 else None
-            )[0]
-            job = beaker.experiment.tasks(experiment)[0].latest_job  # type: ignore
-            assert job is not None
-    except (TermInterrupt, JobTimeoutError) as exc:
-        print_stderr(f"[red][bold]{exc.__class__.__name__}:[/] [i]{exc}[/][/]")
-        beaker.experiment.stop(experiment)
-        print_stderr("[yellow]Experiment cancelled.[/]")
-        sys.exit(1)
-    except KeyboardInterrupt as exc:
-        print_stderr(f"[red][bold]{exc.__class__.__name__}:[/] [i]{exc}[/][/]")
-        print(f"See the experiment at {beaker.experiment.url(experiment)}")
-        print_stderr(
-            f"[yellow]To cancel the experiment, run:\n[i]$ gantry stop {experiment.id}[/][/]"
-        )
-        sys.exit(1)
-
-    util.display_results(beaker, experiment, job)
+        util.display_results(beaker, workload, job)
 
 
 def build_experiment_spec(
     *,
     task_name: str,
     clusters: List[str],
-    task_resources: TaskResources,
+    task_resources: BeakerTaskResources,
     arguments: List[str],
     entrypoint_dataset: str,
     github_account: str,
@@ -645,7 +619,7 @@ def build_experiment_spec(
     env: Optional[List[Tuple[str, str]]] = None,
     env_secrets: Optional[List[Tuple[str, str]]] = None,
     dataset_secrets: Optional[List[Tuple[str, str]]] = None,
-    priority: Optional[Union[str, Priority]] = None,
+    priority: Optional[Union[str, BeakerJobPriority]] = None,
     install: Optional[str] = None,
     no_python: bool = False,
     no_conda: bool = False,
@@ -664,7 +638,7 @@ def build_experiment_spec(
     results: str = constants.RESULTS_DIR,
 ):
     task_spec = (
-        TaskSpec.new(
+        BeakerTaskSpec.new(
             task_name,
             beaker_image=beaker_image,
             docker_image=docker_image,
@@ -761,11 +735,11 @@ def build_experiment_spec(
         for source, target in weka_buckets:
             task_spec = task_spec.with_dataset(target, weka=source)
 
-    return ExperimentSpec(
+    return BeakerExperimentSpec(
         description=description,
         budget=budget,
         tasks=[task_spec],
-        retry=None if not retries else RetrySpec(allowed_task_retries=retries),
+        retry=None if not retries else BeakerRetrySpec(allowed_task_retries=retries),
     )
 
 

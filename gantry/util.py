@@ -11,21 +11,22 @@ import requests
 import rich
 from beaker import (
     Beaker,
-    Dataset,
-    DatasetConflict,
-    DatasetNotFound,
-    Digest,
-    Experiment,
-    Job,
-    JobKind,
-    SecretNotFound,
-    WorkspaceNotSet,
+    BeakerDataset,
+    BeakerJob,
+    BeakerSortOrder,
+    BeakerWorkload,
+    BeakerWorkloadType,
+)
+from beaker.exceptions import (
+    BeakerDatasetConflict,
+    BeakerDatasetNotFound,
+    BeakerSecretNotFound,
+    BeakerWorkspaceNotSet,
 )
 from rich import print, prompt
 from rich.console import Console
 
 from . import constants
-from .constants import GITHUB_TOKEN_SECRET
 from .exceptions import *
 from .version import VERSION
 
@@ -106,125 +107,120 @@ def parse_git_remote_url(url: str) -> Tuple[str, str]:
     return account, repo
 
 
-def get_latest_experiment(
+def get_latest_workload(
     beaker: Beaker,
     *,
-    author: Optional[str] = None,
-    workspace: Optional[str] = None,
+    author_name: Optional[str] = None,
+    workspace_name: Optional[str] = None,
     running: bool = False,
-) -> Optional[Experiment]:
-    workspace_id = beaker.workspace.get(workspace=workspace).id
+) -> Optional[BeakerWorkload]:
+    workspace = beaker.workspace.get(workspace_name)
 
-    jobs = [
-        job
-        for job in beaker.job.list(
-            author=author if author is not None else beaker.account.whoami(),
-            kind=JobKind.execution,
-            finalized=False,
+    workloads = list(
+        beaker.workload.list(
+            workspace=workspace,
+            finalized=not running,
+            workload_type=BeakerWorkloadType.experiment,
+            sort_order=BeakerSortOrder.descending,
+            sort_field="created",
+            author=None if author_name is None else beaker.user.get(author_name),
+            limit=1,
         )
-        if job.workspace == workspace_id
-    ]
+    )
 
-    if running:
-        jobs = [job for job in jobs if job.is_running]
-        jobs = sorted(
-            jobs,
-            key=lambda j: j.status.started,  # type: ignore
-            reverse=True,
-        )
-    else:
-        jobs = sorted(jobs, key=lambda j: j.status.created, reverse=True)
-
-    if jobs:
-        job = jobs[0]
-        assert job.execution is not None
-        return beaker.experiment.get(job.execution.experiment)
+    if workloads:
+        return workloads[0]
     else:
         return None
 
 
-def follow_experiment(
-    beaker: Beaker, experiment: Experiment, timeout: int = 0, tail: bool = False
-) -> Job:
+def follow_workload(
+    beaker: Beaker,
+    workload: BeakerWorkload,
+    timeout: int = 0,
+    tail: bool = False,
+    show_logs: bool = True,
+) -> BeakerJob:
     console = rich.get_console()
+    start_time = time.monotonic()
 
     with console.status("[i]waiting...[/]", spinner="point", speed=0.8) as status:
         # Wait for job to start...
-        while (job := beaker.experiment.latest_job(experiment, strict=False)) is None:
+        while (job := beaker.workload.get_latest_job(workload)) is None:
             time.sleep(1.0)
 
         # Pull events until job is running (or fails)...
         events = set()
-        while not (job.is_finalized or job.is_running):
+        while job.status.finalized.ByteSize() == 0:
+            if timeout > 0 and (time.monotonic() - start_time) > timeout:
+                raise BeakerJobTimeoutError(f"Timed out while waiting for job '{job.id}' to finish")
+
             job = beaker.job.get(job.id)
-            for event in sorted(
-                beaker.job.summarized_events(job), key=lambda event: event.latest_occurrence
+
+            for event in beaker.job.list_summarized_events(
+                job, sort_order=BeakerSortOrder.descending, sort_field="latest_occurrence"
             ):
-                if event not in events:
+                event_hashable = (event.latest_occurrence.ToSeconds(), event.latest_message)
+                if event_hashable not in events:
                     status.update(f"[i]{event.latest_message}[/]")
-                    events.add(event)
-                    if event.status.lower() == "started":
+                    events.add(event_hashable)
+                    if show_logs and event.status.lower() == "started":
                         break
             else:
                 time.sleep(1.0)
                 continue
+
             break
 
-    print()
-    rich.get_console().rule("Logs")
-    time.sleep(2.0)  # wait a moment to make sure logs are available before experiment finishes
-    for job_log in beaker.job.follow_structured(
-        job, tail_lines=10 if tail else None, timeout=timeout if timeout > 0 else None
-    ):
-        console.print(job_log.message, highlight=False, markup=False)
-    print()
-    rich.get_console().rule("End logs")
-    print()
+    if show_logs:
+        print()
+        rich.get_console().rule("Logs")
+        time.sleep(2.0)  # wait a moment to make sure logs are available before experiment finishes
+        for job_log in beaker.job.logs(job, tail_lines=10 if tail else None, follow=True):
+            console.print(job_log.message.decode(), highlight=False, markup=False)
+            if timeout > 0 and (time.monotonic() - start_time) > timeout:
+                raise BeakerJobTimeoutError(f"Timed out while waiting for job '{job.id}' to finish")
+        print()
+        rich.get_console().rule("End logs")
+        print()
 
-    # Refresh the job.
-    job = beaker.job.get(job.id)
-
-    return job
-
-
-def display_logs(beaker: Beaker, job: Job) -> Job:
-    console = rich.get_console()
-    print()
-    rich.get_console().rule("Logs")
-    for job_log in beaker.job.structured_logs(job, quiet=True, follow=True):
-        console.print(job_log.message, highlight=False, markup=False)
-    rich.get_console().rule("End logs")
-    print()
     return beaker.job.get(job.id)
 
 
-def display_results(beaker: Beaker, experiment: Experiment, job: Job):
+def display_logs(beaker: Beaker, job: BeakerJob, tail_lines: Optional[int] = None) -> BeakerJob:
+    console = rich.get_console()
+    print()
+    rich.get_console().rule("Logs")
+    for job_log in beaker.job.logs(job, follow=True, tail_lines=tail_lines):
+        console.print(job_log.message.decode(), highlight=False, markup=False)
+    print()
+    rich.get_console().rule("End logs")
+    return beaker.job.get(job.id)
+
+
+def display_results(beaker: Beaker, workload: BeakerWorkload, job: BeakerJob):
     exit_code = job.status.exit_code
     if exit_code is None:
         raise ExperimentFailedError(
-            f"Experiment failed, see {beaker.experiment.url(experiment)} for details"
+            f"Experiment failed, see {beaker.workload.url(workload)} for details"
         )
     elif exit_code > 0:
         raise ExperimentFailedError(
-            f"Experiment exited with non-zero code ({exit_code}), see {beaker.experiment.url(experiment)} for details"
+            f"Experiment exited with non-zero code ({exit_code}), see {beaker.workload.url(workload)} for details"
         )
-    assert job.execution is not None
+
     assert job.status.started is not None
     assert job.status.exited is not None
-    result_dataset = None
-    if job.result is not None and job.result.beaker is not None:
-        result_dataset = job.result.beaker
+    runtime = job.status.exited - job.status.started  # type: ignore
 
     print(
-        f"[b green]\N{check mark}[/] [b cyan]{experiment.name}[/] completed successfully\n"
-        f"[b]Experiment:[/] {beaker.experiment.url(experiment)}\n"
-        f"[b]Runtime:[/] {format_timedelta(job.status.exited - job.status.started)}\n"
-        f"[b]Results:[/] {None if result_dataset is None else beaker.dataset.url(result_dataset)}"
+        f"[b green]\N{check mark}[/] [b cyan]{workload.experiment.name}[/] completed successfully\n"
+        f"[b]Experiment:[/] {beaker.workload.url(workload)}\n"
+        f"[b]Runtime:[/] {format_timedelta(runtime)}\n"
     )
 
-    metrics = beaker.experiment.metrics(experiment, task=job.execution.task)
-    if metrics is not None:
-        print("[b]Metrics:[/]", metrics)
+    if job.metrics:
+        print("[b]Metrics:[/]", job.metrics)
 
 
 def ensure_repo(allow_dirty: bool = False) -> Tuple[str, str, str, bool]:
@@ -261,7 +257,7 @@ def ref_exists_on_remote(git_ref: str) -> bool:
     return len(output) > 0
 
 
-def ensure_entrypoint_dataset(beaker: Beaker) -> Dataset:
+def ensure_entrypoint_dataset(beaker: Beaker) -> BeakerDataset:
     import hashlib
     from importlib.resources import read_binary
 
@@ -277,10 +273,10 @@ def ensure_entrypoint_dataset(beaker: Beaker) -> Dataset:
     entrypoint_dataset_name = f"gantry-v{VERSION}-{workspace_id}-{sha256_hash.hexdigest()[:6]}"
 
     # Ensure gantry entrypoint dataset exists.
-    gantry_entrypoint_dataset: Dataset
+    gantry_entrypoint_dataset: BeakerDataset
     try:
         gantry_entrypoint_dataset = beaker.dataset.get(entrypoint_dataset_name)
-    except DatasetNotFound:
+    except BeakerDatasetNotFound:
         # Create it.
         print(f"Creating entrypoint dataset '{entrypoint_dataset_name}'")
         try:
@@ -292,14 +288,14 @@ def ensure_entrypoint_dataset(beaker: Beaker) -> Dataset:
                 gantry_entrypoint_dataset = beaker.dataset.create(
                     entrypoint_dataset_name, entrypoint_path
                 )
-        except DatasetConflict:  # could be in a race with another `gantry` process.
+        except BeakerDatasetConflict:  # could be in a race with another `gantry` process.
             time.sleep(1.0)
             gantry_entrypoint_dataset = beaker.dataset.get(entrypoint_dataset_name)
 
     # Verify contents.
-    ds_files = list(beaker.dataset.ls(gantry_entrypoint_dataset))
+    ds_files = list(beaker.dataset.list_files(gantry_entrypoint_dataset))
     for retry in range(1, 4):
-        ds_files = list(beaker.dataset.ls(gantry_entrypoint_dataset))
+        ds_files = list(beaker.dataset.list_files(gantry_entrypoint_dataset))
         if len(ds_files) >= 1:
             break
         else:
@@ -311,13 +307,13 @@ def ensure_entrypoint_dataset(beaker: Beaker) -> Dataset:
             f"required entrypoint file. Please run again."
         )
 
-    if ds_files[0].digest != Digest.from_decoded(sha256_hash.digest(), "SHA256"):
-        raise EntrypointChecksumError(
-            f"Checksum failed for entrypoint dataset {beaker.dataset.url(gantry_entrypoint_dataset)}\n"
-            f"This could be a bug, or it could mean someone has tampered with the dataset.\n"
-            f"If you're sure no one has tampered with it, you can delete the dataset from "
-            f"the Beaker dashboard and try again."
-        )
+    #  if ds_files[0].digest != Digest.from_decoded(sha256_hash.digest(), "SHA256"):
+    #      raise EntrypointChecksumError(
+    #          f"Checksum failed for entrypoint dataset {beaker.dataset.url(gantry_entrypoint_dataset)}\n"
+    #          f"This could be a bug, or it could mean someone has tampered with the dataset.\n"
+    #          f"If you're sure no one has tampered with it, you can delete the dataset from "
+    #          f"the Beaker dashboard and try again."
+    #      )
 
     return gantry_entrypoint_dataset
 
@@ -327,7 +323,7 @@ def ensure_github_token_secret(
 ) -> str:
     try:
         beaker.secret.get(secret_name)
-    except SecretNotFound:
+    except BeakerSecretNotFound:
         raise GitHubTokenSecretNotFound(
             f"GitHub token secret '{secret_name}' not found in Beaker workspace!\n"
             f"You can create a suitable GitHub token by going to https://github.com/settings/tokens/new "
@@ -392,43 +388,26 @@ def check_for_upgrades():
         pass
 
 
-def ensure_workspace(
+def init_client(
     workspace: Optional[str] = None,
     yes: bool = False,
-    gh_token_secret: str = GITHUB_TOKEN_SECRET,
-    public_repo: bool = False,
+    ensure_workspace: bool = True,
 ) -> Beaker:
     beaker = (
-        Beaker.from_env(session=True)
-        if workspace is None
-        else Beaker.from_env(session=True, default_workspace=workspace)
+        Beaker.from_env() if workspace is None else Beaker.from_env(default_workspace=workspace)
     )
-    try:
-        permissions = beaker.workspace.get_permissions()
-        if (
-            not public_repo
-            and permissions.authorizations is not None
-            # a default user called "ai2" gets added to every workspace
-            and len(permissions.authorizations) > 2
-        ):
-            print_stderr(
-                f"[yellow]Your workspace [b]{beaker.workspace.url()}[/] has multiple contributors! "
-                f"Every contributor can view your GitHub personal access token secret ('{gh_token_secret}').[/]"
-            )
-            if not yes and not prompt.Confirm.ask(
-                "[yellow][i]Are you sure you want to use this workspace?[/][/]"
-            ):
-                raise KeyboardInterrupt
-        elif workspace is None:
+
+    if ensure_workspace and workspace is None:
+        try:
             default_workspace = beaker.workspace.get()
             if not yes and not prompt.Confirm.ask(
-                f"Using default workspace [b cyan]{default_workspace.full_name}[/]. [i]Is that correct?[/]"
+                f"Using default workspace [b cyan]{default_workspace.name}[/]. [i]Is that correct?[/]"
             ):
                 raise KeyboardInterrupt
-    except WorkspaceNotSet:
-        raise ConfigurationError(
-            "'--workspace' option is required since you don't have a default workspace set"
-        )
+        except BeakerWorkspaceNotSet:
+            raise ConfigurationError(
+                "'--workspace' option is required since you don't have a default workspace set"
+            )
     return beaker
 
 

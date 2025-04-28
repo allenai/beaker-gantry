@@ -54,12 +54,11 @@ def set_gh_token(
     $ gantry config set-gh-token "$GITHUB_TOKEN"
     """
     # Initialize Beaker client and validate workspace.
-    beaker = util.ensure_workspace(workspace=workspace, yes=yes, gh_token_secret=secret)
+    with util.init_client(workspace=workspace, yes=yes) as beaker:
+        # Write token to secret.
+        beaker.secret.write(secret, token)
 
-    # Write token to secret.
-    beaker.secret.write(secret, token)
-
-    print(
-        f"[green]\N{check mark} GitHub token added to workspace "
-        f"'{beaker.config.default_workspace}' as the secret '{secret}'"
-    )
+        print(
+            f"[green]\N{check mark} GitHub token added to workspace "
+            f"'{beaker.config.default_workspace}' as the secret '{secret}'"
+        )

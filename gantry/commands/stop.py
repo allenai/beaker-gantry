@@ -1,7 +1,8 @@
 from typing import List, Optional, Sequence
 
 import click
-from beaker import Beaker, Experiment, ExperimentConflict, ExperimentNotFound
+from beaker import Beaker, BeakerWorkload
+from beaker.exceptions import BeakerWorkloadNotFound
 from rich import print, prompt
 
 from .. import util
@@ -10,8 +11,10 @@ from .main import CLICK_COMMAND_DEFAULTS, main
 
 
 @main.command(**CLICK_COMMAND_DEFAULTS)
-@click.argument("experiment", nargs=-1, type=str)
-@click.option("-l", "--latest", is_flag=True, help="""Stop your latest experiment.""")
+@click.argument("workload", nargs=-1, type=str)
+@click.option(
+    "-l", "--latest", is_flag=True, help="""Stop your latest experiment (non-session) workload."""
+)
 @click.option(
     "-w",
     "--workspace",
@@ -27,49 +30,48 @@ from .main import CLICK_COMMAND_DEFAULTS, main
     help="""Skip all confirmation prompts.""",
 )
 def stop(
-    experiment: Sequence[str],
+    workload: Sequence[str],
     latest: bool = False,
     workspace: Optional[str] = None,
     dry_run: bool = False,
     yes: bool = False,
 ):
     """
-    Stop a running experiment.
+    Stop a running workload.
     """
-    if experiment and latest:
-        raise ConfigurationError("-l/--latest is mutually exclusive with [EXPERIMENT] args")
+    if workload and latest:
+        raise ConfigurationError("-l/--latest is mutually exclusive with [WORKLOAD] args")
 
-    beaker = Beaker.from_env(session=True)
+    beaker = util.init_client(ensure_workspace=False)
 
-    experiments: List[Experiment] = []
-    if experiment:
-        for experiment_name in experiment:
+    workloads: List[BeakerWorkload] = []
+    if workload:
+        for workload_name in workload:
             try:
-                experiments.append(beaker.experiment.get(experiment_name))
-            except ExperimentNotFound:
-                raise NotFoundError(f"Experiment '{experiment_name}' not found")
+                workloads.append(beaker.workload.get(workload_name))
+            except BeakerWorkloadNotFound:
+                raise NotFoundError(f"Workload '{workload_name}' not found")
     elif latest:
-        exp = util.get_latest_experiment(beaker, workspace=workspace, running=True)
-        if exp is None:
-            print("[yellow]No running experiments to stop[/]")
+        wl = util.get_latest_workload(beaker, workspace_name=workspace, running=True)
+        if wl is None:
+            print("[yellow]No running workloads to stop[/]")
         else:
-            experiments.append(exp)
+            workloads.append(wl)
 
-    for exp in experiments:
+    for wl in workloads:
         if dry_run:
-            print(f"[b yellow]Dry run:[/] would stop [b cyan]{exp.name}[/]")
+            print(f"[b yellow]Dry run:[/] would stop [b cyan]{wl.experiment.name}[/]")
         else:
             if not yes and not prompt.Confirm.ask(
-                f"Stop experiment [b cyan]{exp.name}[/] at [blue u]{beaker.experiment.url(exp)}[/]?"
+                f"Stop experiment [b cyan]{wl.experiment.name}[/] at [blue u]{beaker.workload.url(wl)}[/]?"
             ):
                 print("[yellow]Skipping experiment...[/]")
                 continue
 
             try:
-                beaker.experiment.stop(exp)
-            except (ExperimentNotFound, ExperimentConflict):
-                # Beaker API may return 404 if the experiment was already canceled.
+                beaker.workload.cancel(wl)
+            except (BeakerWorkloadNotFound,):
                 pass
             print(
-                f"[b green]\N{check mark}[/] [b cyan]{exp.name}[/] at {beaker.experiment.url(exp)} stopped"
+                f"[b green]\N{check mark}[/] [b cyan]{wl.experiment.name}[/] at {beaker.workload.url(wl)} stopped"
             )
