@@ -159,10 +159,6 @@ if [[ -z "$NO_PYTHON" ]]; then
     fi
     export PYTHONPATH
     
-    # Create directory for results.
-    # shellcheck disable=SC2296
-    mkdir -p "${{ RESULTS_DIR }}/.gantry"
-    
     
     echo "
 #############################
@@ -178,6 +174,10 @@ if [[ -z "$NO_PYTHON" ]]; then
         pip freeze
     fi
 fi
+
+# Create directory for results.
+# shellcheck disable=SC2296
+mkdir -p "${RESULTS_DIR}/.gantry"
 
 echo "
 #############################

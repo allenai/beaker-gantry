@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- Added `--results` option to `gantry run` for changing the default results path.
+
 ## [v1.16.0](https://github.com/allenai/beaker-gantry/releases/tag/v1.16.0) - 2025-04-23
 
 ### Changed
