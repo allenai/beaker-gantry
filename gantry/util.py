@@ -1,3 +1,4 @@
+import binascii
 import json
 import tempfile
 import time
@@ -12,6 +13,7 @@ import rich
 from beaker import (
     Beaker,
     BeakerDataset,
+    BeakerDatasetFileAlgorithmType,
     BeakerJob,
     BeakerSortOrder,
     BeakerWorkload,
@@ -19,7 +21,6 @@ from beaker import (
 )
 from beaker.exceptions import (
     BeakerDatasetConflict,
-    BeakerDatasetNotFound,
     BeakerSecretNotFound,
     BeakerWorkspaceNotSet,
 )
@@ -151,7 +152,7 @@ def follow_workload(
 
         # Pull events until job is running (or fails)...
         events = set()
-        while job.status.finalized.ByteSize() == 0:
+        while not job.status.HasField("finalized"):
             if timeout > 0 and (time.monotonic() - start_time) > timeout:
                 raise BeakerJobTimeoutError(f"Timed out while waiting for job '{job.id}' to finish")
 
@@ -322,13 +323,20 @@ def ensure_entrypoint_dataset(beaker: Beaker) -> BeakerDataset:
             f"required entrypoint file. Please run again."
         )
 
-    #  if ds_files[0].digest != Digest.from_decoded(sha256_hash.digest(), "SHA256"):
-    #      raise EntrypointChecksumError(
-    #          f"Checksum failed for entrypoint dataset {beaker.dataset.url(gantry_entrypoint_dataset)}\n"
-    #          f"This could be a bug, or it could mean someone has tampered with the dataset.\n"
-    #          f"If you're sure no one has tampered with it, you can delete the dataset from "
-    #          f"the Beaker dashboard and try again."
-    #      )
+    if ds_files[0].HasField("digest"):
+        digest = ds_files[0].digest
+        expected_value = binascii.hexlify(digest.value).decode()
+        hasher = BeakerDatasetFileAlgorithmType(digest.algorithm).hasher()
+        hasher.update(contents)
+        actual_value = binascii.hexlify(hasher.digest()).decode()
+        if actual_value != expected_value:
+            raise EntrypointChecksumError(
+                f"Checksum failed for entrypoint dataset {beaker.dataset.url(gantry_entrypoint_dataset)}\n"
+                f"This could be a bug, or it could mean someone has tampered with the dataset.\n"
+                f"If you're sure no one has tampered with it, you can delete the dataset from "
+                f"the Beaker dashboard and try again.\n"
+                f"Actual digest:\n{digest}"
+            )
 
     return gantry_entrypoint_dataset
 
