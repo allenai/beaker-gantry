@@ -1,7 +1,7 @@
 from typing import Optional
 
 import click
-from beaker import Beaker, BeakerWorkload
+from beaker import BeakerWorkload
 from rich import print
 
 from .. import util

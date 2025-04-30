@@ -1,7 +1,7 @@
 from typing import List, Optional, Sequence
 
 import click
-from beaker import Beaker, BeakerWorkload
+from beaker import BeakerWorkload
 from beaker.exceptions import BeakerWorkloadNotFound
 from rich import print, prompt
 
