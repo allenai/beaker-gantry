@@ -2,7 +2,7 @@ name: torch-env
 channels:
   - pytorch
 dependencies:
-  - python=3.9
+  - python=3.10
   - cudatoolkit=11.3
   - numpy
   - pytorch
