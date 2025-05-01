@@ -129,9 +129,9 @@ When you're ready to contribute code to address an open issue, please follow the
         isort .
         black .
 
-    Our CI also uses [`flake8`](https://github.com/allenai/beaker-py/tree/main/tests) to lint the code base and [`mypy`](http://mypy-lang.org/) for type-checking. You should run both of these next with
+    Our CI also uses [`ruff`](https://github.com/astral-sh/ruff) to lint the code base and [`mypy`](http://mypy-lang.org/) for type-checking. You should run both of these next with
 
-        flake8 .
+        ruff check .
 
     and
 
@@ -143,19 +143,6 @@ When you're ready to contribute code to address an open issue, please follow the
 
         pytest -v tests/a/b_test.py
 
-    Our CI will automatically check that test coverage stays above a certain threshold (around 90%). To check the coverage locally in this example, you could run
-
-        pytest -v --cov gantry.a.b tests/a/b_test.py
-
-    If your contribution involves additions to any public part of the API, we require that you write docstrings
-    for each function, method, class, or module that you add.
-    See the [Writing docstrings](#writing-docstrings) section below for details on the syntax.
-    You should test to make sure the API documentation can build without errors by running
-
-        make docs
-
-    If the build fails, it's most likely due to small formatting issues. If the error message isn't clear, feel free to comment on this in your pull request.
-
     And finally, please update the [CHANGELOG](https://github.com/allenai/beaker-gantry/blob/main/CHANGELOG.md) with notes on your contribution in the "Unreleased" section at the top.
 
     After all of the above checks have passed, you can now open [a new GitHub pull request](https://github.com/allenai/beaker-gantry/pulls).
@@ -164,9 +151,3 @@ When you're ready to contribute code to address an open issue, please follow the
     We look forward to reviewing your PR!
 
     </details>
-
-### Writing docstrings
-
-We use [Sphinx](https://www.sphinx-doc.org/en/master/index.html) to build our API docs, which automatically parses all docstrings
-of public classes and methods using the [autodoc](https://www.sphinx-doc.org/en/master/usage/extensions/autodoc.html) extension.
-Please refer to autoc's documentation to learn about the docstring syntax.

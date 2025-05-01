@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Python >= 3.10 required.
+- (internal) Switched to the new RPC-based beaker-py client (https://github.com/allenai/beaker/pull/6478).
 
 ### Removed
 
