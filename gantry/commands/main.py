@@ -1,3 +1,4 @@
+import logging
 import os
 import signal
 import sys
@@ -6,6 +7,7 @@ import click
 import rich
 from click_help_colors import HelpColorsCommand, HelpColorsGroup
 from rich import pretty, traceback
+from rich.logging import RichHandler
 
 from .. import util
 from ..exceptions import *
@@ -65,6 +67,13 @@ def main(quiet: bool = False):
         pretty.install()
     else:
         pretty.install()
+
+    # Configure logging.
+    logging.basicConfig(
+        level=logging.WARNING,
+        format="%(message)s",
+        handlers=[RichHandler(log_time_format="[GANTRY (local)] [%x %X]")],
+    )
 
     # Handle SIGTERM just like KeyboardInterrupt
     signal.signal(signal.SIGTERM, handle_sigterm)
