@@ -42,3 +42,7 @@ class TermInterrupt(GantryError):
 
 class NotFoundError(GantryError):
     pass
+
+
+class BeakerJobTimeoutError(GantryError, TimeoutError):
+    pass

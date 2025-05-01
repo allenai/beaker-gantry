@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Changed
+
+- Python >= 3.10 required.
+
+### Removed
+
+- Removed `gantry cluster` commands.
+
 ## [v1.17.0](https://github.com/allenai/beaker-gantry/releases/tag/v1.17.0) - 2025-04-28
 
 ### Added

@@ -1,25 +1,23 @@
 from datetime import datetime, timedelta, timezone
 from itertools import islice
-from typing import Generator, List, Optional, Tuple
+from typing import Generator, Iterable, List, Optional, Tuple
 
 import click
-from beaker import Beaker, Experiment, Task, Tasks
+from beaker import (
+    Beaker,
+    BeakerSortOrder,
+    BeakerTask,
+    BeakerWorkload,
+    BeakerWorkloadStatus,
+    BeakerWorkloadType,
+)
 from rich import print
 from rich.progress import Progress
 from rich.table import Table
 
+from .. import util
 from ..exceptions import ConfigurationError
-from ..util import StrEnum
 from .main import CLICK_COMMAND_DEFAULTS, main
-
-
-class JobStatus(StrEnum):
-    running = "running"
-    created = "created"
-    scheduled = "scheduled"
-    failed = "failed"
-    canceled = "canceled"
-    succeeded = "succeeded"
 
 
 class Defaults:
@@ -56,7 +54,7 @@ class Defaults:
 @click.option(
     "-s",
     "--status",
-    type=click.Choice(list(JobStatus)),
+    type=click.Choice([x.name for x in BeakerWorkloadStatus]),
     help="Filter by status.",
     multiple=True,
 )
@@ -77,62 +75,62 @@ def list_cmd(
     """
     List gantry experiments.
     """
-    beaker = Beaker.from_env(session=True)
+    with util.init_client(ensure_workspace=False) as beaker:
+        table = Table(title="Experiments", show_lines=True)
+        table.add_column("Name", justify="left", no_wrap=True)
+        table.add_column("Author", justify="left", style="blue", no_wrap=True)
+        table.add_column("Created", justify="left", no_wrap=True)
+        table.add_column("Tasks")
 
-    table = Table(title="Experiments", show_lines=True)
-    table.add_column("Name", justify="left", no_wrap=True)
-    table.add_column("Author", justify="left", style="blue", no_wrap=True)
-    table.add_column("Created", justify="left", no_wrap=True)
-    table.add_column("Tasks")
+        if me:
+            if author is not None:
+                raise ConfigurationError("--me and -a/--author are mutually exclusive.")
+            else:
+                author = beaker.user_name
 
-    if me:
-        if author is not None:
-            raise ConfigurationError("--me and -a/--author are mutually exclusive.")
-        else:
-            author = beaker.account.whoami().name
+        with Progress(transient=True) as progress:
+            task = progress.add_task("Collecting experiments...", total=limit)
+            for wl, tasks in islice(
+                iter_workloads(
+                    beaker, workspace=workspace, author=author, statuses=status, max_age=max_age
+                ),
+                limit,
+            ):
+                table.add_row(
+                    f"[b cyan]{wl.experiment.name}[/]\n[u i blue]{beaker.workload.url(wl)}[/]",
+                    beaker.user.get(wl.experiment.author_id).name,
+                    wl.experiment.created.ToDatetime()
+                    .astimezone(tz=None)
+                    .strftime("%I:%M %p on %a, %b %-d"),
+                    "\n".join(format_task(beaker, wl, task) for task in tasks),
+                )
+                progress.update(task, advance=1)
 
-    with Progress(transient=True) as progress:
-        task = progress.add_task("Collecting experiments...", total=limit)
-        for exp, tasks in islice(
-            iter_experiments(
-                beaker, workspace=workspace, author=author, statuses=status, max_age=max_age
-            ),
-            limit,
-        ):
-            table.add_row(
-                f"[b cyan]{exp.display_name}[/]\n[u i blue]{beaker.experiment.url(exp)}[/]",
-                exp.author.name,
-                exp.created.astimezone(tz=None).strftime("%I:%M %p on %a, %b %-d"),
-                "\n".join(format_task(task) for task in tasks),
-            )
-            progress.update(task, advance=1)
+            progress.update(task, completed=True)
 
-        progress.update(task, completed=True)
-
-    print(table)
+        print(table)
 
 
-def iter_experiments(
+def iter_workloads(
     beaker: Beaker,
     *,
     workspace: Optional[str],
     author: Optional[str],
     statuses: Optional[List[str]],
     max_age: int,
-) -> Generator[Tuple[Experiment, Tasks], None, None]:
+) -> Generator[Tuple[BeakerWorkload, Iterable[BeakerTask]], None, None]:
     now = datetime.now(tz=timezone.utc).astimezone()
-    for exp in beaker.workspace.iter_experiments(workspace=workspace):
-        # Filter by age.
-        age = now - exp.created.astimezone()
-        if age > timedelta(days=max_age):
-            break
-
-        # Maybe filter by author.
-        if author is not None and exp.author.name != author:
-            continue
-
+    for wl in beaker.workload.list(
+        workspace=None if workspace is None else beaker.workspace.get(workspace),
+        author=None if author is None else beaker.user.get(author),
+        created_after=now - timedelta(days=max_age),
+        workload_type=BeakerWorkloadType.experiment,
+        statuses=None if statuses is None else [BeakerWorkloadStatus.from_any(s) for s in statuses],
+        sort_order=BeakerSortOrder.descending,
+        sort_field="created",
+    ):
         # Filter out non-gantry experiments.
-        spec = beaker.experiment.spec(exp)
+        spec = beaker.experiment.get_spec(wl.experiment)
         for task_spec in spec.tasks:
             for env_var in task_spec.env_vars or []:
                 if env_var.name == "GANTRY_VERSION":
@@ -140,42 +138,37 @@ def iter_experiments(
             else:
                 continue
 
-        tasks = beaker.experiment.tasks(exp)
-
-        # Maybe filter by status.
-        if statuses:
-            for task in tasks:
-                if get_status(task) in statuses:
-                    break
-            else:
-                continue
-
-        yield exp, tasks
+        yield wl, wl.experiment.tasks
 
 
-def get_status(task: Task) -> Optional[JobStatus]:
-    job = task.latest_job
-    status: Optional[JobStatus] = None
+def get_status(
+    beaker: Beaker, wl: BeakerWorkload, task: BeakerTask
+) -> Optional[BeakerWorkloadStatus]:
+    job = beaker.workload.get_latest_job(wl, task=task)
     if job is not None:
-        exit_code = job.status.exit_code
-        if job.status.current in ("running", "created", "scheduled"):
-            status = JobStatus(job.status.current)
-        elif job.status.failed is not None or (exit_code is not None and exit_code > 0):
-            status = JobStatus.failed
-        elif job.status.canceled is not None:
-            status = JobStatus.canceled
-        elif job.status.finalized is not None and exit_code == 0:
-            status = JobStatus.succeeded
-    return status
+        return BeakerWorkloadStatus.from_any(job.status.status)
+    else:
+        return None
 
 
-def format_task(task: Task) -> str:
+def format_task(beaker: Beaker, wl: BeakerWorkload, task: BeakerTask) -> str:
     style = "i"
-    status = get_status(task)
-    if status in (JobStatus.running, JobStatus.succeeded):
+    status = get_status(beaker, wl, task)
+    if status in (
+        BeakerWorkloadStatus.running,
+        BeakerWorkloadStatus.succeeded,
+        BeakerWorkloadStatus.uploading_results,
+        BeakerWorkloadStatus.ready_to_start,
+        BeakerWorkloadStatus.initializing,
+    ):
         style += " green"
-    elif status in (JobStatus.scheduled, JobStatus.created, JobStatus.canceled):
+    elif status in (
+        BeakerWorkloadStatus.submitted,
+        BeakerWorkloadStatus.queued,
+        BeakerWorkloadStatus.canceled,
+        BeakerWorkloadStatus.stopping,
+    ):
         style += " yellow"
-    elif status == JobStatus.failed:
+    elif status == BeakerWorkloadStatus.failed:
         style += " red"
-    return f"[i]{task.display_name}[/] ([{style}]{status or 'unknown'}[/])"
+    return f"[i]{task.name}[/] ([{style}]{status or 'unknown'}[/])"

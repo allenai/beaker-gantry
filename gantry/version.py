@@ -1,7 +1,1 @@
-_MAJOR = "1"
-_MINOR = "17"
-_PATCH = "0"
-_SUFFIX = ""
-
-VERSION_SHORT = "{0}.{1}".format(_MAJOR, _MINOR)
-VERSION = "{0}.{1}.{2}{3}".format(_MAJOR, _MINOR, _PATCH, _SUFFIX)
+VERSION = "2.0.0.dev20250430"

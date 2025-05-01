@@ -31,75 +31,60 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python: ['3.8', '3.10.4']
+        python: ['3.10']
         task:
           - name: Test
             run: |
               pytest -v --color=yes tests/
 
-        include:
-          - python: '3.10.4'
-            task:
-              name: Lint
-              run: ruff check .
+          - name: Lint
+            run: ruff check .
 
-          - python: '3.10.4'
-            task:
-              name: Type check
-              run: mypy .
+          - name: Type check
+            run: mypy .
 
-          - python: '3.10.4'
-            task:
-              name: Build
-              run: |
-                python -m build
+          - name: Build
+            run: |
+              python -m build
 
-          - python: '3.10.4'
-            task:
-              name: Style
-              run: |
-                isort --check .
-                black --check .
+          - name: Style
+            run: |
+              isort --check .
+              black --check .
 
-          - python: '3.10.4'
-            task:
-              name: Example - Hello, World!
-              run: |
-                run_name=$(python conftest.py run_name)
-                gantry run \
-                  --budget ai2/allennlp \
-                  --workspace "$BEAKER_WORKSPACE" \
-                  --name "$run_name" \
-                  --timeout -1 \
-                  --yes \
-                  -- python -c 'print("Hello, World!")'
+          - name: Example - Hello, World!
+            run: |
+              run_name=$(python conftest.py run_name)
+              gantry run \
+                --budget ai2/allennlp \
+                --workspace "$BEAKER_WORKSPACE" \
+                --name "$run_name" \
+                --timeout -1 \
+                --yes \
+                -- python -c 'print("Hello, World!")'
 
-          - python: '3.10.4'
-            task:
-              name: Example - Metrics 
-              run: |
-                run_name=$(python conftest.py run_name)
-                gantry run \
-                  --budget ai2/allennlp \
-                  --workspace "$BEAKER_WORKSPACE" \
-                  --name "$run_name" \
-                  --timeout -1 \
-                  --yes \
-                  -- python examples/metrics/run.py
+          - name: Example - Metrics 
+            run: |
+              run_name=$(python conftest.py run_name)
+              gantry run \
+                --budget ai2/allennlp \
+                --workspace "$BEAKER_WORKSPACE" \
+                --name "$run_name" \
+                --timeout -1 \
+                --yes \
+                -- python examples/metrics/run.py
 
-          - python: '3.10.4'
-            task:
-              name: Example - Conda
-              run: |
-                run_name=$(python conftest.py run_name)
-                gantry run \
-                  --budget ai2/allennlp \
-                  --workspace "$BEAKER_WORKSPACE" \
-                  --name "$run_name" \
-                  --timeout -1 \
-                  --conda test_fixtures/conda/environment.yml \
-                  --yes \
-                  -- python --version
+          - name: Example - Conda
+            run: |
+              run_name=$(python conftest.py run_name)
+              gantry run \
+                --budget ai2/allennlp \
+                --workspace "$BEAKER_WORKSPACE" \
+                --name "$run_name" \
+                --timeout -1 \
+                --conda test_fixtures/conda/environment.yml \
+                --yes \
+                -- python --version
 
     steps:
       - name: Checkout (PR)
