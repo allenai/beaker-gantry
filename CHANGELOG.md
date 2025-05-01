@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- Added color to Gantry messages from the entrypoint script.
+
 ## [v2.0.0](https://github.com/allenai/beaker-gantry/releases/tag/v2.0.0) - 2025-05-01
 
 ### Changed
