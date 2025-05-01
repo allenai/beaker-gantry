@@ -53,7 +53,7 @@ This requires experience with Docker, experience writing Beaker experiment specs
 
 With Gantry, on the other hand, that same workflow simplifies down to this:
 
-1. Write a conda `environment.yml` file, or simply a PIP `requirements.txt` and/or `setup.py` file.
+1. Write a conda `environment.yml` file, a PIP `requirements.txt` file, or a `setup.py`/`pyproject.toml` file.
 2. Commit and push your changes.
 3. Submit and track a Beaker experiment with the `gantry run` command.
 4. Make changes and repeat from step 2.
@@ -120,15 +120,14 @@ pip install -e .
 
 3. **Specify your Python environment.**
 
-    Lastly - and this is the most important part - you'll have to create one of several different files that specify your Python environment. There are three options:
+    Typically you'll have to create one of several different files to specify your Python environment. There are three widely used options:
 
     1. A conda [`environment.yml`](https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html#create-env-file-manually) file.
-    2. A [`setup.py`](https://docs.python.org/3/distutils/introduction.html#a-simple-example) file.
+    2. A [`setup.py`](https://docs.python.org/3/distutils/introduction.html#a-simple-example) or [`pyproject.toml`](https://pip.pypa.io/en/stable/reference/build-system/pyproject-toml/) file.
     3. A PIP [`requirements.txt`](https://pip.pypa.io/en/stable/user_guide/#requirements-files) file.
 
-    The first method is [the recommended approach](#use-conda), especially if you're already using conda.
-    But it's perfectly okay to use a combination of these different approaches as well.
-    This can be useful when, for example, you need to [use a CUDA-enabled version of PyTorch on Beaker but a CPU-only version locally](#how-do-i-use-a-cuda-enabled-version-of-pytorch-on-beaker-when-im-using-a-cpu-only-version-locally).
+    Gantry will automatically find and use these files to reconstruct your Python environment at runtime.
+    Alternatively you can provide a custom Python install command with the `--install` option to `gantry run`, or skip the Python setup completely with `--no-python`.
 
 ### Submit your first experiment with Gantry
 
