@@ -384,10 +384,11 @@ def format_timedelta(td: "timedelta") -> str:
     return ", ".join(parts)
 
 
-def check_for_upgrades():
+def check_for_upgrades(force: bool = False):
     config = InternalConfig.load()
     if (
-        config is not None
+        not force
+        and config is not None
         and config.version_checked is not None
         and (time.time() - config.version_checked <= VERSION_CHECK_INTERVAL)
     ):
@@ -398,11 +399,16 @@ def check_for_upgrades():
 
     try:
         response = requests.get(
-            "https://api.github.com/repos/allenai/beaker-gantry/releases/latest", timeout=1
+            "https://pypi.org/simple/beaker-gantry",
+            headers={"Accept": "application/vnd.pypi.simple.v1+json"},
+            timeout=2,
         )
         if response.ok:
-            latest_version = packaging.version.parse(response.json()["tag_name"])
-            if latest_version > packaging.version.parse(VERSION):
+            latest_version = packaging.version.parse(response.json()["versions"][-1])
+            current_version = packaging.version.parse(VERSION)
+            if latest_version > current_version and (
+                not latest_version.is_prerelease or current_version.is_prerelease
+            ):
                 print_stderr(
                     f":warning: [yellow]You're using [b]gantry v{VERSION}[/], "
                     f"but a newer version ([b]v{latest_version}[/]) is available: "
