@@ -209,13 +209,13 @@ from .main import CLICK_COMMAND_DEFAULTS, main
 )
 @click.option(
     "--priority",
-    type=click.Choice([str(p) for p in BeakerJobPriority]),
-    help="The job priority. If you don't specify at least one cluster, priority will default to 'preemptible'.",
+    type=click.Choice([str(p.name) for p in BeakerJobPriority]),
+    help="The job priority.",
 )
 @click.option(
     "--install",
     type=str,
-    help="""Override the default installation command, e.g. '--install "python setup.py install"'""",
+    help="""Override the default Python installation command, e.g. '--install "python setup.py install"'""",
 )
 @click.option(
     "--no-python",
@@ -282,7 +282,8 @@ from .main import CLICK_COMMAND_DEFAULTS, main
 @click.option(
     "--preemptible/--not-preemptible",
     is_flag=True,
-    help="""Mark the job as preemptible or not.""",
+    help="""Mark the job as preemptible or not. If you don't specify at least one cluster then
+    jobs will default to preemptible.""",
     default=None,
 )
 @click.option(
@@ -351,22 +352,18 @@ def run(
 
     validate_args(arg)
 
+    if install:
+        if no_python:
+            raise ConfigurationError("--no-python and --install='...' are mutually exclusive.")
+        if pip:
+            raise ConfigurationError("--pip='...' and --install='...' are mutually exclusive.")
+
     if beaker_image is None and docker_image is None:
         beaker_image = constants.DEFAULT_IMAGE
     elif (beaker_image is None) == (docker_image is None):
         raise ConfigurationError(
             "Either --beaker-image or --docker-image must be specified, but not both."
         )
-
-    if budget is None:
-        budget = prompt.Prompt.ask(
-            "[yellow]Missing '--budget' option, "
-            "see https://beaker-docs.apps.allenai.org/concept/budgets.html for more information.[/]\n"
-            "[i]Please enter the budget account to associate with this experiment[/]",
-        )
-
-    if not budget:
-        raise ConfigurationError("Budget account must be specified!")
 
     task_resources = BeakerTaskResources(
         cpu_count=cpus, gpu_count=gpus, memory=memory, shared_memory=shared_memory
@@ -392,6 +389,16 @@ def run(
                 beaker_image = beaker.image.get(beaker_image).id
             except BeakerImageNotFound:
                 raise ConfigurationError(f"Beaker image '{beaker_image}' not found")
+
+        if budget is None and not beaker.workspace.get().budget_id:
+            budget = prompt.Prompt.ask(
+                "[yellow]Missing '--budget' option, "
+                "see https://beaker-docs.apps.allenai.org/concept/budgets.html for more information.[/]\n"
+                "[i]Please enter the budget account to associate with this experiment[/]",
+            )
+
+            if not budget:
+                raise ConfigurationError("Budget account must be specified!")
 
         # Get the entrypoint dataset.
         entrypoint_dataset = util.ensure_entrypoint_dataset(beaker)
@@ -469,7 +476,14 @@ def run(
             cl_objects = beaker.cluster.list()
             final_clusters = []
             for pat in cluster:
-                matching_clusters = [cl.name for cl in cl_objects if fnmatch(cl.name, pat)]
+                org = beaker.org_name
+                if "/" in pat:
+                    org, pat = pat.split("/", 1)
+                matching_clusters = [
+                    f"{cl.organization_name}/{cl.name}"
+                    for cl in cl_objects
+                    if fnmatch(cl.name, pat) and cl.organization_name == org
+                ]
                 if matching_clusters:
                     final_clusters.extend(matching_clusters)
                 else:
@@ -607,7 +621,7 @@ def build_experiment_spec(
     github_account: str,
     github_repo: str,
     git_ref: str,
-    budget: str,
+    budget: Optional[str] = None,
     description: Optional[str] = None,
     beaker_image: Optional[str] = None,
     docker_image: Optional[str] = None,
