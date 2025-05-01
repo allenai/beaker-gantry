@@ -17,6 +17,7 @@ from beaker import (
     BeakerJob,
     BeakerSortOrder,
     BeakerWorkload,
+    BeakerWorkloadStatus,
     BeakerWorkloadType,
 )
 from beaker.exceptions import (
@@ -185,7 +186,12 @@ def follow_workload(
         rich.get_console().rule("End logs")
         print()
 
-    return beaker.job.get(job.id)
+    # Wait for job to finalize...
+    while not job.status.HasField("finalized"):
+        time.sleep(0.5)
+        job = beaker.job.get(job.id)
+
+    return job
 
 
 def display_logs(beaker: Beaker, job: BeakerJob, tail_lines: Optional[int] = None) -> BeakerJob:
@@ -200,31 +206,30 @@ def display_logs(beaker: Beaker, job: BeakerJob, tail_lines: Optional[int] = Non
 
 
 def display_results(beaker: Beaker, workload: BeakerWorkload, job: BeakerJob):
-    exit_code = job.status.exit_code
-    if exit_code is None:
-        raise ExperimentFailedError(
-            f"Experiment failed, see {beaker.workload.url(workload)} for details"
+    status = job.status.status
+    if status == BeakerWorkloadStatus.succeeded:
+        runtime = job.status.exited - job.status.started  # type: ignore
+        results_ds = beaker.dataset.get(job.assignment_details.result_dataset_id)
+
+        print(
+            f"[b green]\N{check mark}[/] [b cyan]{workload.experiment.name}[/] completed successfully\n"
+            f"[b]Experiment:[/] {beaker.workload.url(workload)}\n"
+            f"[b]Results:[/] {beaker.dataset.url(results_ds)}\n"
+            f"[b]Runtime:[/] {format_timedelta(runtime)}"
         )
-    elif exit_code > 0:
+
+        if job.metrics:
+            print("[b]Metrics:[/]", job.metrics)
+    elif status == BeakerWorkloadStatus.canceled:
         raise ExperimentFailedError(
-            f"Experiment exited with non-zero code ({exit_code}), see {beaker.workload.url(workload)} for details"
+            f"Job was canceled, see {beaker.workload.url(workload)} for details"
         )
-
-    assert job.status.started is not None
-    assert job.status.exited is not None
-    runtime = job.status.exited - job.status.started  # type: ignore
-
-    results_ds = beaker.dataset.get(job.assignment_details.result_dataset_id)
-
-    print(
-        f"[b green]\N{check mark}[/] [b cyan]{workload.experiment.name}[/] completed successfully\n"
-        f"[b]Experiment:[/] {beaker.workload.url(workload)}\n"
-        f"[b]Results:[/] {beaker.dataset.url(results_ds)}\n"
-        f"[b]Runtime:[/] {format_timedelta(runtime)}"
-    )
-
-    if job.metrics:
-        print("[b]Metrics:[/]", job.metrics)
+    elif status == BeakerWorkloadStatus.failed:
+        raise ExperimentFailedError(
+            f"Job failed with exit code {job.status.exit_code}, see {beaker.workload.url(workload)} for details"
+        )
+    else:
+        raise ValueError(f"unexpected workload status '{status}'")
 
 
 def ensure_repo(allow_dirty: bool = False) -> Tuple[str, str, str, bool]:
