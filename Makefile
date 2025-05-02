@@ -4,3 +4,4 @@ run-checks :
 	black --check .
 	ruff check .
 	mypy .
+	pytest -v --durations=5 tests/

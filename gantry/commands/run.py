@@ -205,7 +205,7 @@ from .main import CLICK_COMMAND_DEFAULTS, main
 @click.option(
     "--save-spec",
     type=click.Path(dir_okay=False, file_okay=True),
-    help="""A path to save the generated Beaker experiment spec to.""",
+    help="""A path to save the generated YAML Beaker experiment spec to.""",
 )
 @click.option(
     "--priority",

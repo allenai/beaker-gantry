@@ -1,5 +1,4 @@
 import logging
-import sys
 
 import pytest
 from beaker import Beaker
@@ -18,27 +17,22 @@ def run_name() -> str:
     return _get_unique_name()
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def workspace_name() -> str:
     return "ai2/gantry-testing"
 
 
-@pytest.fixture
-def public_workspace_name() -> str:
-    return "ai2/gantry-testing-public"
+@pytest.fixture(scope="session")
+def cluster_name() -> str:
+    return "ai2/jupiter-cirrascale-2"
 
 
-@pytest.fixture()
-def beaker(workspace_name):
-    beaker_client = Beaker.from_env(default_workspace=workspace_name, default_org="ai2")
-    return beaker_client
+@pytest.fixture(scope="session")
+def beaker(workspace_name: str):
+    with Beaker.from_env(default_workspace=workspace_name, default_org="ai2") as client:
+        yield client
 
 
-if __name__ == "__main__":
-    beaker_client = Beaker.from_env()
-    assert len(sys.argv) == 2
-    fixture = sys.argv[-1]
-    if fixture == "run_name":
-        print(_get_unique_name())
-    else:
-        raise ValueError(f"Bad fixture argument '{fixture}'")
+@pytest.fixture(scope="session")
+def user_name(beaker: Beaker) -> str:
+    return beaker.user_name
