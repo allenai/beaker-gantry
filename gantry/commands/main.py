@@ -58,7 +58,15 @@ def handle_sigterm(sig, frame):
     is_flag=True,
     help="Don't display the gantry logo.",
 )
-def main(quiet: bool = False):
+@click.option(
+    "--log-level",
+    type=click.Choice(["debug", "info", "warning", "error"]),
+    show_choices=True,
+    show_default=True,
+    default="warning",
+    help="The Python log level.",
+)
+def main(quiet: bool = False, log_level: str = "warning"):
     # Configure rich.
     if os.environ.get("GANTRY_GITHUB_TESTING"):
         # Force a broader terminal when running tests in GitHub Actions.
@@ -70,9 +78,9 @@ def main(quiet: bool = False):
 
     # Configure logging.
     logging.basicConfig(
-        level=logging.WARNING,
+        level=getattr(logging, log_level.upper()),
         format="%(message)s",
-        handlers=[RichHandler(log_time_format="[GANTRY (local)] [%x %X]")],
+        handlers=[RichHandler(log_time_format="❯ [GANTRY (local)] [%X]")],
     )
 
     # Handle SIGTERM just like KeyboardInterrupt
