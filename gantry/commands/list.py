@@ -171,4 +171,7 @@ def format_task(beaker: Beaker, wl: BeakerWorkload, task: BeakerTask) -> str:
         style += " yellow"
     elif status == BeakerWorkloadStatus.failed:
         style += " red"
-    return f"[i]{task.name}[/] ([{style}]{status or 'unknown'}[/])"
+
+    status_str = "unknown" if status is None else status.name
+
+    return f"[i]{task.name}[/] ([{style}]{status_str}[/])"
