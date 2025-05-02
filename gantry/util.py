@@ -219,7 +219,9 @@ def display_results(beaker: Beaker, workload: BeakerWorkload, job: BeakerJob):
         )
 
         if job.metrics:
-            print("[b]Metrics:[/]", job.metrics)
+            from google.protobuf.json_format import MessageToDict
+
+            print("[b]Metrics:[/]", MessageToDict(job.metrics))
     elif status == BeakerWorkloadStatus.canceled:
         raise ExperimentFailedError(
             f"Job was canceled, see {beaker.workload.url(workload)} for details"
