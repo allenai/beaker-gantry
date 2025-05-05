@@ -81,7 +81,7 @@ def test_dry_run_with_cluster(
             workspace_name=workspace_name,
             run_name=run_name,
             spec_path=spec_path,
-            options=["--cluster", cluster_name, "--cluster", cluster_name],
+            options=["--cluster", cluster_name, "--cluster", second_cluster_name],
         ),
         capture_output=True,
         text=True,
