@@ -73,7 +73,7 @@ def test_dry_run_not_preemptible(workspace_name: str, run_name: str, tmp_path: P
 
 
 def test_dry_run_with_cluster(
-    workspace_name: str, run_name: str, tmp_path: Path, cluster_name: str
+    workspace_name: str, run_name: str, tmp_path: Path, cluster_name: str, second_cluster_name: str
 ):
     spec_path = tmp_path / "spec.yaml"
     result = subprocess.run(
@@ -81,7 +81,7 @@ def test_dry_run_with_cluster(
             workspace_name=workspace_name,
             run_name=run_name,
             spec_path=spec_path,
-            options=["--cluster", cluster_name],
+            options=["--cluster", cluster_name, "--cluster", second_cluster_name],
         ),
         capture_output=True,
         text=True,
@@ -92,7 +92,8 @@ def test_dry_run_with_cluster(
     spec = BeakerExperimentSpec.from_file(spec_path)
     assert spec.tasks[0].context.preemptible is None
     assert spec.tasks[0].constraints is not None
-    assert spec.tasks[0].constraints.cluster == [cluster_name]
+    assert spec.tasks[0].constraints.cluster is not None
+    assert set(spec.tasks[0].constraints.cluster) == set([cluster_name, second_cluster_name])
 
 
 def test_dry_run_with_budget(workspace_name: str, run_name: str, tmp_path: Path):
