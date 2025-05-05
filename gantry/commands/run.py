@@ -473,21 +473,27 @@ def run(
 
         # Validate clusters.
         if cluster:
-            cl_objects = beaker.cluster.list()
+            cl_objects = list(beaker.cluster.list())
             final_clusters = []
             for pat in cluster:
                 org = beaker.org_name
+
+                og_pat = pat
                 if "/" in pat:
                     org, pat = pat.split("/", 1)
+
                 matching_clusters = [
                     f"{cl.organization_name}/{cl.name}"
                     for cl in cl_objects
                     if fnmatch(cl.name, pat) and cl.organization_name == org
                 ]
+
                 if matching_clusters:
                     final_clusters.extend(matching_clusters)
                 else:
-                    raise ConfigurationError(f"cluster '{pat}' did not match any Beaker clusters")
+                    raise ConfigurationError(
+                        f"cluster '{og_pat}' did not match any Beaker clusters"
+                    )
             cluster = list(set(final_clusters))  # type: ignore
 
         # Default to preemptible when no cluster has been specified.

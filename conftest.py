@@ -28,6 +28,11 @@ def cluster_name() -> str:
 
 
 @pytest.fixture(scope="session")
+def second_cluster_name() -> str:
+    return "ai2/saturn-cirrascale"
+
+
+@pytest.fixture(scope="session")
 def beaker(workspace_name: str):
     with Beaker.from_env(default_workspace=workspace_name, default_org="ai2") as client:
         yield client
