@@ -55,7 +55,7 @@ class Defaults:
     "-s",
     "--status",
     type=click.Choice([x.name for x in BeakerWorkloadStatus]),
-    help="Filter by status.",
+    help="Filter by status. Multiple allowed.",
     multiple=True,
 )
 @click.option(
@@ -64,6 +64,12 @@ class Defaults:
     default=Defaults.max_age,
     help=f"Maximum age of experiments, in days. Default: {Defaults.max_age}",
 )
+@click.option(
+    "--all",
+    "show_all",
+    is_flag=True,
+    help="Show all experiments, not just onces submitted through Gantry.",
+)
 def list_cmd(
     workspace: Optional[str] = None,
     limit: int = Defaults.limit,
@@ -71,9 +77,11 @@ def list_cmd(
     me: bool = False,
     status: Optional[List[str]] = None,
     max_age: int = Defaults.max_age,
+    show_all: bool = False,
 ):
     """
-    List gantry experiments.
+    List recent experiments with a workspace.
+    This will only show experiments launched with Gantry by default, unless '--all' is specified.
     """
     with util.init_client(ensure_workspace=False) as beaker:
         table = Table(title="Experiments", show_lines=True)
@@ -92,7 +100,12 @@ def list_cmd(
             task = progress.add_task("Collecting experiments...", total=limit)
             for wl, tasks in islice(
                 iter_workloads(
-                    beaker, workspace=workspace, author=author, statuses=status, max_age=max_age
+                    beaker,
+                    workspace=workspace,
+                    author=author,
+                    statuses=status,
+                    max_age=max_age,
+                    show_all=show_all,
                 ),
                 limit,
             ):
@@ -118,6 +131,7 @@ def iter_workloads(
     author: Optional[str],
     statuses: Optional[List[str]],
     max_age: int,
+    show_all: bool,
 ) -> Generator[Tuple[BeakerWorkload, Iterable[BeakerTask]], None, None]:
     now = datetime.now(tz=timezone.utc).astimezone()
     for wl in beaker.workload.list(
@@ -130,13 +144,14 @@ def iter_workloads(
         sort_field="created",
     ):
         # Filter out non-gantry experiments.
-        spec = beaker.experiment.get_spec(wl.experiment)
-        for task_spec in spec.tasks:
-            for env_var in task_spec.env_vars or []:
-                if env_var.name == "GANTRY_VERSION":
-                    break
-            else:
-                continue
+        if not show_all:
+            spec = beaker.experiment.get_spec(wl.experiment)
+            for task_spec in spec.tasks:
+                for env_var in task_spec.env_vars or []:
+                    if env_var.name == "GANTRY_VERSION":
+                        break
+                else:
+                    continue
 
         yield wl, wl.experiment.tasks
 
