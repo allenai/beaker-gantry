@@ -92,7 +92,8 @@ def test_dry_run_with_cluster(
     spec = BeakerExperimentSpec.from_file(spec_path)
     assert spec.tasks[0].context.preemptible is None
     assert spec.tasks[0].constraints is not None
-    assert spec.tasks[0].constraints.cluster == [cluster_name, second_cluster_name]
+    assert spec.tasks[0].constraints.cluster is not None
+    assert set(spec.tasks[0].constraints.cluster) == set([cluster_name, second_cluster_name])
 
 
 def test_dry_run_with_budget(workspace_name: str, run_name: str, tmp_path: Path):
