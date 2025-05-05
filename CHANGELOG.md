@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [v2.0.2](https://github.com/allenai/beaker-gantry/releases/tag/v2.0.2) - 2025-05-05
+
 ### Fixed
 
 - Fixed bug when specifying multiple clusters.
