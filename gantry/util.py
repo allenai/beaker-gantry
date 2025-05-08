@@ -447,6 +447,18 @@ def init_client(
     return beaker
 
 
+def highlight_pattern(s: str, pattern: str) -> str:
+    match = s.lower()
+    pattern = pattern.lower()
+    start_offset = 0
+    while (match_start := match.find(pattern, start_offset)) > -1:
+        match_str = f"[b green]{pattern.upper()}[/]"
+        s = s[:match_start] + match_str + s[match_start + len(pattern) :]
+        start_offset = match_start + len(match_str)
+        match = s.lower()
+    return s
+
+
 def replace_tags(contents: bytes) -> bytes:
     tag_start = contents.find(b"${{")
     while tag_start != -1:
