@@ -74,9 +74,18 @@ def find_gpus_cmd(show_all: bool = False, gpu_types: tuple[str, ...] = tuple()):
                     else:
                         continue
 
+                gpus_available = cluster.cluster_occupancy.slot_counts.available
+                gpus_available_style: str
+                if gpus_available == 0:
+                    gpus_available_style = "red"
+                elif gpus_available < 8:
+                    gpus_available_style = "yellow"
+                else:
+                    gpus_available_style = "green"
+
                 table.add_row(
                     f"[b cyan]{cluster.name}[/]\n[u i blue]{beaker.cluster.url(cluster)}[/]",
-                    f"{cluster.cluster_occupancy.slot_counts.available}",
+                    f"[{gpus_available_style}]{gpus_available}[/]",
                     f"{gpu_type or 'UNKNOWN'}",
                     f"{cluster.cluster_occupancy.slot_counts.assigned}/{cluster.cluster_occupancy.slot_counts.total}",
                 )
