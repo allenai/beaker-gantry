@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Added `--all` flag to `gantry list` to search all experiments, not just ones submitted through Gantry.
+- Added `gantry find-gpus` command to list clusters with free GPUs.
 
 ## [v2.0.2](https://github.com/allenai/beaker-gantry/releases/tag/v2.0.2) - 2025-05-05
 
