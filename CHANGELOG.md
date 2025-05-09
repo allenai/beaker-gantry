@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [v2.1.1](https://github.com/allenai/beaker-gantry/releases/tag/v2.1.1) - 2025-05-09
+
 ### Fixed
 
 - (optimization) Gantry will only clone the target branch at runtime instead of all branches on the remote.
