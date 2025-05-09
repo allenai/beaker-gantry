@@ -373,7 +373,7 @@ def run(
     git_config = GitConfig.from_env(ref=ref)
 
     # Validate repo state.
-    if ref is None and not allow_dirty:
+    if ref is None and not allow_dirty and git_config.is_dirty:
         raise DirtyRepoError("You have uncommitted changes! Use --allow-dirty to force.")
 
     if not git_config.ref_exists_on_remote:
