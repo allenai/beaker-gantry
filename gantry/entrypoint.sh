@@ -2,10 +2,18 @@
 
 set -eo pipefail
 
+function log_info {
+    echo -e "\e[36m\e[1m❯ [GANTRY]\e[0m $1"
+}
+
+function log_error {
+    echo -e >&2 "\e[31m\e[1m❯ [GANTRY]\e[0m error: $1"
+}
+
 # Ensure we have all the environment variables we need.
 for env_var in "$GITHUB_REPO" "$GIT_REF"; do
     if [[ -z "$env_var" ]]; then
-        echo -e >&2 "\e[31m\e[1m❯ [GANTRY]\e[0m error: required environment variable is empty"
+        log_error "required environment variable is empty"
         exit 1
     fi
 done
@@ -13,7 +21,7 @@ done
 # Function to check for conda, install it if needed.
 function ensure_conda {
     if ! command -v conda &> /dev/null; then
-        echo -e "\e[36m\e[1m❯ [GANTRY]\e[0m Installing conda..."
+        log_info "Installing conda..."
         curl -fsSL -o ~/miniconda.sh -O  https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
         chmod +x ~/miniconda.sh
         ~/miniconda.sh -b -p /opt/conda
@@ -36,7 +44,7 @@ if [[ -n "$GITHUB_TOKEN" ]]; then
         if [[ -z "$NO_CONDA" ]]; then
             ensure_conda
         else
-            echo -e >&2 "\e[31m\e[1m❯ [GANTRY]\e[0m error: you specified '--no-conda' but conda is needed to install the GitHub CLI. To avoid this error please ensure the GitHub CLI is already installed on your image."
+            log_error "error: you specified '--no-conda' but conda is needed to install the GitHub CLI. To avoid this error please ensure the GitHub CLI is already installed on your image."
         fi
 
         # Install GitHub CLI.
@@ -58,6 +66,8 @@ mkdir -p "${{ RUNTIME_DIR }}"
 # shellcheck disable=SC2296
 cd "${{ RUNTIME_DIR }}"
 
+git config --global advice.detachedHead false
+
 # `git clone` might occasionally fail, so we retry a couple times.
 attempts=1
 until [ "$attempts" -eq 5 ]
@@ -69,6 +79,7 @@ do
             git clone "https://github.com/$GITHUB_REPO" . && break
         fi
     else
+        log_info "Cloning single branch '$GIT_BRANCH'..."
         if [[ -n "$GITHUB_TOKEN" ]]; then
             gh repo clone "$GITHUB_REPO" . -- -b "$GIT_BRANCH" --single-branch && break
         else
@@ -80,8 +91,8 @@ do
 done
 
 if [ $attempts -eq 5 ]; then
-  echo -e >&2 "\e[31m\e[1m❯ [GANTRY]\e[0m error: failed to clone $GITHUB_REPO after $attempts tries"
-  exit 1
+    log_error "failed to clone $GITHUB_REPO after $attempts tries"
+    exit 1
 fi
 
 git checkout "$GIT_REF"
@@ -112,31 +123,31 @@ if [[ -z "$NO_PYTHON" ]]; then
         # Check if VENV_NAME is a path. If so, it should exist.
         if [[ "$VENV_NAME" == */* ]]; then
             if [[ ! -d "$VENV_NAME" ]]; then
-                echo -e >&2 "\e[31m\e[1m❯ [GANTRY]\e[0m error: venv '$VENV_NAME' looks like a path but it doesn't exist"
+                log_error "venv '$VENV_NAME' looks like a path but it doesn't exist"
                 exit 1
             fi
         fi
         
         if conda activate "$VENV_NAME" &> /dev/null; then
-            echo -e "\e[36m\e[1m❯ [GANTRY]\e[0m Using existing conda environment '$VENV_NAME'"
+            log_info "Using existing conda environment '$VENV_NAME'"
             # The virtual environment already exists. Possibly update it based on an environment file.
             if [[ -f "$CONDA_ENV_FILE" ]]; then
-                echo -e "\e[36m\e[1m❯ [GANTRY]\e[0m Updating environment from conda env file '$CONDA_ENV_FILE'..."
+                log_info "Updating environment from conda env file '$CONDA_ENV_FILE'..."
                 conda env update -f "$CONDA_ENV_FILE"
             fi
         else
             # The virtual environment doesn't exist yet. Create it.
             if [[ -f "$CONDA_ENV_FILE" ]]; then
                 # Create from the environment file.
-                echo -e "\e[36m\e[1m❯ [GANTRY]\e[0m Initializing environment from conda env file '$CONDA_ENV_FILE'..."
+                log_info "Initializing environment from conda env file '$CONDA_ENV_FILE'..."
                 conda env create -n "$VENV_NAME" -f "$CONDA_ENV_FILE" 
             elif [[ -z "$PYTHON_VERSION" ]]; then
                 # Create a new empty environment with the whatever the default Python version is.
-                echo -e "\e[36m\e[1m❯ [GANTRY]\e[0m Initializing environment with default Python version..."
+                log_info "Initializing environment with default Python version..."
                 conda create -y -n "$VENV_NAME" pip
             else
                 # Create a new empty environment with the specific Python version.
-                echo -e "\e[36m\e[1m❯ [GANTRY]\e[0m Initializing environment with Python $PYTHON_VERSION..."
+                log_info "Initializing environment with Python $PYTHON_VERSION..."
                 conda create -y -n "$VENV_NAME" "python=$PYTHON_VERSION" pip
             fi
             conda activate "$VENV_NAME"
@@ -146,17 +157,17 @@ if [[ -z "$NO_PYTHON" ]]; then
     if [[ -z "$INSTALL_CMD" ]]; then
         # Check for a 'requirements.txt' and/or 'setup.py/pyproject.toml/setup.cfg' file.
         if { [[ -f 'setup.py' ]] || [[ -f 'pyproject.toml' ]] || [[ -f 'setup.cfg' ]]; } && [[ -f "$PIP_REQUIREMENTS_FILE" ]]; then
-            echo -e "\e[36m\e[1m❯ [GANTRY]\e[0m Installing local project and packages from '$PIP_REQUIREMENTS_FILE'..."
+            log_info "Installing local project and packages from '$PIP_REQUIREMENTS_FILE'..."
             pip install . -r "$PIP_REQUIREMENTS_FILE"
         elif [[ -f 'setup.py' ]] || [[ -f 'pyproject.toml' ]] || [[ -f 'setup.cfg' ]]; then
-            echo -e "\e[36m\e[1m❯ [GANTRY]\e[0m Installing local project..."
+            log_info "Installing local project..."
             pip install .
         elif [[ -f "$PIP_REQUIREMENTS_FILE" ]]; then
-            echo -e "\e[36m\e[1m❯ [GANTRY]\e[0m Installing packages from '$PIP_REQUIREMENTS_FILE'..."
+            log_info "Installing packages from '$PIP_REQUIREMENTS_FILE'..."
             pip install -r "$PIP_REQUIREMENTS_FILE"
         fi
     else
-        echo -e "\e[36m\e[1m❯ [GANTRY]\e[0m Installing packages with given command: $INSTALL_CMD"
+        log_info "Installing packages with given command: $INSTALL_CMD"
         eval "$INSTALL_CMD"
     fi
     
@@ -174,8 +185,8 @@ if [[ -z "$NO_PYTHON" ]]; then
 ####################################
 \e[0m"
     
-    echo -e "\e[36m\e[1m❯ [GANTRY]\e[0m Using $(python --version) from $(which python)"
-    echo -e "\e[36m\e[1m❯ [GANTRY]\e[0m Packages:"
+    log_info "Using $(python --version) from $(which python)"
+    log_info "Packages:"
     if which sed >/dev/null; then
         pip freeze | sed 's/^/- /'
     else
@@ -189,7 +200,7 @@ echo -e "\e[36m\e[1m
 ######################################
 \e[0m"
 # Create directory for results.
-echo -e "\e[36m\e[1m❯ [GANTRY]\e[0m Creating results dir at '${RESULTS_DIR}'..."
+log_info "Creating results dir at '${RESULTS_DIR}'..."
 mkdir -p "${RESULTS_DIR}/.gantry"
 
 echo -e "\e[36m\e[1m
