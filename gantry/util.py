@@ -5,6 +5,7 @@ import time
 from dataclasses import asdict, dataclass
 from datetime import timedelta
 from enum import Enum
+from functools import cached_property
 from pathlib import Path
 from typing import Optional, Tuple, cast
 
@@ -25,6 +26,8 @@ from beaker.exceptions import (
     BeakerSecretNotFound,
     BeakerWorkspaceNotSet,
 )
+from git.cmd import Git
+from git.repo import Repo
 from rich import print, prompt
 from rich.console import Console
 
@@ -89,24 +92,6 @@ def print_stderr(*args, **kwargs):
 
 def print_exception(*args, **kwargs):
     stderr_console().print_exception(*args, **kwargs)
-
-
-def parse_git_remote_url(url: str) -> Tuple[str, str]:
-    """
-    Parse a git remote URL into a GitHub (account, repo) pair.
-
-    :raises InvalidRemoteError: If the URL can't be parsed correctly.
-    """
-    try:
-        account, repo = (
-            url.split("https://github.com/")[-1]
-            .split("git@github.com:")[-1]
-            .split(".git")[0]
-            .split("/")
-        )
-    except ValueError:
-        raise InvalidRemoteError(f"Failed to parse GitHub repo path from remote '{url}'")
-    return account, repo
 
 
 def get_latest_workload(
@@ -234,38 +219,94 @@ def display_results(beaker: Beaker, workload: BeakerWorkload, job: BeakerJob):
         raise ValueError(f"unexpected workload status '{status}'")
 
 
-def ensure_repo(allow_dirty: bool = False) -> Tuple[str, str, str, bool]:
-    from git.repo import Repo
+def parse_git_remote_url(url: str) -> Tuple[str, str]:
+    """
+    Parse a git remote URL into a GitHub (account, repo) pair.
 
-    repo = Repo(".")
-
-    # Parse account name, repo name, and current commit.
-    account, repo_name = parse_git_remote_url(repo.remote().url)
-    git_ref = str(repo.commit())
-
-    # Check if repo is dirty (uncommitted changes).
-    if repo.is_dirty() and not allow_dirty:
-        raise DirtyRepoError("You have uncommitted changes! Use --allow-dirty to force.")
-
-    # Check if repo is public.
-    response = requests.get(f"https://github.com/{account}/{repo_name}")
-    if response.status_code not in {200, 404}:
-        response.raise_for_status()
-    is_public = response.status_code == 200
-
-    return account, repo_name, git_ref, is_public
+    :raises InvalidRemoteError: If the URL can't be parsed correctly.
+    """
+    try:
+        account, repo = (
+            url.split("https://github.com/")[-1]
+            .split("git@github.com:")[-1]
+            .split(".git")[0]
+            .split("/")
+        )
+    except ValueError:
+        raise InvalidRemoteError(f"Failed to parse GitHub repo path from remote '{url}'")
+    return account, repo
 
 
-def ref_exists_on_remote(git_ref: str) -> bool:
-    from git.cmd import Git
+@dataclass
+class GitConfig:
+    repo: str
+    repo_url: str
+    ref: str
+    branch: Optional[str] = None
 
-    git = Git(".")
+    @property
+    def is_dirty(self) -> bool:
+        repo = Repo(".")
+        return repo.is_dirty()
 
-    output = cast(
-        str, git.execute(["git", "branch", "-r", "--contains", git_ref], stdout_as_string=True)
-    )
-    output = output.strip()
-    return len(output) > 0
+    @cached_property
+    def is_public(self) -> bool:
+        response = requests.get(self.repo_url)
+        if response.status_code not in {200, 404}:
+            response.raise_for_status()
+        return response.status_code == 200
+
+    @cached_property
+    def ref_exists_on_remote(self) -> bool:
+        git = Git(".")
+        output = cast(
+            str, git.execute(["git", "branch", "-r", "--contains", self.ref], stdout_as_string=True)
+        )
+        output = output.strip()
+        return len(output) > 0
+
+    @property
+    def ref_url(self) -> str:
+        return f"{self.repo_url}/commit/{self.ref}"
+
+    @property
+    def branch_url(self) -> Optional[str]:
+        if self.branch is None:
+            return None
+        else:
+            return f"{self.repo_url}/tree/{self.branch}"
+
+    @classmethod
+    def from_env(cls, ref: Optional[str] = None) -> "GitConfig":
+        repo = Repo(".")
+
+        git_ref = ref or str(repo.commit())
+        remote = repo.remote()
+
+        # Try to find a remote based on the current tracking branch.
+        try:
+            branch = repo.active_branch
+        except TypeError:
+            branch = None
+
+        if branch is not None:
+            branch = branch.tracking_branch()
+
+        branch_name: Optional[str] = None
+        if branch is not None:
+            remote = repo.remote(branch.remote_name)
+            if branch_name is None:
+                assert branch.name.startswith(branch.remote_name + "/")
+                branch_name = branch.name.replace(branch.remote_name + "/", "", 1)
+
+        account, repo_name = parse_git_remote_url(remote.url)
+
+        return cls(
+            repo=f"{account}/{repo_name}",
+            repo_url=f"https://github.com/{account}/{repo_name}",
+            ref=git_ref,
+            branch=branch_name,
+        )
 
 
 def ensure_entrypoint_dataset(beaker: Beaker) -> BeakerDataset:

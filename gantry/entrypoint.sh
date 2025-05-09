@@ -62,10 +62,18 @@ cd "${{ RUNTIME_DIR }}"
 attempts=1
 until [ "$attempts" -eq 5 ]
 do
-    if [[ -n "$GITHUB_TOKEN" ]]; then
-        gh repo clone "$GITHUB_REPO" . && break
+    if [[ -z "$GIT_BRANCH" ]]; then
+        if [[ -n "$GITHUB_TOKEN" ]]; then
+            gh repo clone "$GITHUB_REPO" . && break
+        else
+            git clone "https://github.com/$GITHUB_REPO" . && break
+        fi
     else
-        git clone "https://github.com/$GITHUB_REPO" . && break
+        if [[ -n "$GITHUB_TOKEN" ]]; then
+            gh repo clone "$GITHUB_REPO" . -- -b "$GIT_BRANCH" --single-branch && break
+        else
+            git clone -b "$GIT_BRANCH" --single-branch "https://github.com/$GITHUB_REPO" . && break
+        fi
     fi
     attempts=$((attempts+1)) 
     sleep 10
