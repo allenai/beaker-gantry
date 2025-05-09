@@ -283,21 +283,16 @@ class GitConfig:
         git_ref = ref or str(repo.commit())
         remote = repo.remote()
 
-        # Try to find a remote based on the current tracking branch.
         try:
-            branch = repo.active_branch
+            branch = repo.active_branch.tracking_branch()
         except TypeError:
             branch = None
-
-        if branch is not None:
-            branch = branch.tracking_branch()
 
         branch_name: Optional[str] = None
         if branch is not None:
             remote = repo.remote(branch.remote_name)
-            if branch_name is None:
-                assert branch.name.startswith(branch.remote_name + "/")
-                branch_name = branch.name.replace(branch.remote_name + "/", "", 1)
+            assert branch.name.startswith(branch.remote_name + "/")
+            branch_name = branch.name.replace(branch.remote_name + "/", "", 1)
 
         account, repo_name = parse_git_remote_url(remote.url)
 
