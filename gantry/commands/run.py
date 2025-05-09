@@ -27,7 +27,7 @@ from rich import print, prompt
 from .. import constants, util
 from ..aliases import PathOrStr
 from ..exceptions import *
-from ..util import print_stderr
+from ..util import GitConfig, print_stderr
 from ..version import VERSION
 from .main import CLICK_COMMAND_DEFAULTS, main
 
@@ -369,16 +369,16 @@ def run(
         cpu_count=cpus, gpu_count=gpus, memory=memory, shared_memory=shared_memory
     )
 
-    # Get repository account, name, and current ref.
-    github_account, github_repo, git_ref, is_public = util.ensure_repo(
-        allow_dirty=ref is not None or allow_dirty
-    )
-    if ref is not None:
-        git_ref = ref
+    # Get git information.
+    git_config = GitConfig.from_env(ref=ref)
 
-    if not util.ref_exists_on_remote(git_ref):
+    # Validate repo state.
+    if ref is None and not allow_dirty and git_config.is_dirty:
+        raise DirtyRepoError("You have uncommitted changes! Use --allow-dirty to force.")
+
+    if not git_config.ref_exists_on_remote:
         raise UnpushedChangesError(
-            f"Current git ref '{git_ref}' does not appear to exist on the remote!\n"
+            f"Current git ref '{git_config.ref}' does not appear to exist on the remote!\n"
             "Please push your changes and try again."
         )
 
@@ -404,7 +404,7 @@ def run(
         entrypoint_dataset = util.ensure_entrypoint_dataset(beaker)
 
         # Get / set the GitHub token secret.
-        if not is_public:
+        if not git_config.is_public:
             try:
                 beaker.secret.get(gh_token_secret)
             except BeakerSecretNotFound:
@@ -507,14 +507,12 @@ def run(
             task_resources=task_resources,
             arguments=list(arg),
             entrypoint_dataset=entrypoint_dataset.id,
-            github_account=github_account,
-            github_repo=github_repo,
-            git_ref=git_ref,
+            git_config=git_config,
             budget=budget,
             description=description,
             beaker_image=beaker_image,
             docker_image=docker_image,
-            gh_token_secret=gh_token_secret if not is_public else None,
+            gh_token_secret=gh_token_secret if not git_config.is_public else None,
             conda=conda,
             pip=pip,
             venv=venv,
@@ -570,7 +568,8 @@ def run(
             rich.get_console().rule("[b]Dry run[/]")
             print(
                 f"[b]Workspace:[/] {beaker.workspace.url()}\n"
-                f"[b]Commit:[/] https://github.com/{github_account}/{github_repo}/commit/{git_ref}\n"
+                f"[b]Commit:[/] {git_config.ref_url}\n"
+                f"[b]Branch:[/] {git_config.branch_url}\n"
                 f"[b]Name:[/] {name}\n"
                 f"[b]Experiment spec:[/]",
                 spec.to_json(),
@@ -624,9 +623,7 @@ def build_experiment_spec(
     task_resources: BeakerTaskResources,
     arguments: List[str],
     entrypoint_dataset: str,
-    github_account: str,
-    github_repo: str,
-    git_ref: str,
+    git_config: GitConfig,
     budget: Optional[str] = None,
     description: Optional[str] = None,
     beaker_image: Optional[str] = None,
@@ -677,12 +674,15 @@ def build_experiment_spec(
             timeout=task_timeout,
         )
         .with_env_var(name="GANTRY_VERSION", value=VERSION)
-        .with_env_var(name="GITHUB_REPO", value=f"{github_account}/{github_repo}")
-        .with_env_var(name="GIT_REF", value=git_ref)
+        .with_env_var(name="GITHUB_REPO", value=git_config.repo)
+        .with_env_var(name="GIT_REF", value=git_config.ref)
         .with_env_var(name="GANTRY_TASK_NAME", value=task_name)
         .with_env_var(name="RESULTS_DIR", value=results)
         .with_dataset("/gantry", beaker=entrypoint_dataset)
     )
+
+    if git_config.branch is not None:
+        task_spec = task_spec.with_env_var(name="GIT_BRANCH", value=git_config.branch)
 
     if clusters:
         task_spec = task_spec.with_constraint(cluster=clusters)
