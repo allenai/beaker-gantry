@@ -145,13 +145,19 @@ def iter_workloads(
     ):
         # Filter out non-gantry experiments.
         if not show_all:
+            should_show = False
             spec = beaker.experiment.get_spec(wl.experiment)
             for task_spec in spec.tasks:
                 for env_var in task_spec.env_vars or []:
                     if env_var.name == "GANTRY_VERSION":
+                        should_show = True
                         break
                 else:
                     continue
+                break
+
+            if not should_show:
+                continue
 
         yield wl, wl.experiment.tasks
 
