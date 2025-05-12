@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- Added `gantry open` command for opening Beaker resources in your browser.
+
+### Fixed
+
+- Fixed filtering with `--all` in `gantry list` command.
+
 ## [v2.1.1](https://github.com/allenai/beaker-gantry/releases/tag/v2.1.1) - 2025-05-09
 
 ### Fixed

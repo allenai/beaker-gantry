@@ -5,6 +5,7 @@ from .follow import follow
 from .list import list_cmd
 from .logs import logs
 from .main import main
+from .open import open_cmd
 from .run import run
 from .stop import stop
 
@@ -18,4 +19,5 @@ __all__ = [
     "completion",
     "logs",
     "find_gpus_cmd",
+    "open_cmd",
 ]
