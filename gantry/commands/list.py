@@ -1,8 +1,11 @@
+import concurrent.futures
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from itertools import islice
 from typing import Generator, Iterable, List, Optional, Tuple
 
 import click
+import rich
 from beaker import (
     Beaker,
     BeakerSortOrder,
@@ -12,7 +15,6 @@ from beaker import (
     BeakerWorkloadType,
 )
 from rich import print
-from rich.progress import Progress
 from rich.table import Table
 
 from .. import util
@@ -96,30 +98,41 @@ def list_cmd(
             else:
                 author = beaker.user_name
 
-        with Progress(transient=True) as progress:
-            task = progress.add_task("Collecting experiments...", total=limit)
-            for wl, tasks in islice(
-                iter_workloads(
-                    beaker,
-                    workspace=workspace,
-                    author=author,
-                    statuses=status,
-                    max_age=max_age,
-                    show_all=show_all,
-                ),
-                limit,
-            ):
-                table.add_row(
-                    f"[b cyan]{wl.experiment.name}[/]\n[u i blue]{beaker.workload.url(wl)}[/]",
-                    beaker.user.get(wl.experiment.author_id).name,
-                    wl.experiment.created.ToDatetime()
-                    .astimezone(tz=None)
-                    .strftime("%I:%M %p on %a, %b %-d"),
-                    "\n".join(format_task(beaker, wl, task) for task in tasks),
-                )
-                progress.update(task, advance=1)
+        status_msg = "[i]collecting experiments...[/]"
+        with rich.get_console().status(status_msg, spinner="point", speed=0.8) as status_:
+            with ThreadPoolExecutor() as executor:
+                for wl, tasks in islice(
+                    iter_workloads(
+                        beaker,
+                        workspace=workspace,
+                        author=author,
+                        statuses=status,
+                        max_age=max_age,
+                        show_all=show_all,
+                        limit=None if not show_all else limit,
+                    ),
+                    limit,
+                ):
+                    status_.update(f"{status_msg} [cyan]{wl.experiment.name}[/]")
 
-            progress.update(task, completed=True)
+                    task_status_futures = []
+                    for task in tasks:
+                        task_status_futures.append(executor.submit(format_task, beaker, wl, task))
+
+                    task_statuses = {}
+                    for task_future in concurrent.futures.as_completed(task_status_futures):
+                        task, task_status = task_future.result()
+                        task_statuses[task.id] = task_status
+                        status_.update(f"{status_msg} [cyan]{wl.experiment.name} ❯ [/]{task.name}")
+
+                    table.add_row(
+                        f"[b cyan]{wl.experiment.name}[/]\n[u i blue]{beaker.workload.url(wl)}[/]",
+                        beaker.user.get(wl.experiment.author_id).name,
+                        wl.experiment.created.ToDatetime()
+                        .astimezone(tz=None)
+                        .strftime("%I:%M %p on %a, %b %-d"),
+                        "\n".join(task_statuses[task.id] for task in tasks),
+                    )
 
         print(table)
 
@@ -132,6 +145,7 @@ def iter_workloads(
     statuses: Optional[List[str]],
     max_age: int,
     show_all: bool,
+    limit: Optional[int] = None,
 ) -> Generator[Tuple[BeakerWorkload, Iterable[BeakerTask]], None, None]:
     now = datetime.now(tz=timezone.utc).astimezone()
     for wl in beaker.workload.list(
@@ -142,6 +156,7 @@ def iter_workloads(
         statuses=None if statuses is None else [BeakerWorkloadStatus.from_any(s) for s in statuses],
         sort_order=BeakerSortOrder.descending,
         sort_field="created",
+        limit=limit,
     ):
         # Filter out non-gantry experiments.
         if not show_all:
@@ -172,7 +187,7 @@ def get_status(
         return None
 
 
-def format_task(beaker: Beaker, wl: BeakerWorkload, task: BeakerTask) -> str:
+def format_task(beaker: Beaker, wl: BeakerWorkload, task: BeakerTask) -> tuple[BeakerTask, str]:
     style = "i"
     status = get_status(beaker, wl, task)
     if status in (
@@ -195,4 +210,4 @@ def format_task(beaker: Beaker, wl: BeakerWorkload, task: BeakerTask) -> str:
 
     status_str = "unknown" if status is None else status.name
 
-    return f"[i]{task.name}[/] ([{style}]{status_str}[/])"
+    return task, f"[i]{task.name}[/] ([{style}]{status_str}[/])"
