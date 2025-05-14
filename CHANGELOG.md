@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - (performance) Made entrypoint script more robust to transient errors.
+- (performance) Avoid creating new conda environments when default Python version matches target Python version.
 
 ## [v2.2.0](https://github.com/allenai/beaker-gantry/releases/tag/v2.2.0) - 2025-05-13
 

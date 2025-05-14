@@ -24,6 +24,7 @@ dependencies = [
     "rich",
     "click",
     "click-help-colors",
+    "click-option-group",
     "petname>=2.6,<3.0",
     "requests",
     "packaging",

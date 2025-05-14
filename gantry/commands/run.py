@@ -22,6 +22,7 @@ from beaker.exceptions import (
     BeakerImageNotFound,
     BeakerSecretNotFound,
 )
+from click_option_group import optgroup
 from rich import print, prompt
 
 from .. import constants, util
@@ -29,24 +30,17 @@ from ..aliases import PathOrStr
 from ..exceptions import *
 from ..util import GitConfig, print_stderr
 from ..version import VERSION
-from .main import CLICK_COMMAND_DEFAULTS, main
+from .main import CLICK_COMMAND_DEFAULTS, main, new_optgroup
 
 
 @main.command(**CLICK_COMMAND_DEFAULTS)
+@click.help_option("--help", help="Show this message and exit.")
 @click.argument("arg", nargs=-1)
 @click.option(
     "-n",
     "--name",
     type=str,
     help="""A name to assign to the experiment on Beaker. Defaults to a randomly generated name.""",
-)
-@click.option(
-    "-t",
-    "--task-name",
-    type=str,
-    help="""A name to assign to the task on Beaker.""",
-    default="main",
-    show_default=True,
 )
 @click.option("-d", "--description", type=str, help="""A description for the experiment.""")
 @click.option(
@@ -57,6 +51,44 @@ from .main import CLICK_COMMAND_DEFAULTS, main
     If not specified, your default workspace will be used.""",
 )
 @click.option(
+    "-b", "--budget", type=str, help="""The budget account to associate with the experiment."""
+)
+@new_optgroup("Launch settings")
+@optgroup.option(
+    "--show-logs/--no-logs",
+    default=True,
+    show_default=True,
+    help="""Whether or not to stream the logs to stdout as the experiment runs.
+    This only takes effect when --timeout is non-zero.""",
+)
+@optgroup.option(
+    "--timeout",
+    type=int,
+    default=0,
+    help="""Time to wait (in seconds) for the experiment to finish.
+    A timeout of -1 means wait indefinitely.
+    A timeout of 0 means don't wait at all.""",
+    show_default=True,
+)
+@optgroup.option(
+    "--allow-dirty",
+    is_flag=True,
+    help="""Allow submitting the experiment with a dirty working directory.""",
+)
+@optgroup.option(
+    "-y",
+    "--yes",
+    is_flag=True,
+    help="""Skip all confirmation prompts.""",
+)
+@optgroup.option("--dry-run", is_flag=True, help="""Do a dry run only.""")
+@optgroup.option(
+    "--save-spec",
+    type=click.Path(dir_okay=False, file_okay=True),
+    help="""A path to save the generated YAML Beaker experiment spec to.""",
+)
+@new_optgroup("Constraints")
+@optgroup.option(
     "-c",
     "--cluster",
     type=str,
@@ -68,7 +100,7 @@ from .main import CLICK_COMMAND_DEFAULTS, main
     the job will be able to run on any on-premise cluster.""",
     show_default=True,
 )
-@click.option(
+@optgroup.option(
     "--hostname",
     type=str,
     multiple=True,
@@ -77,39 +109,41 @@ from .main import CLICK_COMMAND_DEFAULTS, main
     multiple hosts.""",
     show_default=True,
 )
-@click.option(
+@new_optgroup("Resources")
+@optgroup.option(
+    "--cpus",
+    type=float,
+    help="""Minimum number of logical CPU cores (e.g. 4.0, 0.5).""",
+)
+@optgroup.option(
+    "--gpus",
+    type=int,
+    help="""Minimum number of GPUs (e.g. 1).""",
+)
+@optgroup.option(
+    "--memory",
+    type=str,
+    help="""Minimum available system memory as a number with unit suffix (e.g. 2.5GiB).""",
+)
+@optgroup.option(
+    "--shared-memory",
+    type=str,
+    help="""Size of /dev/shm as a number with unit suffix (e.g. 2.5GiB).""",
+)
+@new_optgroup("Inputs")
+@optgroup.option(
     "--beaker-image",
     type=str,
     help=f"""The name or ID of an image on Beaker to use for your experiment.
     Mutually exclusive with --docker-image. Defaults to '{constants.DEFAULT_IMAGE}' if neither is set.""",
 )
-@click.option(
+@optgroup.option(
     "--docker-image",
     type=str,
     help="""The name of a public Docker image to use for your experiment.
     Mutually exclusive with --beaker-image.""",
 )
-@click.option(
-    "--cpus",
-    type=float,
-    help="""Minimum number of logical CPU cores (e.g. 4.0, 0.5).""",
-)
-@click.option(
-    "--gpus",
-    type=int,
-    help="""Minimum number of GPUs (e.g. 1).""",
-)
-@click.option(
-    "--memory",
-    type=str,
-    help="""Minimum available system memory as a number with unit suffix (e.g. 2.5GiB).""",
-)
-@click.option(
-    "--shared-memory",
-    type=str,
-    help="""Size of /dev/shm as a number with unit suffix (e.g. 2.5GiB).""",
-)
-@click.option(
+@optgroup.option(
     "--dataset",
     type=str,
     multiple=True,
@@ -117,151 +151,7 @@ from .main import CLICK_COMMAND_DEFAULTS, main
     'dataset-name:sub/path:/mount/location' to attach to your experiment.
     You can specify this option more than once to attach multiple datasets.""",
 )
-@click.option(
-    "--gh-token-secret",
-    type=str,
-    help="""The name of the Beaker secret that contains your GitHub token.""",
-    default=constants.GITHUB_TOKEN_SECRET,
-    show_default=True,
-)
-@click.option(
-    "--ref",
-    type=str,
-    help="""The target git ref to use. This defaults to the current commit.""",
-)
-@click.option(
-    "--conda",
-    type=click.Path(exists=True, dir_okay=False),
-    help=f"""Path to a conda environment file for reconstructing your Python environment.
-    If not specified, '{constants.CONDA_ENV_FILE}' will be used if it exists.""",
-)
-@click.option(
-    "--pip",
-    type=click.Path(exists=True, dir_okay=False),
-    help=f"""Path to a PIP requirements file for reconstructing your Python environment.
-    If not specified, '{constants.PIP_REQUIREMENTS_FILE}' will be used if it exists.""",
-)
-@click.option(
-    "--venv",
-    type=str,
-    help="""The name of an existing conda environment on the image to use.""",
-)
-@click.option(
-    "--env",
-    type=str,
-    help="""Environment variables to add the Beaker experiment. Should be in the form '{NAME}={VALUE}'.""",
-    multiple=True,
-)
-@click.option(
-    "--env-secret",
-    "--secret-env",
-    type=str,
-    help="""Environment variables to add the Beaker experiment from Beaker secrets.
-    Should be in the form '{NAME}={SECRET_NAME}'.""",
-    multiple=True,
-)
-@click.option(
-    "--dataset-secret",
-    type=str,
-    help="""Mount a Beaker secret to a file as a dataset.
-    Should be in the form '{SECRET_NAME}:{MOUNT_PATH}'.""",
-    multiple=True,
-)
-@click.option(
-    "--show-logs/--no-logs",
-    default=True,
-    show_default=True,
-    help="""Whether or not to stream the logs to stdout as the experiment runs.
-    This only takes effect when --timeout is non-zero.""",
-)
-@click.option(
-    "--timeout",
-    type=int,
-    default=0,
-    help="""Time to wait (in seconds) for the experiment to finish.
-    A timeout of -1 means wait indefinitely.
-    A timeout of 0 means don't wait at all.""",
-    show_default=True,
-)
-@click.option(
-    "--task-timeout",
-    type=str,
-    help="""The Beaker job timeout, e.g. "24h". If a job runs longer than this it will canceled
-    by Beaker.""",
-    show_default=True,
-)
-@click.option(
-    "--allow-dirty",
-    is_flag=True,
-    help="""Allow submitting the experiment with a dirty working directory.""",
-)
-@click.option(
-    "-y",
-    "--yes",
-    is_flag=True,
-    help="""Skip all confirmation prompts.""",
-)
-@click.option("--dry-run", is_flag=True, help="""Do a dry run only.""")
-@click.option(
-    "--save-spec",
-    type=click.Path(dir_okay=False, file_okay=True),
-    help="""A path to save the generated YAML Beaker experiment spec to.""",
-)
-@click.option(
-    "--priority",
-    type=click.Choice([str(p.name) for p in BeakerJobPriority]),
-    help="The job priority.",
-)
-@click.option(
-    "--install",
-    type=str,
-    help="""Override the default Python installation command, e.g. '--install "python setup.py install"'""",
-)
-@click.option(
-    "--no-python",
-    is_flag=True,
-    help="""If set, gantry will skip setting up a Python environment altogether.""",
-)
-@click.option(
-    "--no-conda",
-    is_flag=True,
-    help="""If set, gantry will not use conda to construct a Python environment,
-    and instead will potentially use the default Python environment on the image.""",
-)
-@click.option(
-    "--replicas",
-    type=int,
-    help="""The number of task replicas to run.""",
-)
-@click.option(
-    "--leader-selection",
-    is_flag=True,
-    help="""Specifies that the first task replica should be the leader and populates each task
-    with 'BEAKER_LEADER_REPLICA_HOSTNAME' and 'BEAKER_LEADER_REPLICA_NODE_ID' environment variables.
-    This is only applicable when '--replicas INT' and '--host-networking' are used,
-    although the '--host-networking' flag can be omitted in this case since it's assumed.""",
-)
-@click.option(
-    "--host-networking",
-    is_flag=True,
-    help="""Specifies that each task replica should use the host's network.
-    When used with '--replicas INT', this allows the replicas to communicate with each
-    other using their hostnames.""",
-)
-@click.option(
-    "--propagate-failure", is_flag=True, help="""Stop the experiment if any task fails."""
-)
-@click.option(
-    "--propagate-preemption", is_flag=True, help="""Stop the experiment if any task is preempted."""
-)
-@click.option(
-    "--synchronized-start-timeout",
-    type=str,
-    help="""
-    If set, jobs in the replicated task will wait this long to start until all other jobs are also ready.
-    """,
-)
-@click.option(
+@optgroup.option(
     "-m",
     "--mount",
     type=str,
@@ -269,31 +159,151 @@ from .main import CLICK_COMMAND_DEFAULTS, main
     similar to the '-v' option with 'docker run'.""",
     multiple=True,
 )
-@click.option(
+@optgroup.option(
     "--weka",
     type=str,
     multiple=True,
     help="""A weka bucket to mount in the form of 'bucket-name:/mount/location',
     e.g. --weka=oe-training-default:/data""",
 )
-@click.option(
-    "-b", "--budget", type=str, help="""The budget account to associate with the experiment."""
+@optgroup.option(
+    "--env",
+    type=str,
+    help="""Environment variables to add the Beaker experiment. Should be in the form '{NAME}={VALUE}'.""",
+    multiple=True,
 )
-@click.option(
+@optgroup.option(
+    "--env-secret",
+    "--secret-env",
+    type=str,
+    help="""Environment variables to add the Beaker experiment from Beaker secrets.
+    Should be in the form '{NAME}={SECRET_NAME}'.""",
+    multiple=True,
+)
+@optgroup.option(
+    "--dataset-secret",
+    type=str,
+    help="""Mount a Beaker secret to a file as a dataset.
+    Should be in the form '{SECRET_NAME}:{MOUNT_PATH}'.""",
+    multiple=True,
+)
+@optgroup.option(
+    "--ref",
+    type=str,
+    help="""The target git ref to use. This defaults to the current commit.""",
+)
+@optgroup.option(
+    "--gh-token-secret",
+    type=str,
+    help="""The name of the Beaker secret that contains your GitHub token.""",
+    default=constants.GITHUB_TOKEN_SECRET,
+    show_default=True,
+)
+@new_optgroup("Outputs")
+@optgroup.option(
+    "--results",
+    type=str,
+    default=constants.RESULTS_DIR,
+    help=f"""Specify the results directory on the container. Defaults to '{constants.RESULTS_DIR}'.""",
+)
+@new_optgroup("Task settings")
+@optgroup.option(
+    "-t",
+    "--task-name",
+    type=str,
+    help="""A name to assign to the task on Beaker.""",
+    default="main",
+    show_default=True,
+)
+@optgroup.option(
+    "--priority",
+    type=click.Choice([str(p.name) for p in BeakerJobPriority]),
+    help="The job priority.",
+)
+@optgroup.option(
+    "--task-timeout",
+    type=str,
+    help="""The Beaker job timeout, e.g. "24h". If a job runs longer than this it will canceled
+    by Beaker.""",
+    show_default=True,
+)
+@optgroup.option(
     "--preemptible/--not-preemptible",
     is_flag=True,
     help="""Mark the job as preemptible or not. If you don't specify at least one cluster then
     jobs will default to preemptible.""",
     default=None,
 )
-@click.option(
+@optgroup.option(
     "--retries", type=int, help="""Specify the number of automatic retries for the experiment."""
 )
-@click.option(
-    "--results",
+@new_optgroup("Multi-node")
+@optgroup.option(
+    "--replicas",
+    type=int,
+    help="""The number of task replicas to run.""",
+)
+@optgroup.option(
+    "--leader-selection",
+    is_flag=True,
+    help="""Specifies that the first task replica should be the leader and populates each task
+    with 'BEAKER_LEADER_REPLICA_HOSTNAME' and 'BEAKER_LEADER_REPLICA_NODE_ID' environment variables.
+    This is only applicable when '--replicas INT' and '--host-networking' are used,
+    although the '--host-networking' flag can be omitted in this case since it's assumed.""",
+)
+@optgroup.option(
+    "--host-networking",
+    is_flag=True,
+    help="""Specifies that each task replica should use the host's network.
+    When used with '--replicas INT', this allows the replicas to communicate with each
+    other using their hostnames.""",
+)
+@optgroup.option(
+    "--propagate-failure", is_flag=True, help="""Stop the experiment if any task fails."""
+)
+@optgroup.option(
+    "--propagate-preemption", is_flag=True, help="""Stop the experiment if any task is preempted."""
+)
+@optgroup.option(
+    "--synchronized-start-timeout",
     type=str,
-    default=constants.RESULTS_DIR,
-    help=f"""Specify the results directory on the container. Defaults to '{constants.RESULTS_DIR}'.""",
+    help="""
+    If set, jobs in the replicated task will wait this long to start until all other jobs are also ready.
+    """,
+)
+@new_optgroup("Python")
+@optgroup.option(
+    "--conda",
+    type=click.Path(exists=True, dir_okay=False),
+    help=f"""Path to a conda environment file for reconstructing your Python environment.
+    If not specified, '{constants.CONDA_ENV_FILE}' will be used if it exists.""",
+)
+@optgroup.option(
+    "--venv",
+    type=str,
+    help="""The name of an existing conda environment on the image to use.""",
+)
+@optgroup.option(
+    "--pip",
+    type=click.Path(exists=True, dir_okay=False),
+    help=f"""Path to a PIP requirements file for reconstructing your Python environment.
+    If not specified, '{constants.PIP_REQUIREMENTS_FILE}' will be used if it exists.""",
+)
+@optgroup.option(
+    "--install",
+    type=str,
+    help="""Override the default Python installation command, e.g. '--install "python setup.py install"'.""",
+)
+@optgroup.option(
+    "--no-conda",
+    is_flag=True,
+    help="""If set, gantry will skip setting up conda to construct a Python environment
+    and instead will use the default Python environment on the image.""",
+)
+@optgroup.option(
+    "--no-python",
+    is_flag=True,
+    help="""If set, gantry will skip setting up a Python environment altogether.""",
 )
 def run(
     arg: Tuple[str, ...],
