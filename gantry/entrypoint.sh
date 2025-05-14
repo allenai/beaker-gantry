@@ -16,6 +16,9 @@ cd "$RUNTIME_DIR"
 
 RESULTS_DATASET_URL="\e[94m\e[4mhttps://beaker.org/ds/$BEAKER_RESULT_DATASET_ID\e[0m"
 
+CONDA_ENV_FILE="${CONDA_ENV_FILE:-environment.yml}"
+PIP_REQUIREMENTS_FILE="${PIP_REQUIREMENTS_FILE:-requirements.txt}"
+
 function log_info {
     echo -e "\e[36m\e[1m❯ [GANTRY INFO]\e[0m $1"
 }
@@ -118,6 +121,51 @@ function clone_repo {
     return 1
 }
 
+# get existing Python major version
+function get_python_version {
+    if command -v python &> /dev/null; then
+        local python_version
+        python_version=$(python --version)
+        python_version=${python_version//[A-Za-z ]/}
+        echo "$python_version" | cut -d"." -f1-2
+    fi
+}
+
+function should_use_conda {
+    if [[ -n "$NO_CONDA" ]]; then
+        # Explicitly told not to use conda.
+        return 1
+    elif ! command -v python &> /dev/null; then
+        # Need conda to install Python.
+        return 0
+    elif [[ -n "$VENV_NAME" ]]; then
+        # Existing conda environment has been specified.
+        return 0
+    elif [[ -f "$CONDA_ENV_FILE" ]]; then
+        # Conda environment file has been specified.
+        return 0
+    elif [[ -z "$PYTHON_VERSION" ]]; then
+        # No Python version has been specified, so it's okay to use the default available on the image.
+        return 1
+    fi
+
+    local default_python_version
+    default_python_version=$(get_python_version)
+    if [[ "$PYTHON_VERSION" == "$default_python_version" ]]; then
+        # Default Python version on image matches specified Python version.
+        return 1
+    else
+        # Default Python version does not match, so we need conda to get a matching version.
+        return 0
+    fi
+}
+
+function ensure_pip {
+    log_info "Install/upgrading PIP package manager..."
+    capture_logs "ensure_pip.log" python -m ensurepip --upgrade
+    log_info "Done."
+}
+
 echo -e "\e[36m\e[1m
 ##########################################
 ❯❯❯ [GANTRY] Validating environment... ❮❮❮
@@ -181,61 +229,70 @@ if [[ -z "$NO_PYTHON" ]]; then
 ❯❯❯ [GANTRY] Building Python env... ❮❮❮
 #######################################
 \e[0m"
-    
-    VENV_NAME="${VENV_NAME:-venv}"
-    CONDA_ENV_FILE="${CONDA_ENV_FILE:-environment.yml}"
-    PIP_REQUIREMENTS_FILE="${PIP_REQUIREMENTS_FILE:-requirements.txt}"
-
-    if [[ -z "$NO_CONDA" ]]; then
+    if should_use_conda; then
         with_retries 5 10 ensure_conda
-
-        # Check if VENV_NAME is a path. If so, it should exist.
-        if [[ "$VENV_NAME" == */* ]]; then
-            if [[ ! -d "$VENV_NAME" ]]; then
-                log_error "venv '$VENV_NAME' looks like a path but it doesn't exist"
-                exit 1
-            fi
-        fi
         
-        if conda activate "$VENV_NAME" &> /dev/null; then
-            log_info "Using existing conda environment '$VENV_NAME'"
-            # The virtual environment already exists. Possibly update it based on an environment file.
+        if [[ -z "$VENV_NAME" ]]; then
+            if [[ -f "$CONDA_ENV_FILE" ]]; then
+                # Create from the environment file.
+                log_info "Initializing environment from conda env file '$CONDA_ENV_FILE'..."
+                capture_logs "conda_env_create.log" conda env create -n gantry -f "$CONDA_ENV_FILE" 
+                conda activate gantry &> /dev/null
+                log_info "Done."
+            elif [[ -z "$PYTHON_VERSION" ]]; then
+                # If the Python version hasn't been specified then we try using the default 'base' environment,
+                # and otherwise create a new environment with whatever version of Python conda chooses.
+                if conda activate base &> /dev/null; then
+                    log_info "Using default base environment."
+                else
+                    log_info "Initializing environment with default Python version..."
+                    capture_logs "conda_env_create.log" conda create -y -n gantry pip
+                    conda activate gantry &> /dev/null
+                    log_info "Done."
+                fi
+            else
+                # Create a new empty environment with the specific Python version.
+                log_info "Initializing environment with Python $PYTHON_VERSION..."
+                capture_logs "conda_env_create.log" conda create -y -n gantry "python=$PYTHON_VERSION" pip
+                conda activate gantry &> /dev/null
+                log_info "Done."
+            fi
+        else
+            # Check if 'VENV_NAME' is a path. If so, it should exist.
+            if [[ "$VENV_NAME" == */* ]]; then
+                if [[ ! -d "$VENV_NAME" ]]; then
+                    log_error "conda environment '$VENV_NAME' looks like a path but it doesn't exist"
+                    exit 1
+                fi
+            fi
+
+            log_info "Activating specified conda environment '$VENV_NAME'..."
+            conda activate "$VENV_NAME" &> /dev/null
+            log_info "Done."
+
             if [[ -f "$CONDA_ENV_FILE" ]]; then
                 log_info "Updating environment from conda env file '$CONDA_ENV_FILE'..."
                 capture_logs "conda_env_update.log" conda env update -f "$CONDA_ENV_FILE"
                 log_info "Done."
             fi
-        else
-            # The virtual environment doesn't exist yet. Create it.
-            if [[ -f "$CONDA_ENV_FILE" ]]; then
-                # Create from the environment file.
-                log_info "Initializing environment from conda env file '$CONDA_ENV_FILE'..."
-                capture_logs "conda_env_create.log" conda env create -n "$VENV_NAME" -f "$CONDA_ENV_FILE" 
-                log_info "Done."
-            elif [[ -z "$PYTHON_VERSION" ]]; then
-                # Create a new empty environment with the whatever the default Python version is.
-                log_info "Initializing environment with default Python version..."
-                capture_logs "conda_env_create.log" conda create -y -n "$VENV_NAME" pip
-                log_info "Done."
-            else
-                # Create a new empty environment with the specific Python version.
-                log_info "Initializing environment with Python $PYTHON_VERSION..."
-                capture_logs "conda_env_create.log" conda create -y -n "$VENV_NAME" "python=$PYTHON_VERSION" pip
-                log_info "Done."
-            fi
-            conda activate "$VENV_NAME"
         fi
+    elif ! command -v python &> /dev/null; then
+        log_error "You specified '--no-conda', but no Python distribution can be found on the image. Please use an image with Python or remove the '--no-conda' flag."
+        exit 1
+    else
+        log_info "Using existing $(python --version) installation at '$(which python)'."
     fi
+
+    ensure_pip
     
     if [[ -z "$INSTALL_CMD" ]]; then
-        # Check for a 'requirements.txt' and/or 'setup.py/pyproject.toml/setup.cfg' file.
-        if { [[ -f 'setup.py' ]] || [[ -f 'pyproject.toml' ]] || [[ -f 'setup.cfg' ]]; } && [[ -f "$PIP_REQUIREMENTS_FILE" ]]; then
-            log_info "Installing local project and packages from '$PIP_REQUIREMENTS_FILE'..."
-            capture_logs "pip_install.log" pip install . -r "$PIP_REQUIREMENTS_FILE"
-            log_info "Done."
-        elif [[ -f 'setup.py' ]] || [[ -f 'pyproject.toml' ]] || [[ -f 'setup.cfg' ]]; then
+        if [[ -f 'setup.py' ]] || [[ -f 'pyproject.toml' ]] || [[ -f 'setup.cfg' ]]; then
             log_info "Installing local project..."
-            capture_logs "pip_install.log" pip install .
+            if [[ -f "$PIP_REQUIREMENTS_FILE" ]]; then
+                capture_logs "pip_install.log" pip install . -r "$PIP_REQUIREMENTS_FILE"
+            else
+                capture_logs "pip_install.log" pip install .
+            fi
             log_info "Done."
         elif [[ -f "$PIP_REQUIREMENTS_FILE" ]]; then
             log_info "Installing packages from '$PIP_REQUIREMENTS_FILE'..."
@@ -255,7 +312,6 @@ if [[ -z "$NO_PYTHON" ]]; then
     fi
     export PYTHONPATH
     
-    
     echo -e "\e[36m\e[1m
 ########################################
 ❯❯❯ [GANTRY] Python environment info ❮❮❮
@@ -265,7 +321,7 @@ if [[ -z "$NO_PYTHON" ]]; then
     echo "# $(python --version)" > "$GANTRY_DIR/requirements.txt"
     pip freeze >> "$GANTRY_DIR/requirements.txt"
 
-    log_info "Using $(python --version) from $(which python)"
+    log_info "Using $(python --version) from '$(which python)'."
     log_info "Packages:"
     if which sed >/dev/null; then
         pip freeze | sed 's/^/- /'
@@ -275,7 +331,7 @@ if [[ -z "$NO_PYTHON" ]]; then
 fi
 
 end_time=$(date +%s)
-log_info "Finished setup in $((end_time-start_time)) seconds"
+log_info "Finished setup in $((end_time-start_time)) seconds."
 
 echo -e "\e[36m\e[1m
 #################################
