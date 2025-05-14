@@ -8,5 +8,5 @@ run-checks :
 
 .PHONY : dev-tools-image
 dev-tools-image :
-	docker -f test_fixtures/Dockerfile -t gantry-dev-tools .
+	docker build -f test_fixtures/Dockerfile -t gantry-dev-tools .
 	beaker image create gantry-dev-tools --name gantry-dev-tools --workspace ai2/gantry-testing
