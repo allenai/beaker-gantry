@@ -54,35 +54,36 @@ jobs:
 
           - name: Example - Hello, World!
             run: |
-              run_name=$(python conftest.py run_name)
               gantry run \
-                --budget ai2/allennlp \
                 --workspace "$BEAKER_WORKSPACE" \
-                --name "$run_name" \
                 --timeout -1 \
+                --no-python \
                 --yes \
-                -- python -c 'print("Hello, World!")'
+                -- echo "Hello, World!"
 
           - name: Example - Metrics 
             run: |
-              run_name=$(python conftest.py run_name)
               gantry run \
-                --budget ai2/allennlp \
                 --workspace "$BEAKER_WORKSPACE" \
-                --name "$run_name" \
                 --timeout -1 \
                 --yes \
                 -- python examples/metrics/run.py
 
           - name: Example - Conda
             run: |
-              run_name=$(python conftest.py run_name)
               gantry run \
-                --budget ai2/allennlp \
                 --workspace "$BEAKER_WORKSPACE" \
-                --name "$run_name" \
                 --timeout -1 \
                 --conda test_fixtures/conda/environment.yml \
+                --yes \
+                -- python --version
+
+          - name: Example - Install Python
+            run: |
+              gantry run \
+                --workspace "$BEAKER_WORKSPACE" \
+                --timeout -1 \
+                --beaker-image petew/gantry-dev-tools \
                 --yes \
                 -- python --version
 

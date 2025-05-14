@@ -358,7 +358,7 @@ def ensure_entrypoint_dataset(beaker: Beaker) -> BeakerDataset:
 
     # Get hash of the local entrypoint source file.
     sha256_hash = hashlib.sha256()
-    contents = replace_tags(read_binary(gantry, constants.ENTRYPOINT))
+    contents = read_binary(gantry, constants.ENTRYPOINT)
     sha256_hash.update(contents)
 
     entrypoint_dataset_name = f"gantry-v{VERSION}-{workspace.id}-{sha256_hash.hexdigest()[:6]}"
