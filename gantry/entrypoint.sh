@@ -274,14 +274,14 @@ if [[ -z "$NO_PYTHON" ]]; then
     fi
 fi
 
+end_time=$(date +%s)
+log_info "Finished setup in $((end_time-start_time)) seconds"
+
 echo -e "\e[36m\e[1m
 #################################
 ❯❯❯ [GANTRY] Setup complete ✓ ❮❮❮
 #################################
 \e[0m"
-
-end_time=$(date +%s)
-log_info "Finished setup in $((end_time-start_time)) seconds"
 
 # Execute the arguments to this script as commands themselves.
 # shellcheck disable=SC2296
