@@ -53,7 +53,7 @@ This requires experience with Docker, experience writing Beaker experiment specs
 
 With Gantry, on the other hand, that same workflow simplifies down to this:
 
-1. Write a conda `environment.yml` file, a PIP `requirements.txt` file, or a `setup.py`/`pyproject.toml` file.
+1. Write a PIP `requirements.txt` file, a conda `environment.yml` file, or a `setup.py`/`pyproject.toml` file.
 2. Commit and push your changes.
 3. Submit and track a Beaker experiment with the `gantry run` command.
 4. Make changes and repeat from step 2.
@@ -62,7 +62,6 @@ With Gantry, on the other hand, that same workflow simplifies down to this:
 
 - 💾 **[Installing](#installing)**
 - 🚀 **[Quick start](#quick-start)**
-- 👓 **[Best practices](#best-practices)**
 - ❓ **[FAQ](#faq)**
 
 ### Additional info
@@ -116,15 +115,15 @@ pip install -e .
     find and use the existing configuration file (usually located at `$HOME/.beaker/config.yml`).
     Otherwise just set the environment variable `BEAKER_TOKEN` to your Beaker [user token](https://beaker.org/user).
 
-    The first time you call `gantry run ...` you'll also be prompted to provide a [GitHub personal access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token) with the `repo` scope if your repository is not public. This allows Gantry to clone your private repository when it runs in Beaker. You don't have to do this just yet (Gantry will prompt you for it), but if you need to update this token later you can use the `gantry config set-gh-token` command.
+    The first time you call `gantry run ...` you'll also be prompted to provide a [GitHub personal access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token) with the `repo` scope if your repository is private. This allows Gantry to clone your private repository when it runs in Beaker. You don't have to do this just yet (Gantry will prompt you for it), but if you need to update this token later you can use the `gantry config set-gh-token` command.
 
 3. **Specify your Python environment.**
 
     Typically you'll have to create one of several different files to specify your Python environment. There are three widely used options:
 
-    1. A conda [`environment.yml`](https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html#create-env-file-manually) file.
-    2. A [`setup.py`](https://docs.python.org/3/distutils/introduction.html#a-simple-example) or [`pyproject.toml`](https://pip.pypa.io/en/stable/reference/build-system/pyproject-toml/) file.
-    3. A PIP [`requirements.txt`](https://pip.pypa.io/en/stable/user_guide/#requirements-files) file.
+    1. A PIP [`requirements.txt`](https://pip.pypa.io/en/stable/user_guide/#requirements-files) file.
+    2. A conda [`environment.yml`](https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html#create-env-file-manually) file.
+    3. A [`setup.py`](https://docs.python.org/3/distutils/introduction.html#a-simple-example) or [`pyproject.toml`](https://pip.pypa.io/en/stable/reference/build-system/pyproject-toml/) file.
 
     Gantry will automatically find and use these files to reconstruct your Python environment at runtime.
     Alternatively you can provide a custom Python install command with the `--install` option to `gantry run`, or skip the Python setup completely with `--no-python`.
@@ -137,108 +136,28 @@ First make sure you've committed *and* pushed all changes so far in your reposit
 Then (from the root of your repository) run:
 
 ```bash
-gantry run --workspace {WORKSPACE} --cluster {CLUSTER} -- python -c 'print("Hello, World!")'
+gantry run --timeout -1 -- python -c 'print("Hello, World!")'
 ```
-
-Just replace `{WORKSPACE}` with the name of your own Beaker workspace and `{CLUSTER}` with the name of the Beaker cluster you want to run on.
 
 *❗Note: Everything after the `--` is the command + arguments you want to run on Beaker. It's necessary to include the `--` if any of your arguments look like options themselves (like `-c` in this example) so gantry can differentiate them from its own options.*
 
 Try `gantry run --help` to see all of the available options.
-
-## Best practices
-
-### Limit the scope and lifetime of your GitHub token
-
-Your [GitHub personal access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token) (PAT) only needs to have the `repo` scope and should have a short expiration time (e.g. 30 days).
-This limits the harm a bad actor could cause if they were able to read your PAT from your Beaker workspace somehow.
-
-### Use conda
-
-Adding a [conda environment file](https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html#create-env-file-manually) will generally make your exact Python environment easier to reproduce, especially when you have platform-dependent requirements like PyTorch.
-You don't necessarily need to write the `environment.yml` file manually either.
-If you've already initialized a conda environment locally, you can just run:
-
-```bash
-conda env export --from-history
-```
-
-See [Exporting an Environment File Across Platforms](https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html#exporting-an-environment-file-across-platforms) for more details.
-
-It's also okay to [use a combination of conda environment and PIP requirements files](#can-i-use-both-conda-environment-and-pip-requirements-files).
 
 ## FAQ
 
 ### Can I use my own Docker/Beaker image?
 
 You sure can! Just set the `--beaker-image` or `--docker-image` flag.
-
-Gantry can use any image that has bash, curl, and git installed. This can be useful when you have dependencies that take a long time to download and build (like PyTorch).
-
-In this case it works best if you build your image with a conda environment that already has your big dependencies installed. Then when you call `gantry run`, use the `--venv` option to tell Gantry to use that environment instead of creating a new conda environment in the container. You may also want to add a `requirements.txt` file to your repository that lists all of your dependencies (including PyTorch and anything else already installed in your image's conda environment) so Gantry can make sure the environment on the image is up-to-date when it runs.
-
-For example, you could use one of our [pre-built PyTorch images](https://beaker.org/ws/ai2/fab/images?text=pytorch&sort=created:descending), such as [`ai2/pytorch1.11.0-cuda11.3-python3.9`](https://beaker.org/im/01G3S1CBQ0K832MCFDA77XQXFJ/details), like this:
-
-```bash
-gantry run \
-    --beaker-image 'ai2/pytorch1.11.0-cuda11.3-python3.9' \
-    --venv 'base' \
-    --pip requirements.txt \
-    -- python -c 'print("Hello, World!")'
-```
+Gantry can use any image that has bash, curl, and git installed.
 
 ### Will Gantry work for GPU experiments?
 
 Absolutely! This was the main use-case Gantry was developed for. Just set the `--gpus` option for `gantry run` to the number of GPUs you need.
-You should also ensure that the way in which you specify your Python environment (e.g. conda `environment.yml`, `setup.py`, or PIP `requirements.txt` file) will lead to your dependencies being properly installed to support
-the GPU hardware specific to the cluster you're running on.
-
-For example, if one of your dependencies is [PyTorch](https://pytorch.org/), you're probably best off writing a conda `environment.yml` file since conda is the preferred way to install PyTorch.
-You'll generally want to use the latest supported CUDA version, so in this case your `environment.yml` file could look like this:
-
-```yaml
-name: torch-env
-channels:
-- pytorch
-dependencies:
-- python=3.9
-- cudatoolkit=11.3
-- numpy
-- pytorch
-- ...
-```
 
 ### Can I use both conda environment and PIP requirements files?
 
 Yes you can. Gantry will initialize your environment using your conda environment file (if you have one)
 and then will also check for a PIP requirements file.
-
-
-### How do I use a CUDA-enabled version of PyTorch on Beaker when I'm using a CPU-only version locally?
-
-One way to handle this would be to start with a `requirements.txt` that lists the `torch` version you need along with any other dependencies, e.g.
-
-```
-# requirements.txt
-torch==1.11.0
-...
-```
-
-Then add a conda `environment.yml` somewhere in your repository that specifies exactly how to install PyTorch (and a CUDA toolkit) on Beaker, e.g.:
-
-```yaml
-# beaker/environment.yml
-name: torch-env
-channels:
-- pytorch
-dependencies:
-- python=3.9
-- cudatoolkit=11.3
-- pytorch==1.11.0  # make sure this matches the version in requirements.txt
-```
-
-When you call `gantry run`, use the `--conda` flag to specify the path to your conda env file (e.g. `--conda beaker/environment.yml`).
-Gantry will use that env file to initialize the environment, and then will install the rest of your dependencies from the `requirements.txt` file.
 
 ### How can I save results or metrics from an experiment?
 
