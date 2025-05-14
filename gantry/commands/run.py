@@ -601,7 +601,10 @@ def run(
                     + random.choice(string.digits)
                 )
 
-        print(f"Experiment submitted, see progress at {beaker.workload.url(workload)}")
+        print(
+            f"Experiment '{beaker.user_name}/{workload.experiment.name}' ({workload.experiment.id}) submitted.\n"
+            f"URL: {beaker.workload.url(workload)}"
+        )
 
         # Can return right away if timeout is 0.
         if timeout == 0:
