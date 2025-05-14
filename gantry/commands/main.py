@@ -6,6 +6,7 @@ import sys
 import click
 import rich
 from click_help_colors import HelpColorsCommand, HelpColorsGroup
+from click_option_group import optgroup
 from rich import pretty, traceback
 from rich.logging import RichHandler
 
@@ -27,6 +28,10 @@ CLICK_COMMAND_DEFAULTS = {
     "help_headers_color": "yellow",
     "context_settings": {"max_content_width": 115},
 }
+
+
+def new_optgroup(name: str):
+    return optgroup.group(f"\n ❯❯❯ {name}")
 
 
 def excepthook(exctype, value, tb):

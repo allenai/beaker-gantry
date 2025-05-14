@@ -121,7 +121,7 @@ function clone_repo {
     return 1
 }
 
-# get existing Python major version
+# get existing Python major version, e.g. '3.10'
 function get_python_version {
     if command -v python &> /dev/null; then
         local python_version
