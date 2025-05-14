@@ -2,6 +2,8 @@
 
 set -eo pipefail
 
+start_time=$(date +%s)
+
 function log_info {
     echo -e "\e[36m\e[1m❯ [GANTRY]\e[0m $1"
 }
@@ -36,9 +38,9 @@ function ensure_conda {
 
 if [[ -n "$GITHUB_TOKEN" ]]; then
     echo -e "\e[36m\e[1m
-########################################
-❯ [GANTRY] Installing prerequisites... #
-########################################
+############################################
+❯❯❯ [GANTRY] Installing prerequisites... ❮❮❮
+############################################
 \e[0m"
     if ! command -v gh &> /dev/null; then
         if [[ -z "$NO_CONDA" ]]; then
@@ -56,9 +58,9 @@ if [[ -n "$GITHUB_TOKEN" ]]; then
 fi
 
 echo -e "\e[36m\e[1m
-###################################
-❯ [GANTRY] Cloning source code... #
-###################################
+#######################################
+❯❯❯ [GANTRY] Cloning source code... ❮❮❮
+#######################################
 \e[0m"
 
 # shellcheck disable=SC2296
@@ -100,9 +102,9 @@ git submodule update --init --recursive
 
 if [[ -z "$NO_PYTHON" ]]; then
     echo -e "\e[36m\e[1m
-###################################
-❯ [GANTRY] Building Python env... #
-###################################
+#######################################
+❯❯❯ [GANTRY] Building Python env... ❮❮❮
+#######################################
 \e[0m"
     
     if [[ -z "$VENV_NAME" ]]; then
@@ -180,9 +182,9 @@ if [[ -z "$NO_PYTHON" ]]; then
     
     
     echo -e "\e[36m\e[1m
-####################################
-❯ [GANTRY] Python environment info #
-####################################
+########################################
+❯❯❯ [GANTRY] Python environment info ❮❮❮
+########################################
 \e[0m"
     
     log_info "Using $(python --version) from $(which python)"
@@ -195,19 +197,22 @@ if [[ -z "$NO_PYTHON" ]]; then
 fi
 
 echo -e "\e[36m\e[1m
-######################################
-❯ [GANTRY] Finalizing environment... #
-######################################
+##########################################
+❯❯❯ [GANTRY] Finalizing environment... ❮❮❮
+##########################################
 \e[0m"
 # Create directory for results.
 log_info "Creating results dir at '${RESULTS_DIR}'..."
 mkdir -p "${RESULTS_DIR}/.gantry"
 
 echo -e "\e[36m\e[1m
-#############################
-❯ [GANTRY] Setup complete ✓ #
-#############################
+#################################
+❯❯❯ [GANTRY] Setup complete ✓ ❮❮❮
+#################################
 \e[0m"
+
+end_time=$(date +%s)
+log_info "Finished setup in $((end_time-start_time)) seconds"
 
 # Execute the arguments to this script as commands themselves.
 # shellcheck disable=SC2296
