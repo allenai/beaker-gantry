@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- Added prompt to cancel experiment on keyboard interrupt.
+
 ### Fixed
 
 - (performance) Made entrypoint script more robust to transient errors.

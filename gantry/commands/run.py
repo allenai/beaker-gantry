@@ -618,13 +618,18 @@ def run(
             beaker.workload.cancel(workload)
             print_stderr("[yellow]Experiment cancelled.[/]")
             sys.exit(1)
-        except KeyboardInterrupt as exc:
-            print_stderr(f"[red][bold]{exc.__class__.__name__}:[/] [i]{exc}[/][/]")
-            print(f"See the experiment at {beaker.workload.url(workload)}")
-            print_stderr(
-                f"[yellow]To cancel the experiment, run:\n[i]$ gantry stop {workload.experiment.id}[/][/]"
-            )
-            sys.exit(1)
+        except KeyboardInterrupt:
+            print_stderr("[yellow]Caught keyboard interrupt...[/]")
+            if prompt.Confirm.ask("Would you like to cancel the experiment?"):
+                beaker.workload.cancel(workload)
+                print_stderr(f"[red]Experiment stopped:[/] {beaker.workload.url(workload)}")
+                return
+            else:
+                print(f"See the experiment at {beaker.workload.url(workload)}")
+                print_stderr(
+                    f"[yellow]To cancel the experiment manually, run:\n[i]$ gantry stop {workload.experiment.id}[/][/]"
+                )
+                sys.exit(1)
 
         util.display_results(beaker, workload, job)
 
