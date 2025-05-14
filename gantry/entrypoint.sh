@@ -2,6 +2,8 @@
 
 set -eo pipefail
 
+start_time=$(date +%s)
+
 function log_info {
     echo -e "\e[36m\e[1m❯ [GANTRY]\e[0m $1"
 }
@@ -18,6 +20,17 @@ for env_var in "$GITHUB_REPO" "$GIT_REF"; do
     fi
 done
 
+# Function to check for the GitHub CLI, install it if needed.
+function ensure_gh {
+    if ! command -v gh &> /dev/null; then
+        log_info "Installing GitHub CLI..."
+        curl -sS https://webi.sh/gh | sh > /dev/null 2>&1
+        # shellcheck disable=SC1090
+        source ~/.config/envman/PATH.env
+        log_info "Done."
+    fi
+}
+
 # Function to check for conda, install it if needed.
 function ensure_conda {
     if ! command -v conda &> /dev/null; then
@@ -27,6 +40,7 @@ function ensure_conda {
         ~/miniconda.sh -b -p /opt/conda
         rm ~/miniconda.sh
         export PATH="/opt/conda/bin:$PATH"
+        log_info "Done."
     fi
 
     # Initialize conda for bash.
@@ -36,29 +50,19 @@ function ensure_conda {
 
 if [[ -n "$GITHUB_TOKEN" ]]; then
     echo -e "\e[36m\e[1m
-########################################
-❯ [GANTRY] Installing prerequisites... #
-########################################
+############################################
+❯❯❯ [GANTRY] Installing prerequisites... ❮❮❮
+############################################
 \e[0m"
-    if ! command -v gh &> /dev/null; then
-        if [[ -z "$NO_CONDA" ]]; then
-            ensure_conda
-        else
-            log_error "error: you specified '--no-conda' but conda is needed to install the GitHub CLI. To avoid this error please ensure the GitHub CLI is already installed on your image."
-        fi
-
-        # Install GitHub CLI.
-        conda install -y gh --channel conda-forge
-    fi
-    
-    # Configure git to use GitHub CLI as a credential helper so that we can clone private repos.
+    # Configure git to use the GitHub CLI as a credential helper so that we can clone private repos.
+    ensure_gh
     gh auth setup-git
 fi
 
 echo -e "\e[36m\e[1m
-###################################
-❯ [GANTRY] Cloning source code... #
-###################################
+#######################################
+❯❯❯ [GANTRY] Cloning source code... ❮❮❮
+#######################################
 \e[0m"
 
 # shellcheck disable=SC2296
@@ -73,13 +77,14 @@ attempts=1
 until [ "$attempts" -eq 5 ]
 do
     if [[ -z "$GIT_BRANCH" ]]; then
+        log_info "Cloning repository..."
         if [[ -n "$GITHUB_TOKEN" ]]; then
             gh repo clone "$GITHUB_REPO" . && break
         else
             git clone "https://github.com/$GITHUB_REPO" . && break
         fi
     else
-        log_info "Cloning single branch '$GIT_BRANCH'..."
+        log_info "Cloning single branch '$GIT_BRANCH' of repository..."
         if [[ -n "$GITHUB_TOKEN" ]]; then
             gh repo clone "$GITHUB_REPO" . -- -b "$GIT_BRANCH" --single-branch && break
         else
@@ -97,12 +102,13 @@ fi
 
 git checkout "$GIT_REF"
 git submodule update --init --recursive
+log_info "Done."
 
 if [[ -z "$NO_PYTHON" ]]; then
     echo -e "\e[36m\e[1m
-###################################
-❯ [GANTRY] Building Python env... #
-###################################
+#######################################
+❯❯❯ [GANTRY] Building Python env... ❮❮❮
+#######################################
 \e[0m"
     
     if [[ -z "$VENV_NAME" ]]; then
@@ -134,6 +140,7 @@ if [[ -z "$NO_PYTHON" ]]; then
             if [[ -f "$CONDA_ENV_FILE" ]]; then
                 log_info "Updating environment from conda env file '$CONDA_ENV_FILE'..."
                 conda env update -f "$CONDA_ENV_FILE"
+                log_info "Done."
             fi
         else
             # The virtual environment doesn't exist yet. Create it.
@@ -141,14 +148,17 @@ if [[ -z "$NO_PYTHON" ]]; then
                 # Create from the environment file.
                 log_info "Initializing environment from conda env file '$CONDA_ENV_FILE'..."
                 conda env create -n "$VENV_NAME" -f "$CONDA_ENV_FILE" 
+                log_info "Done."
             elif [[ -z "$PYTHON_VERSION" ]]; then
                 # Create a new empty environment with the whatever the default Python version is.
                 log_info "Initializing environment with default Python version..."
                 conda create -y -n "$VENV_NAME" pip
+                log_info "Done."
             else
                 # Create a new empty environment with the specific Python version.
                 log_info "Initializing environment with Python $PYTHON_VERSION..."
                 conda create -y -n "$VENV_NAME" "python=$PYTHON_VERSION" pip
+                log_info "Done."
             fi
             conda activate "$VENV_NAME"
         fi
@@ -159,16 +169,20 @@ if [[ -z "$NO_PYTHON" ]]; then
         if { [[ -f 'setup.py' ]] || [[ -f 'pyproject.toml' ]] || [[ -f 'setup.cfg' ]]; } && [[ -f "$PIP_REQUIREMENTS_FILE" ]]; then
             log_info "Installing local project and packages from '$PIP_REQUIREMENTS_FILE'..."
             pip install . -r "$PIP_REQUIREMENTS_FILE"
+            log_info "Done."
         elif [[ -f 'setup.py' ]] || [[ -f 'pyproject.toml' ]] || [[ -f 'setup.cfg' ]]; then
             log_info "Installing local project..."
             pip install .
+            log_info "Done."
         elif [[ -f "$PIP_REQUIREMENTS_FILE" ]]; then
             log_info "Installing packages from '$PIP_REQUIREMENTS_FILE'..."
             pip install -r "$PIP_REQUIREMENTS_FILE"
+            log_info "Done."
         fi
     else
         log_info "Installing packages with given command: $INSTALL_CMD"
         eval "$INSTALL_CMD"
+        log_info "Done."
     fi
     
     if [[ -z "$PYTHONPATH" ]]; then
@@ -180,9 +194,9 @@ if [[ -z "$NO_PYTHON" ]]; then
     
     
     echo -e "\e[36m\e[1m
-####################################
-❯ [GANTRY] Python environment info #
-####################################
+########################################
+❯❯❯ [GANTRY] Python environment info ❮❮❮
+########################################
 \e[0m"
     
     log_info "Using $(python --version) from $(which python)"
@@ -195,19 +209,23 @@ if [[ -z "$NO_PYTHON" ]]; then
 fi
 
 echo -e "\e[36m\e[1m
-######################################
-❯ [GANTRY] Finalizing environment... #
-######################################
+##########################################
+❯❯❯ [GANTRY] Finalizing environment... ❮❮❮
+##########################################
 \e[0m"
 # Create directory for results.
 log_info "Creating results dir at '${RESULTS_DIR}'..."
 mkdir -p "${RESULTS_DIR}/.gantry"
+log_info "Done."
 
 echo -e "\e[36m\e[1m
-#############################
-❯ [GANTRY] Setup complete ✓ #
-#############################
+#################################
+❯❯❯ [GANTRY] Setup complete ✓ ❮❮❮
+#################################
 \e[0m"
+
+end_time=$(date +%s)
+log_info "Finished setup in $((end_time-start_time)) seconds"
 
 # Execute the arguments to this script as commands themselves.
 # shellcheck disable=SC2296
