@@ -46,7 +46,7 @@ if [[ -n "$GITHUB_TOKEN" ]]; then
         if [[ -z "$NO_CONDA" ]]; then
             ensure_conda
         else
-            log_error "error: you specified '--no-conda' but conda is needed to install the GitHub CLI. To avoid this error please ensure the GitHub CLI is already installed on your image."
+            log_error "error: you specified '--no-conda' but conda is needed to install the GitHub CLI for cloning your private repo. To avoid this error please ensure the GitHub CLI is already installed on your image."
         fi
 
         # Install GitHub CLI.
