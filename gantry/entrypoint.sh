@@ -50,9 +50,14 @@ function with_retries {
     done
 }
 
+log_file_count=0
+
 # usage: capture_logs "log_file" "command" "args..."
 function capture_logs {
-    local log_file="$GANTRY_LOGS_DIR/$1"
+    log_file_count=$((log_file_count+1))
+
+    local log_file
+    log_file="$GANTRY_LOGS_DIR/$(printf '%03d' $log_file_count)_$1"
     shift 1
 
     "$@" > "$log_file" 2>&1 && return 0
