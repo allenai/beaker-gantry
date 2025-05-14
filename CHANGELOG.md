@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - (bug) Fixed filtering with `--all` in `gantry list` command.
 - (performance) Made `gantry list` much faster by using a thread pool to query for task status.
+- (performance) Made setup steps much faster by using webi to install the GitHub CLI, when needed, instead of conda.
 
 ## [v2.1.1](https://github.com/allenai/beaker-gantry/releases/tag/v2.1.1) - 2025-05-09
 

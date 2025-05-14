@@ -20,6 +20,16 @@ for env_var in "$GITHUB_REPO" "$GIT_REF"; do
     fi
 done
 
+# Function to check for the GitHub CLI, install it if needed.
+function ensure_gh {
+    if ! command -v gh &> /dev/null; then
+        log_info "Installing GitHub CLI..."
+        curl -sS https://webi.sh/gh | sh > /dev/null 2>&1
+        # shellcheck disable=SC1090
+        source ~/.config/envman/PATH.env
+    fi
+}
+
 # Function to check for conda, install it if needed.
 function ensure_conda {
     if ! command -v conda &> /dev/null; then
@@ -42,18 +52,8 @@ if [[ -n "$GITHUB_TOKEN" ]]; then
 ❯❯❯ [GANTRY] Installing prerequisites... ❮❮❮
 ############################################
 \e[0m"
-    if ! command -v gh &> /dev/null; then
-        if [[ -z "$NO_CONDA" ]]; then
-            ensure_conda
-        else
-            log_error "error: you specified '--no-conda' but conda is needed to install the GitHub CLI for cloning your private repo. To avoid this error please ensure the GitHub CLI is already installed on your image."
-        fi
-
-        # Install GitHub CLI.
-        conda install -y gh --channel conda-forge
-    fi
-    
-    # Configure git to use GitHub CLI as a credential helper so that we can clone private repos.
+    # Configure git to use the GitHub CLI as a credential helper so that we can clone private repos.
+    ensure_gh
     gh auth setup-git
 fi
 
@@ -75,13 +75,14 @@ attempts=1
 until [ "$attempts" -eq 5 ]
 do
     if [[ -z "$GIT_BRANCH" ]]; then
+        log_info "Cloning repository..."
         if [[ -n "$GITHUB_TOKEN" ]]; then
             gh repo clone "$GITHUB_REPO" . && break
         else
             git clone "https://github.com/$GITHUB_REPO" . && break
         fi
     else
-        log_info "Cloning single branch '$GIT_BRANCH'..."
+        log_info "Cloning single branch '$GIT_BRANCH' of repository..."
         if [[ -n "$GITHUB_TOKEN" ]]; then
             gh repo clone "$GITHUB_REPO" . -- -b "$GIT_BRANCH" --single-branch && break
         else
