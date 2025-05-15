@@ -14,11 +14,13 @@ from beaker import (
     BeakerCancelationCode,
     BeakerDataset,
     BeakerDatasetFileAlgorithmType,
+    BeakerGroup,
     BeakerJob,
     BeakerSortOrder,
     BeakerWorkload,
     BeakerWorkloadStatus,
     BeakerWorkloadType,
+    BeakerWorkspace,
 )
 from beaker.exceptions import (
     BeakerDatasetConflict,
@@ -257,6 +259,31 @@ def display_results(beaker: Beaker, workload: BeakerWorkload, job: BeakerJob):
         )
     else:
         raise ValueError(f"unexpected workload status '{status}'")
+
+
+def resolve_group(
+    beaker: Beaker,
+    group_name: str,
+    workspace_name: Optional[str] = None,
+    fall_back_to_default_workspace: bool = True,
+) -> Optional[BeakerGroup]:
+    workspace: Optional[BeakerWorkspace] = None
+    if workspace_name is not None or fall_back_to_default_workspace:
+        workspace = beaker.workspace.get(workspace_name)
+
+    groups = list(beaker.group.list(workspace=workspace, name_or_description=group_name, limit=1))
+    if groups and groups[0].name == group_name:
+        return groups[0]
+    else:
+        return None
+
+
+def group_url(beaker: Beaker, group: BeakerGroup) -> str:
+    # NOTE: work-around for https://github.com/allenai/beaker-web/issues/1109, short group URLs
+    # don't resolve at the moment.
+    org_name = beaker.org_name
+    workspace_name = beaker.workspace.get(group.workspace_id).name.split("/", 1)[-1]
+    return f"{beaker.config.agent_address}/orgs/{org_name}/workspaces/{workspace_name}/groups/{group.id}"
 
 
 def ensure_entrypoint_dataset(beaker: Beaker) -> BeakerDataset:
