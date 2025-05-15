@@ -39,7 +39,7 @@ def resolve_repo() -> Repo:
     try:
         return Repo(".")
     except InvalidGitRepositoryError as e:
-        raise GitError("gantry must be run from a valid git repository!") from e
+        raise GitError("gantry must be run from the ROOT of a valid git repository!") from e
 
 
 @dataclass
