@@ -11,6 +11,7 @@ import rich
 from beaker import (
     Beaker,
     BeakerExperimentSpec,
+    BeakerGroup,
     BeakerJob,
     BeakerJobPriority,
     BeakerRetrySpec,
@@ -37,23 +38,25 @@ from .main import CLICK_COMMAND_DEFAULTS, main, new_optgroup
 @main.command(**CLICK_COMMAND_DEFAULTS)
 @click.help_option("--help", help="Show this message and exit.")
 @click.argument("arg", nargs=-1)
-@click.option(
+@new_optgroup("Bookkeeping")
+@optgroup.option(
     "-n",
     "--name",
     type=str,
     help="""A name to assign to the experiment on Beaker. Defaults to a randomly generated name.""",
 )
-@click.option("-d", "--description", type=str, help="""A description for the experiment.""")
-@click.option(
+@optgroup.option("-d", "--description", type=str, help="""A description for the experiment.""")
+@optgroup.option(
     "-w",
     "--workspace",
     type=str,
     help="""The Beaker workspace to use.
     If not specified, your default workspace will be used.""",
 )
-@click.option(
+@optgroup.option(
     "-b", "--budget", type=str, help="""The budget account to associate with the experiment."""
 )
+@optgroup.option("--group", "group_name", type=str, help="""A group to assign the experiment to.""")
 @new_optgroup("Launch settings")
 @optgroup.option(
     "--show-logs/--no-logs",
@@ -319,6 +322,7 @@ def run(
     description: Optional[str] = None,
     task_name: str = "main",
     workspace: Optional[str] = None,
+    group_name: Optional[str] = None,
     cluster: Optional[Tuple[str, ...]] = None,
     hostname: Optional[Tuple[str, ...]] = None,
     beaker_image: Optional[str] = None,
@@ -412,6 +416,20 @@ def run(
 
             if not budget:
                 raise ConfigurationError("Budget account must be specified!")
+
+        # Maybe resolve or create group.
+        group: Optional[BeakerGroup] = None
+        if group_name is not None:
+            group = util.resolve_group(beaker, group_name)
+            if group is None:
+                if prompt.Confirm.ask(
+                    f"Group [green]{group_name}[/] not found in workspace, would you like to create this group?"
+                ):
+                    group = beaker.group.create(group_name)
+                    print(f"Group created: {beaker.group.url(group)}")
+                else:
+                    print_stderr("[yellow]canceled[/]")
+                    sys.exit(1)
 
         # Get the entrypoint dataset.
         entrypoint_dataset = util.ensure_entrypoint_dataset(beaker)
@@ -581,6 +599,7 @@ def run(
             rich.get_console().rule("[b]Dry run[/]")
             print(
                 f"[b]Workspace:[/] {beaker.workspace.url()}\n"
+                f"[b]Group:[/] {None if group is None else beaker.group.url(group)}\n"
                 f"[b]Commit:[/] {git_config.ref_url}\n"
                 f"[b]Branch:[/] {git_config.branch_url}\n"
                 f"[b]Name:[/] {name}\n"
@@ -606,8 +625,12 @@ def run(
 
         print(
             f"Experiment '{beaker.user_name}/{workload.experiment.name}' ({workload.experiment.id}) submitted.\n"
-            f"URL: {beaker.workload.url(workload)}"
+            f"Experiment URL: {beaker.workload.url(workload)}"
         )
+
+        if group is not None:
+            beaker.group.update(group, add_experiment_ids=[workload.experiment.id])
+            print(f"Group URL: {beaker.group.url(group)}")
 
         # Can return right away if timeout is 0.
         if timeout == 0:

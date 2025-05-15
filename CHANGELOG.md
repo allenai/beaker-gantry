@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added prompt to cancel experiment on keyboard interrupt.
 - Added `--branch` argument to `gantry run` for overriding the branch to use.
+- Added `--group` argument to `gantry run` for adding the experiment to a group.
 
 ### Fixed
 

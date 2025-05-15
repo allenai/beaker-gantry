@@ -14,6 +14,7 @@ from beaker import (
     BeakerCancelationCode,
     BeakerDataset,
     BeakerDatasetFileAlgorithmType,
+    BeakerGroup,
     BeakerJob,
     BeakerSortOrder,
     BeakerWorkload,
@@ -257,6 +258,15 @@ def display_results(beaker: Beaker, workload: BeakerWorkload, job: BeakerJob):
         )
     else:
         raise ValueError(f"unexpected workload status '{status}'")
+
+
+def resolve_group(beaker: Beaker, group_name: str) -> Optional[BeakerGroup]:
+    workspace = beaker.workspace.get()
+    groups = list(beaker.group.list(workspace=workspace, name_or_description=group_name, limit=1))
+    if groups and groups[0].name == group_name:
+        return groups[0]
+    else:
+        return None
 
 
 def ensure_entrypoint_dataset(beaker: Beaker) -> BeakerDataset:

@@ -5,6 +5,7 @@ import sys
 
 import click
 import rich
+from beaker.exceptions import BeakerError
 from click_help_colors import HelpColorsCommand, HelpColorsGroup
 from click_option_group import optgroup
 from rich import pretty, traceback
@@ -38,8 +39,8 @@ def excepthook(exctype, value, tb):
     """
     Used to patch `sys.excepthook` in order to customize handling of uncaught exceptions.
     """
-    # Ignore `GantryError` because we don't need a traceback for those.
-    if issubclass(exctype, (GantryError,)):
+    # Ignore in-house error types because we don't need a traceback for those.
+    if issubclass(exctype, (GantryError, BeakerError)):
         print_stderr(f"[red][bold]{exctype.__name__}:[/] [i]{value}[/][/]")
     # For interruptions, call the original exception handler.
     elif issubclass(exctype, (KeyboardInterrupt, TermInterrupt)):
