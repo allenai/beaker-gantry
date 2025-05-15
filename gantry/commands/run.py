@@ -191,7 +191,12 @@ from .main import CLICK_COMMAND_DEFAULTS, main, new_optgroup
 @optgroup.option(
     "--ref",
     type=str,
-    help="""The target git ref to use. This defaults to the current commit.""",
+    help="""The target git ref to use. Defaults to the latest commit.""",
+)
+@optgroup.option(
+    "--branch",
+    type=str,
+    help="""The target git branch to use. Defaults to the active branch.""",
 )
 @optgroup.option(
     "--gh-token-secret",
@@ -205,7 +210,9 @@ from .main import CLICK_COMMAND_DEFAULTS, main, new_optgroup
     "--results",
     type=str,
     default=constants.RESULTS_DIR,
-    help=f"""Specify the results directory on the container. Defaults to '{constants.RESULTS_DIR}'.""",
+    help="""Specify the results directory on the container (an absolute path).
+    This is where the results dataset will be mounted.""",
+    show_default=True,
 )
 @new_optgroup("Task settings")
 @optgroup.option(
@@ -323,6 +330,7 @@ def run(
     dataset: Optional[Tuple[str, ...]] = None,
     gh_token_secret: str = constants.GITHUB_TOKEN_SECRET,
     ref: Optional[str] = None,
+    branch: Optional[str] = None,
     conda: Optional[PathOrStr] = None,
     pip: Optional[PathOrStr] = None,
     venv: Optional[str] = None,
@@ -381,7 +389,7 @@ def run(
     )
 
     # Get git information.
-    git_config = GitConfig.from_env(ref=ref)
+    git_config = GitConfig.from_env(ref=ref, branch=branch)
 
     # Validate repo state.
     if ref is None and not allow_dirty and git_config.is_dirty:

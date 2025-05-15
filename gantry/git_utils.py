@@ -6,6 +6,7 @@ from functools import cached_property
 from typing import cast
 
 import requests
+from git import InvalidGitRepositoryError
 from git.cmd import Git
 from git.refs import Head, RemoteReference
 from git.repo import Repo
@@ -34,6 +35,13 @@ def parse_git_remote_url(url: str) -> tuple[str, str]:
     return account, repo
 
 
+def resolve_repo() -> Repo:
+    try:
+        return Repo(".")
+    except InvalidGitRepositoryError as e:
+        raise GitError("gantry must be run from a valid git repository!") from e
+
+
 @dataclass
 class GitConfig:
     repo: str
@@ -43,7 +51,7 @@ class GitConfig:
 
     @property
     def is_dirty(self) -> bool:
-        repo = Repo(".")
+        repo = resolve_repo()
         return repo.is_dirty()
 
     @cached_property
@@ -65,21 +73,24 @@ class GitConfig:
             return f"{self.repo_url}/tree/{self.branch}"
 
     @classmethod
-    def from_env(cls, ref: str | None = None) -> GitConfig:
+    def from_env(cls, ref: str | None = None, branch: str | None = None) -> GitConfig:
+        repo = resolve_repo()
         git = Git(".")
-        repo = Repo(".")
 
         git_ref = ref or str(repo.commit())
         remote = repo.remote()
 
         active_branch: Head | None = None
-        try:
-            active_branch = repo.active_branch
-        except TypeError:
-            print_stderr(
-                "[yellow]Repo is in 'detached HEAD' state which will result in cloning the entire repo at runtime.\n"
-                "It's recommended to run gantry from a branch instead.[/]"
-            )
+        if branch is not None:
+            active_branch = Head(repo, f"refs/heads/{branch}")
+        else:
+            try:
+                active_branch = repo.active_branch
+            except TypeError:
+                print_stderr(
+                    "[yellow]Repo is in 'detached HEAD' state which will result in cloning the entire repo at runtime.\n"
+                    "It's recommended to run gantry from a branch instead.[/]"
+                )
 
         remote_branch: RemoteReference | None = None
         if active_branch is not None:
