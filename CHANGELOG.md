@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - (performance) Made entrypoint script more robust to transient errors.
 - (performance) Avoid creating new conda environments when default Python version matches target Python version.
 - Made git ref/remote/branch resolution more robust, and provide better error messages.
+- Format creation time in local time from `gantry list`.
 
 ## [v2.2.0](https://github.com/allenai/beaker-gantry/releases/tag/v2.2.0) - 2025-05-13
 

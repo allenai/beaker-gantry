@@ -268,10 +268,7 @@ def resolve_group(
     fall_back_to_default_workspace: bool = True,
 ) -> Optional[BeakerGroup]:
     workspace: Optional[BeakerWorkspace] = None
-    if workspace_name is None:
-        if fall_back_to_default_workspace:
-            workspace = beaker.workspace.get()
-    else:
+    if workspace_name is not None or fall_back_to_default_workspace:
         workspace = beaker.workspace.get(workspace_name)
 
     groups = list(beaker.group.list(workspace=workspace, name_or_description=group_name, limit=1))

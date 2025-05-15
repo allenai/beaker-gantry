@@ -132,7 +132,7 @@ def list_cmd(
                     table.add_row(
                         f"[b cyan]{wl.experiment.name}[/]\n[u i blue]{beaker.workload.url(wl)}[/]",
                         beaker.user.get(wl.experiment.author_id).name,
-                        wl.experiment.created.ToDatetime()
+                        wl.experiment.created.ToDatetime(timezone.utc)
                         .astimezone(tz=None)
                         .strftime("%I:%M %p on %a, %b %-d"),
                         "\n".join(task_statuses[task.id] for task in tasks),
