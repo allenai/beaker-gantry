@@ -28,7 +28,8 @@ from rich import print, prompt
 from .. import constants, util
 from ..aliases import PathOrStr
 from ..exceptions import *
-from ..util import GitConfig, print_stderr
+from ..git_utils import GitConfig
+from ..util import print_stderr
 from ..version import VERSION
 from .main import CLICK_COMMAND_DEFAULTS, main, new_optgroup
 
@@ -190,7 +191,12 @@ from .main import CLICK_COMMAND_DEFAULTS, main, new_optgroup
 @optgroup.option(
     "--ref",
     type=str,
-    help="""The target git ref to use. This defaults to the current commit.""",
+    help="""The target git ref to use. Defaults to the latest commit.""",
+)
+@optgroup.option(
+    "--branch",
+    type=str,
+    help="""The target git branch to use. Defaults to the active branch.""",
 )
 @optgroup.option(
     "--gh-token-secret",
@@ -204,7 +210,9 @@ from .main import CLICK_COMMAND_DEFAULTS, main, new_optgroup
     "--results",
     type=str,
     default=constants.RESULTS_DIR,
-    help=f"""Specify the results directory on the container. Defaults to '{constants.RESULTS_DIR}'.""",
+    help="""Specify the results directory on the container (an absolute path).
+    This is where the results dataset will be mounted.""",
+    show_default=True,
 )
 @new_optgroup("Task settings")
 @optgroup.option(
@@ -322,6 +330,7 @@ def run(
     dataset: Optional[Tuple[str, ...]] = None,
     gh_token_secret: str = constants.GITHUB_TOKEN_SECRET,
     ref: Optional[str] = None,
+    branch: Optional[str] = None,
     conda: Optional[PathOrStr] = None,
     pip: Optional[PathOrStr] = None,
     venv: Optional[str] = None,
@@ -380,17 +389,11 @@ def run(
     )
 
     # Get git information.
-    git_config = GitConfig.from_env(ref=ref)
+    git_config = GitConfig.from_env(ref=ref, branch=branch)
 
     # Validate repo state.
     if ref is None and not allow_dirty and git_config.is_dirty:
         raise DirtyRepoError("You have uncommitted changes! Use --allow-dirty to force.")
-
-    if not git_config.ref_exists_on_remote:
-        raise UnpushedChangesError(
-            f"Current git ref '{git_config.ref}' does not appear to exist on the remote!\n"
-            "Please push your changes and try again."
-        )
 
     # Initialize Beaker client and validate workspace.
     with util.init_client(workspace=workspace, yes=yes) as beaker:
