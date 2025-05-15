@@ -28,7 +28,8 @@ from rich import print, prompt
 from .. import constants, util
 from ..aliases import PathOrStr
 from ..exceptions import *
-from ..util import GitConfig, print_stderr
+from ..git_utils import GitConfig
+from ..util import print_stderr
 from ..version import VERSION
 from .main import CLICK_COMMAND_DEFAULTS, main, new_optgroup
 
@@ -385,12 +386,6 @@ def run(
     # Validate repo state.
     if ref is None and not allow_dirty and git_config.is_dirty:
         raise DirtyRepoError("You have uncommitted changes! Use --allow-dirty to force.")
-
-    if not git_config.ref_exists_on_remote:
-        raise UnpushedChangesError(
-            f"Current git ref '{git_config.ref}' does not appear to exist on the remote!\n"
-            "Please push your changes and try again."
-        )
 
     # Initialize Beaker client and validate workspace.
     with util.init_client(workspace=workspace, yes=yes) as beaker:
