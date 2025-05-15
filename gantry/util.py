@@ -278,6 +278,14 @@ def resolve_group(
         return None
 
 
+def group_url(beaker: Beaker, group: BeakerGroup) -> str:
+    # NOTE: work-around for https://github.com/allenai/beaker-web/issues/1109, short group URLs
+    # don't resolve at the moment.
+    org_name = beaker.org_name
+    workspace_name = beaker.workspace.get(group.workspace_id).name.split("/", 1)[-1]
+    return f"{beaker.config.agent_address}/orgs/{org_name}/workspaces/{workspace_name}/groups/{group.id}"
+
+
 def ensure_entrypoint_dataset(beaker: Beaker) -> BeakerDataset:
     import hashlib
     from importlib.resources import read_binary

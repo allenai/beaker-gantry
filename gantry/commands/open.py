@@ -59,4 +59,12 @@ def open_cmd(identifiers: tuple[str, ...] = tuple()):
             except BeakerNotFoundError:
                 pass
 
+            try:
+                url = util.group_url(beaker, beaker.group.get(identifier))
+                print(f"Resolved group '{identifier}' to {url}")
+                click.launch(url)
+                continue
+            except BeakerNotFoundError:
+                pass
+
             raise NotFoundError(f"Beaker resource '{identifier}' not found or does not have a URL")

@@ -426,7 +426,7 @@ def run(
                     f"Group [green]{group_name}[/] not found in workspace, would you like to create this group?"
                 ):
                     group = beaker.group.create(group_name)
-                    print(f"Group created: {beaker.group.url(group)}")
+                    print(f"Group created: {util.group_url(beaker, group)}")
                 else:
                     print_stderr("[yellow]canceled[/]")
                     sys.exit(1)
@@ -599,7 +599,7 @@ def run(
             rich.get_console().rule("[b]Dry run[/]")
             print(
                 f"[b]Workspace:[/] {beaker.workspace.url()}\n"
-                f"[b]Group:[/] {None if group is None else beaker.group.url(group)}\n"
+                f"[b]Group:[/] {None if group is None else util.group_url(beaker, group)}\n"
                 f"[b]Commit:[/] {git_config.ref_url}\n"
                 f"[b]Branch:[/] {git_config.branch_url}\n"
                 f"[b]Name:[/] {name}\n"
@@ -630,7 +630,7 @@ def run(
 
         if group is not None:
             beaker.group.update(group, add_experiment_ids=[workload.experiment.id])
-            print(f"Group URL: {beaker.group.url(group)}")
+            print(f"Group URL: {util.group_url(beaker, group)}")
 
         # Can return right away if timeout is 0.
         if timeout == 0:
