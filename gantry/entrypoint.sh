@@ -65,7 +65,8 @@ function capture_logs {
 
     "$@" > "$log_file" 2>&1 && return 0
 
-    log_error "Command '$*' failed, see log file '${log_file#*"$RESULTS_DIR"/}' in results dataset for details: $RESULTS_DATASET_URL"
+    log_error "Command '$*' failed. Showing logs:"
+    cat "$log_file"
     return 1
 }
 

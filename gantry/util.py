@@ -239,7 +239,7 @@ def display_results(beaker: Beaker, workload: BeakerWorkload, job: BeakerJob):
         results_ds = beaker.dataset.get(job.assignment_details.result_dataset_id)
 
         print(
-            f"[b green]\N{check mark}[/] [b cyan]{workload.experiment.name}[/] completed successfully\n"
+            f"[b green]\N{check mark}[/] [b cyan]{beaker.user_name}/{workload.experiment.name}[/] ({workload.experiment.id}) completed successfully\n"
             f"[b]Experiment:[/] {beaker.workload.url(workload)}\n"
             f"[b]Results:[/] {beaker.dataset.url(results_ds)}\n"
             f"[b]Runtime:[/] {format_timedelta(runtime)}"
