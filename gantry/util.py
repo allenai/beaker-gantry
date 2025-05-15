@@ -20,6 +20,7 @@ from beaker import (
     BeakerWorkload,
     BeakerWorkloadStatus,
     BeakerWorkloadType,
+    BeakerWorkspace,
 )
 from beaker.exceptions import (
     BeakerDatasetConflict,
@@ -260,8 +261,19 @@ def display_results(beaker: Beaker, workload: BeakerWorkload, job: BeakerJob):
         raise ValueError(f"unexpected workload status '{status}'")
 
 
-def resolve_group(beaker: Beaker, group_name: str) -> Optional[BeakerGroup]:
-    workspace = beaker.workspace.get()
+def resolve_group(
+    beaker: Beaker,
+    group_name: str,
+    workspace_name: Optional[str] = None,
+    fall_back_to_default_workspace: bool = True,
+) -> Optional[BeakerGroup]:
+    workspace: Optional[BeakerWorkspace] = None
+    if workspace_name is None:
+        if fall_back_to_default_workspace:
+            workspace = beaker.workspace.get()
+    else:
+        workspace = beaker.workspace.get(workspace_name)
+
     groups = list(beaker.group.list(workspace=workspace, name_or_description=group_name, limit=1))
     if groups and groups[0].name == group_name:
         return groups[0]

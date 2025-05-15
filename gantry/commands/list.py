@@ -14,6 +14,7 @@ from beaker import (
     BeakerWorkloadStatus,
     BeakerWorkloadType,
 )
+from beaker.exceptions import BeakerGroupNotFound
 from rich import print
 from rich.table import Table
 
@@ -35,6 +36,7 @@ class Defaults:
     help="""The Beaker workspace to pull experiments from.
     If not specified, your default workspace will be used.""",
 )
+@click.option("-g", "--group", type=str, help="""The Beaker group to pull experiments from.""")
 @click.option(
     "-l",
     "--limit",
@@ -74,6 +76,7 @@ class Defaults:
 )
 def list_cmd(
     workspace: Optional[str] = None,
+    group: Optional[str] = None,
     limit: int = Defaults.limit,
     author: Optional[str] = None,
     me: bool = False,
@@ -82,7 +85,7 @@ def list_cmd(
     show_all: bool = False,
 ):
     """
-    List recent experiments with a workspace.
+    List recent experiments within a workspace or group.
     This will only show experiments launched with Gantry by default, unless '--all' is specified.
     """
     with util.init_client(ensure_workspace=False) as beaker:
@@ -105,6 +108,7 @@ def list_cmd(
                     iter_workloads(
                         beaker,
                         workspace=workspace,
+                        group=group,
                         author=author,
                         statuses=status,
                         max_age=max_age,
@@ -137,44 +141,72 @@ def list_cmd(
         print(table)
 
 
+def is_gantry_workload(beaker: Beaker, wl: BeakerWorkload) -> bool:
+    spec = beaker.experiment.get_spec(wl.experiment)
+    for task_spec in spec.tasks:
+        for env_var in task_spec.env_vars or []:
+            if env_var.name == "GANTRY_VERSION":
+                return True
+    return False
+
+
 def iter_workloads(
     beaker: Beaker,
     *,
     workspace: Optional[str],
+    group: Optional[str],
     author: Optional[str],
     statuses: Optional[List[str]],
     max_age: int,
     show_all: bool,
     limit: Optional[int] = None,
 ) -> Generator[Tuple[BeakerWorkload, Iterable[BeakerTask]], None, None]:
-    now = datetime.now(tz=timezone.utc).astimezone()
-    for wl in beaker.workload.list(
-        workspace=None if workspace is None else beaker.workspace.get(workspace),
-        author=None if author is None else beaker.user.get(author),
-        created_after=now - timedelta(days=max_age),
-        workload_type=BeakerWorkloadType.experiment,
-        statuses=None if statuses is None else [BeakerWorkloadStatus.from_any(s) for s in statuses],
-        sort_order=BeakerSortOrder.descending,
-        sort_field="created",
-        limit=limit,
-    ):
-        # Filter out non-gantry experiments.
-        if not show_all:
-            should_show = False
-            spec = beaker.experiment.get_spec(wl.experiment)
-            for task_spec in spec.tasks:
-                for env_var in task_spec.env_vars or []:
-                    if env_var.name == "GANTRY_VERSION":
-                        should_show = True
-                        break
-                else:
-                    continue
-                break
+    created_after = datetime.now(tz=timezone.utc).astimezone() - timedelta(days=max_age)
+    author_id = None if author is None else beaker.user.get(author)
+    workload_statuses = (
+        None if not statuses else [BeakerWorkloadStatus.from_any(s) for s in statuses]
+    )
 
-            if not should_show:
+    if group is not None:
+        beaker_group = util.resolve_group(
+            beaker, group, workspace, fall_back_to_default_workspace=False
+        )
+        if beaker_group is None:
+            raise BeakerGroupNotFound(group)
+
+        for task_metrics in beaker.group.list_task_metrics(beaker_group):
+            wl = beaker.workload.get(task_metrics.experiment_id)
+
+            # Filter out non-gantry experiments.
+            if not show_all and not is_gantry_workload(beaker, wl):
                 continue
 
-        yield wl, wl.experiment.tasks
+            if author_id is not None and wl.experiment.author_id != author_id:
+                continue
+
+            if workload_statuses is not None and wl.status not in workload_statuses:
+                continue
+
+            if wl.experiment.created.ToDatetime(timezone.utc) < created_after:
+                continue
+
+            yield wl, wl.experiment.tasks
+    else:
+        for wl in beaker.workload.list(
+            workspace=None if workspace is None else beaker.workspace.get(workspace),
+            author=author_id,
+            created_after=created_after,
+            workload_type=BeakerWorkloadType.experiment,
+            statuses=workload_statuses,
+            sort_order=BeakerSortOrder.descending,
+            sort_field="created",
+            limit=limit,
+        ):
+            # Filter out non-gantry experiments.
+            if not show_all and not is_gantry_workload(beaker, wl):
+                continue
+
+            yield wl, wl.experiment.tasks
 
 
 def get_status(
