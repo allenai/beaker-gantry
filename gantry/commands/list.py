@@ -107,6 +107,7 @@ def list_cmd(
                 for wl, tasks in islice(
                     iter_workloads(
                         beaker,
+                        executor=executor,
                         workspace=workspace,
                         group=group,
                         author=author,
@@ -153,6 +154,7 @@ def is_gantry_workload(beaker: Beaker, wl: BeakerWorkload) -> bool:
 def iter_workloads(
     beaker: Beaker,
     *,
+    executor: ThreadPoolExecutor,
     workspace: Optional[str],
     group: Optional[str],
     author: Optional[str],
@@ -174,8 +176,16 @@ def iter_workloads(
         if beaker_group is None:
             raise BeakerGroupNotFound(group)
 
+        # Will have to sort workloads manually by creation time, so we gather them all first.
+        workload_futures = []
         for task_metrics in beaker.group.list_task_metrics(beaker_group):
-            wl = beaker.workload.get(task_metrics.experiment_id)
+            workload_futures.append(
+                executor.submit(beaker.workload.get, task_metrics.experiment_id)
+            )
+
+        workloads = []
+        for future in concurrent.futures.as_completed(workload_futures):
+            wl = future.result()
 
             # Filter out non-gantry experiments.
             if not show_all and not is_gantry_workload(beaker, wl):
@@ -190,6 +200,10 @@ def iter_workloads(
             if wl.experiment.created.ToDatetime(timezone.utc) < created_after:
                 continue
 
+            workloads.append(wl)
+
+        workloads.sort(key=lambda wl: wl.experiment.created.ToMilliseconds(), reverse=True)
+        for wl in workloads:
             yield wl, wl.experiment.tasks
     else:
         for wl in beaker.workload.list(
