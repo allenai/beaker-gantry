@@ -370,7 +370,7 @@ def run(
 
     Example:
 
-    $ gantry run --name 'hello-world' -- python -c 'print("Hello, World!")'
+    $ gantry run --yes --timeout=-1 -- python -c 'print("Hello, World!")'
     """
 
     validate_args(arg)
