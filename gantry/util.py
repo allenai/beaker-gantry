@@ -11,7 +11,6 @@ from typing import Optional, cast
 import rich
 from beaker import (
     Beaker,
-    BeakerCancelationCode,
     BeakerDataset,
     BeakerDatasetFileAlgorithmType,
     BeakerGroup,
@@ -29,7 +28,6 @@ from beaker.exceptions import (
 )
 from rich import print, prompt
 from rich.console import Console
-from rich.status import Status
 
 from . import constants
 from .exceptions import *
@@ -119,106 +117,6 @@ def get_latest_workload(
         return workloads[0]
     else:
         return None
-
-
-def _wait_for_job_to_start(
-    *,
-    beaker: Beaker,
-    job: BeakerJob,
-    status: Status,
-    start_time: float,
-    timeout: int = 0,
-    show_logs: bool = True,
-) -> BeakerJob:
-    # Pull events until job is running (or fails)...
-    events = set()
-    while not (job.status.HasField("finalized") or (show_logs and job.status.HasField("started"))):
-        if timeout > 0 and (time.monotonic() - start_time) > timeout:
-            raise BeakerJobTimeoutError(f"Timed out while waiting for job '{job.id}' to finish")
-
-        for event in beaker.job.list_summarized_events(
-            job, sort_order=BeakerSortOrder.descending, sort_field="latest_occurrence"
-        ):
-            event_hashable = (event.latest_occurrence.ToSeconds(), event.latest_message)
-            if event_hashable not in events:
-                status.update(f"[i]{event.latest_message}[/]")
-                events.add(event_hashable)
-                time.sleep(0.5)
-
-        time.sleep(0.5)
-        job = beaker.job.get(job.id)
-
-    return job
-
-
-def _job_preempted(job: BeakerJob) -> bool:
-    return job.status.status == BeakerWorkloadStatus.canceled and job.status.canceled_code in (
-        BeakerCancelationCode.system_preemption,
-        BeakerCancelationCode.user_preemption,
-    )
-
-
-def follow_workload(
-    beaker: Beaker,
-    workload: BeakerWorkload,
-    timeout: int = 0,
-    tail: bool = False,
-    show_logs: bool = True,
-) -> BeakerJob:
-    console = rich.get_console()
-    start_time = time.monotonic()
-    preempted_job_ids = set()
-
-    while True:
-        with console.status("[i]waiting...[/]", spinner="point", speed=0.8) as status:
-            # Wait for job to be created...
-            job: BeakerJob | None = None
-            while job is None:
-                if (
-                    j := beaker.workload.get_latest_job(workload)
-                ) is not None and j.id not in preempted_job_ids:
-                    job = j
-                else:
-                    time.sleep(1.0)
-
-            # Wait for job to start...
-            job = _wait_for_job_to_start(
-                beaker=beaker,
-                job=job,
-                status=status,
-                start_time=start_time,
-                timeout=timeout,
-                show_logs=show_logs,
-            )
-
-        # Stream logs...
-        if show_logs and job.status.HasField("started"):
-            print()
-            rich.get_console().rule("Logs")
-
-            for job_log in beaker.job.logs(job, tail_lines=10 if tail else None, follow=True):
-                console.print(job_log.message.decode(), highlight=False, markup=False)
-                if timeout > 0 and (time.monotonic() - start_time) > timeout:
-                    raise BeakerJobTimeoutError(
-                        f"Timed out while waiting for job '{job.id}' to finish"
-                    )
-
-            print()
-            rich.get_console().rule("End logs")
-            print()
-
-        # Wait for job to finalize...
-        while not job.status.HasField("finalized"):
-            time.sleep(0.5)
-            job = beaker.job.get(job.id)
-
-        # If job was preempted, we start over...
-        if _job_preempted(job):
-            print(f"[yellow]Job '{job.id}' preempted.[/] ")
-            preempted_job_ids.add(job.id)
-            continue
-
-        return job
 
 
 def display_logs(beaker: Beaker, job: BeakerJob, tail_lines: Optional[int] = None) -> BeakerJob:
@@ -447,7 +345,7 @@ def init_client(
     yes: bool = False,
     ensure_workspace: bool = True,
 ) -> Beaker:
-    Beaker.MAX_RETRIES = 100  # type: ignore
+    Beaker.MAX_RETRIES = 100
 
     beaker = (
         Beaker.from_env() if workspace is None else Beaker.from_env(default_workspace=workspace)

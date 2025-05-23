@@ -14,10 +14,12 @@ from git.repo import Repo
 from .exceptions import *
 from .util import print_stderr
 
+__all__ = ["GitRepoState"]
+
 log = logging.getLogger(__name__)
 
 
-def parse_git_remote_url(url: str) -> tuple[str, str]:
+def _parse_git_remote_url(url: str) -> tuple[str, str]:
     """
     Parse a git remote URL into a GitHub (account, repo) pair.
 
@@ -35,7 +37,7 @@ def parse_git_remote_url(url: str) -> tuple[str, str]:
     return account, repo
 
 
-def resolve_repo() -> Repo:
+def _resolve_repo() -> Repo:
     try:
         return Repo(".")
     except InvalidGitRepositoryError as e:
@@ -43,19 +45,44 @@ def resolve_repo() -> Repo:
 
 
 @dataclass
-class GitConfig:
+class GitRepoState:
+    """
+    Represents the state of a local git repository.
+
+    .. tip::
+        Use :meth:`from_env()` to instantiate this class.
+    """
+
     repo: str
+    """
+    The repository name, e.g. ``"allenai/beaker-gantry"``.
+    """
     repo_url: str
+    """
+    The repository URL for cloning, e.g. ``"https://github.com/allenai/beaker-gantry"``.
+    """
     ref: str
+    """
+    The current ref.
+    """
     branch: str | None = None
+    """
+    The current active branch, if any.
+    """
 
     @property
     def is_dirty(self) -> bool:
-        repo = resolve_repo()
+        """
+        If the local repository state is dirty (uncommitted changes).
+        """
+        repo = _resolve_repo()
         return repo.is_dirty()
 
     @cached_property
     def is_public(self) -> bool:
+        """
+        If the repository is public.
+        """
         response = requests.get(self.repo_url)
         if response.status_code not in {200, 404}:
             response.raise_for_status()
@@ -63,18 +90,33 @@ class GitConfig:
 
     @property
     def ref_url(self) -> str:
+        """
+        The URL to the current :data:`ref`.
+        """
         return f"{self.repo_url}/commit/{self.ref}"
 
     @property
     def branch_url(self) -> str | None:
+        """
+        The URL to the current active :data:`branch`.
+        """
         if self.branch is None:
             return None
         else:
             return f"{self.repo_url}/tree/{self.branch}"
 
     @classmethod
-    def from_env(cls, ref: str | None = None, branch: str | None = None) -> GitConfig:
-        repo = resolve_repo()
+    def from_env(cls, ref: str | None = None, branch: str | None = None) -> GitRepoState:
+        """
+        Instantiate this class from the root of a git repository.
+
+        :raises ~gantry.exceptions.GitError: If this method isn't called from the
+            root of a valid git repository.
+        :raises ~gantry.exceptions.UnpushedChangesError: If there are unpushed commits.
+        :raises ~gantry.exceptions.RemoteBranchNotFoundError: If the local branch is not tracking
+            a remote branch.
+        """
+        repo = _resolve_repo()
         git = Git(".")
 
         git_ref = ref or str(repo.commit())
@@ -128,7 +170,7 @@ class GitConfig:
                     "Please push your changes and try again."
                 )
 
-        account, repo_name = parse_git_remote_url(remote.url)
+        account, repo_name = _parse_git_remote_url(remote.url)
 
         return cls(
             repo=f"{account}/{repo_name}",
