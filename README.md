@@ -18,6 +18,7 @@
 <br/><br/>
 </div>
 
+<!-- begin intro -->
 ![2025-04-23 16 40 53](https://github.com/user-attachments/assets/b888c8cb-4df9-49f6-9891-492f56d0df78)
 
 ⚡️*Easy to use*
@@ -57,6 +58,7 @@ With Gantry, on the other hand, that same workflow simplifies down to this:
 2. Commit and push your changes.
 3. Submit and track a Beaker experiment with the `gantry run` command.
 4. Make changes and repeat from step 2.
+<!-- end intro -->
 
 ## In this README
 
@@ -75,6 +77,7 @@ With Gantry, on the other hand, that same workflow simplifies down to this:
 - [CHANGELOG](https://github.com/allenai/beaker-gantry/blob/main/CHANGELOG.md)
 - [CONTRIBUTING](https://github.com/allenai/beaker-gantry/blob/main/CONTRIBUTING.md)
 
+<!-- begin install -->
 ## Installing
 
 ### Installing with `pip`
@@ -99,7 +102,8 @@ Then run
 ```bash
 pip install -e .
 ```
-
+<!-- end install -->
+<!-- begin quickstart -->
 ## Quick start
 
 ### One-time setup
@@ -142,7 +146,8 @@ gantry run --timeout -1 -- python -c 'print("Hello, World!")'
 *❗Note: Everything after the `--` is the command + arguments you want to run on Beaker. It's necessary to include the `--` if any of your arguments look like options themselves (like `-c` in this example) so gantry can differentiate them from its own options.*
 
 Try `gantry run --help` to see all of the available options.
-
+<!-- end quickstart -->
+<!-- begin faq -->
 ## FAQ
 
 ### Can I use my own Docker/Beaker image?
@@ -189,3 +194,4 @@ The three options `--replicas` (int), `--leader-selection` (flag), and `--host-n
 ### Why "Gantry"?
 
 A gantry is a structure that's used, among other things, to lift containers off of ships. Analogously Beaker Gantry's purpose is to lift Docker containers (or at least the *management* of Docker containers) away from users.
+<!-- end faq -->

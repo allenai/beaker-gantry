@@ -28,8 +28,9 @@ from rich import print, prompt
 
 from .. import constants, util
 from ..aliases import PathOrStr
+from ..api import follow_workload
 from ..exceptions import *
-from ..git_utils import GitConfig
+from ..git_utils import GitRepoState
 from ..util import print_stderr
 from ..version import VERSION
 from .main import CLICK_COMMAND_DEFAULTS, main, new_optgroup
@@ -393,7 +394,7 @@ def run(
     )
 
     # Get git information.
-    git_config = GitConfig.from_env(ref=ref, branch=branch)
+    git_config = GitRepoState.from_env(ref=ref, branch=branch)
 
     # Validate repo state.
     if ref is None and not allow_dirty and git_config.is_dirty:
@@ -638,7 +639,7 @@ def run(
 
         job: Optional[BeakerJob] = None
         try:
-            job = util.follow_workload(beaker, workload, timeout=timeout, show_logs=show_logs)
+            job = follow_workload(beaker, workload, timeout=timeout, show_logs=show_logs)
         except (TermInterrupt, BeakerJobTimeoutError) as exc:
             print_stderr(f"[red][bold]{exc.__class__.__name__}:[/] [i]{exc}[/][/]")
             beaker.workload.cancel(workload)
@@ -667,7 +668,7 @@ def build_experiment_spec(
     task_resources: BeakerTaskResources,
     arguments: List[str],
     entrypoint_dataset: str,
-    git_config: GitConfig,
+    git_config: GitRepoState,
     budget: Optional[str] = None,
     description: Optional[str] = None,
     beaker_image: Optional[str] = None,
