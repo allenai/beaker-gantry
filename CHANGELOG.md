@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [v2.4.0](https://github.com/allenai/beaker-gantry/releases/tag/v2.4.0) - 2025-06-02
+
 ### Added
 
 - Added a public Python API `gantry.api` with some useful methods.
