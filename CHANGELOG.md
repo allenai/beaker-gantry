@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [v2.5.0](https://github.com/allenai/beaker-gantry/releases/tag/v2.5.0) - 2025-06-03
+
 ### Added
 
 - Added `launch_experiment` function to public `gantry.api` module.
