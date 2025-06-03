@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Added a public Python API `gantry.api` with some useful methods.
+- Added `--gpu-type` option to `gantry run`.
 
 ### Fixed
 

@@ -11,8 +11,10 @@ from typing import Optional, cast
 import rich
 from beaker import (
     Beaker,
+    BeakerCluster,
     BeakerDataset,
     BeakerDatasetFileAlgorithmType,
+    BeakerGpuType,
     BeakerGroup,
     BeakerJob,
     BeakerSortOrder,
@@ -182,6 +184,17 @@ def group_url(beaker: Beaker, group: BeakerGroup) -> str:
     org_name = beaker.org_name
     workspace_name = beaker.workspace.get(group.workspace_id).name.split("/", 1)[-1]
     return f"{beaker.config.agent_address}/orgs/{org_name}/workspaces/{workspace_name}/groups/{group.id}"
+
+
+def get_gpu_type(beaker: Beaker, cluster: BeakerCluster) -> str | None:
+    nodes = list(beaker.node.list(cluster=cluster, limit=1))
+    if nodes:
+        try:
+            return BeakerGpuType(nodes[0].node_resources.gpu_type).name.replace("_", " ")
+        except ValueError:
+            return None
+    else:
+        return None
 
 
 def ensure_entrypoint_dataset(beaker: Beaker) -> BeakerDataset:

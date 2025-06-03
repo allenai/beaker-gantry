@@ -1,22 +1,11 @@
 import click
 import rich
-from beaker import Beaker, BeakerCluster, BeakerGpuType, BeakerSortOrder
+from beaker import BeakerSortOrder
 from rich import print
 from rich.table import Table
 
 from .. import util
 from .main import CLICK_COMMAND_DEFAULTS, main
-
-
-def get_gpu_type(beaker: Beaker, cluster: BeakerCluster) -> str | None:
-    nodes = list(beaker.node.list(cluster=cluster, limit=1))
-    if nodes:
-        try:
-            return BeakerGpuType(nodes[0].node_resources.gpu_type).name.replace("_", " ")
-        except ValueError:
-            return None
-    else:
-        return None
 
 
 @main.command(name="find-gpus", **CLICK_COMMAND_DEFAULTS)
@@ -61,7 +50,7 @@ def find_gpus_cmd(show_all: bool = False, gpu_types: tuple[str, ...] = tuple()):
                 if not show_all and cluster.cluster_occupancy.slot_counts.available == 0:
                     break
 
-                gpu_type = get_gpu_type(beaker, cluster)
+                gpu_type = util.get_gpu_type(beaker, cluster)
                 if gpu_types:
                     if not gpu_type:
                         continue

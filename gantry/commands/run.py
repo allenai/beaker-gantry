@@ -106,6 +106,14 @@ from .main import CLICK_COMMAND_DEFAULTS, main, new_optgroup
     show_default=True,
 )
 @optgroup.option(
+    "--gpu-type",
+    type=str,
+    multiple=True,
+    default=None,
+    help="""Launch on any cluster with this type of GPU (e.g. "h100"). Multiple allowed.""",
+    show_default=True,
+)
+@optgroup.option(
     "--hostname",
     type=str,
     multiple=True,
@@ -325,6 +333,7 @@ def run(
     workspace: Optional[str] = None,
     group_name: Optional[str] = None,
     cluster: Optional[Tuple[str, ...]] = None,
+    gpu_type: Optional[Tuple[str, ...]] = None,
     hostname: Optional[Tuple[str, ...]] = None,
     beaker_image: Optional[str] = None,
     docker_image: Optional[str] = None,
@@ -504,28 +513,46 @@ def run(
             weka_buckets.append((source, target))
 
         # Validate clusters.
-        if cluster:
+        if cluster or gpu_type:
             cl_objects = list(beaker.cluster.list())
+
             final_clusters = []
-            for pat in cluster:
+            for pat in cluster or ["*"]:
                 org = beaker.org_name
 
                 og_pat = pat
                 if "/" in pat:
                     org, pat = pat.split("/", 1)
 
-                matching_clusters = [
-                    f"{cl.organization_name}/{cl.name}"
-                    for cl in cl_objects
-                    if fnmatch(cl.name, pat) and cl.organization_name == org
-                ]
+                matching_clusters = []
+                for cl in cl_objects:
+                    if not fnmatch(cl.name, pat) or cl.organization_name != org:
+                        continue
+
+                    if gpu_type:
+                        cl_gpu_type = util.get_gpu_type(beaker, cl)
+                        if not cl_gpu_type:
+                            continue
+
+                        for pattern in gpu_type:
+                            if pattern.lower() in cl_gpu_type.lower():
+                                break
+                        else:
+                            continue
+
+                    matching_clusters.append(f"{cl.organization_name}/{cl.name}")
 
                 if matching_clusters:
                     final_clusters.extend(matching_clusters)
-                else:
+                elif cluster:
                     raise ConfigurationError(
                         f"cluster '{og_pat}' did not match any Beaker clusters"
                     )
+                elif gpu_type:
+                    raise ConfigurationError(
+                        f"""GPU type specs "{'", "'.join(gpu_type)}" did not match any Beaker clusters"""
+                    )
+
             cluster = list(set(final_clusters))  # type: ignore
 
         # Default to preemptible when no cluster has been specified.
