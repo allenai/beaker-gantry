@@ -9,7 +9,7 @@ import sys
 import time
 from fnmatch import fnmatch
 from pathlib import Path
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Sequence, Tuple, Union
 
 import rich
 from beaker import (
@@ -82,7 +82,7 @@ def _job_preempted(job: BeakerJob) -> bool:
     )
 
 
-def _validate_args(args: Tuple[str, ...]):
+def _validate_args(args: Sequence[str]):
     if not args:
         raise ConfigurationError(
             "[ARGS]... are required! For example:\n$ gantry run -- python -c 'print(\"Hello, World!\")'"
@@ -107,31 +107,31 @@ def _validate_args(args: Tuple[str, ...]):
 
 
 def launch_experiment(
-    args: Tuple[str, ...],
+    args: Sequence[str],
     name: Optional[str] = None,
     description: Optional[str] = None,
     task_name: str = "main",
     workspace: Optional[str] = None,
     group_name: Optional[str] = None,
-    clusters: Optional[Tuple[str, ...]] = None,
-    gpu_types: Optional[Tuple[str, ...]] = None,
-    hostnames: Optional[Tuple[str, ...]] = None,
+    clusters: Optional[Sequence[str]] = None,
+    gpu_types: Optional[Sequence[str]] = None,
+    hostnames: Optional[Sequence[str]] = None,
     beaker_image: Optional[str] = None,
     docker_image: Optional[str] = None,
     cpus: Optional[float] = None,
     gpus: Optional[int] = None,
     memory: Optional[str] = None,
     shared_memory: Optional[str] = None,
-    datasets: Optional[Tuple[str, ...]] = None,
+    datasets: Optional[Sequence[str]] = None,
     gh_token_secret: str = constants.GITHUB_TOKEN_SECRET,
     ref: Optional[str] = None,
     branch: Optional[str] = None,
     conda: Optional[PathOrStr] = None,
     pip: Optional[PathOrStr] = None,
     venv: Optional[str] = None,
-    env_vars: Optional[Tuple[str, ...]] = None,
-    env_secrets: Optional[Tuple[str, ...]] = None,
-    dataset_secrets: Optional[Tuple[str, ...]] = None,
+    env_vars: Optional[Sequence[str]] = None,
+    env_secrets: Optional[Sequence[str]] = None,
+    dataset_secrets: Optional[Sequence[str]] = None,
     timeout: int = 0,
     task_timeout: Optional[str] = None,
     show_logs: bool = True,
@@ -149,7 +149,7 @@ def launch_experiment(
     propagate_failure: Optional[bool] = None,
     propagate_preemption: Optional[bool] = None,
     synchronized_start_timeout: Optional[str] = None,
-    mounts: Optional[Tuple[str, ...]] = None,
+    mounts: Optional[Sequence[str]] = None,
     weka: Optional[str] = None,
     budget: Optional[str] = None,
     preemptible: Optional[bool] = None,
