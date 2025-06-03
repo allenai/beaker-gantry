@@ -163,7 +163,11 @@ function should_use_conda {
 
 function ensure_pip {
     log_info "Install/upgrading PIP package manager..."
-    capture_logs "ensure_pip.log" python -m ensurepip --upgrade
+    if ! command -v pip &> /dev/null; then
+        capture_logs "ensure_pip.log" python -m ensurepip --upgrade
+    else
+        capture_logs "ensure_pip.log" pip install --upgrade pip
+    fi
     log_info "Done."
 }
 
