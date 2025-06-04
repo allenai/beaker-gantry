@@ -197,6 +197,16 @@ log_info "Done."
 
 log_info "Results dataset $RESULTS_DATASET_URL mounted to '$RESULTS_DIR'."
 
+if [[ -d "/var/lib/tcpxo/lib64" ]] && [[ -n "$BEAKER_REPLICA_COUNT" ]] && [[ -z "$GANTRY_SKIP_TCPXO_SETUP" ]]; then
+    log_info "Configuring NCCL for GPUDirect-TCPXO..."
+    log_info "Note: you can skip this step if needed by using the flag '--setting the env var 'GANTRY_SKIP_TCPXO_SETUP'"
+    export NCCL_LIB_DIR="/var/lib/tcpxo/lib64"
+    export LD_LIBRARY_PATH="/var/lib/tcpxo/lib64:$LD_LIBRARY_PATH"
+    # shellcheck disable=SC1091
+    source /var/lib/tcpxo/lib64/nccl-env-profile.sh
+    log_info "Done."
+fi
+
 if [[ -n "$GITHUB_TOKEN" ]]; then
     echo -e "\e[36m\e[1m
 ############################################
@@ -304,6 +314,14 @@ if [[ -z "$NO_PYTHON" ]]; then
             capture_logs "pip_install.log" pip install -r "$PIP_REQUIREMENTS_FILE"
             log_info "Done."
         fi
+    elif [[ -f "$INSTALL_CMD" ]] && [[ "${INSTALL_CMD: -3}" == ".sh" ]]; then
+        log_info "Sourcing install script '$INSTALL_CMD'..."
+        # shellcheck disable=SC1090
+        source "$INSTALL_CMD"
+        # Reset shell behavior.
+        set -eo pipefail
+        set +x
+        log_info "Done."
     else
         log_info "Installing packages with given command: $INSTALL_CMD"
         eval "$INSTALL_CMD"
@@ -336,11 +354,9 @@ if [[ -z "$NO_PYTHON" ]]; then
 fi
 
 end_time=$(date +%s)
-log_info "Finished setup in $((end_time-start_time)) seconds."
-
 echo -e "\e[36m\e[1m
 #################################
-❯❯❯ [GANTRY] Setup complete ✓ ❮❮❮
+❯❯❯ [GANTRY] Setup complete ✓ ❮❮❮  (finished in $((end_time-start_time)) seconds)
 #################################
 \e[0m"
 

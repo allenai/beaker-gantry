@@ -155,6 +155,7 @@ def launch_experiment(
     preemptible: Optional[bool] = None,
     retries: Optional[int] = None,
     results: str = constants.RESULTS_DIR,
+    skip_tcpxo_setup: bool = False,
 ):
     """
     Launch an experiment on Beaker. Same as the ``gantry run`` command.
@@ -373,6 +374,7 @@ def launch_experiment(
             preemptible=preemptible,
             retries=retries,
             results=results,
+            skip_tcpxo_setup=skip_tcpxo_setup,
         )
 
         if save_spec:
@@ -502,6 +504,7 @@ def _build_experiment_spec(
     preemptible: Optional[bool] = None,
     retries: Optional[int] = None,
     results: str = constants.RESULTS_DIR,
+    skip_tcpxo_setup: bool = False,
 ):
     task_spec = (
         BeakerTaskSpec.new(
@@ -541,6 +544,9 @@ def _build_experiment_spec(
 
     if gh_token_secret is not None:
         task_spec = task_spec.with_env_var(name="GITHUB_TOKEN", secret=gh_token_secret)
+
+    if skip_tcpxo_setup:
+        task_spec = task_spec.with_env_var(name="GANTRY_SKIP_TCPXO_SETUP", value="1")
 
     for name, val in env or []:
         task_spec = task_spec.with_env_var(name=name, value=val)

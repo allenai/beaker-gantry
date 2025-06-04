@@ -271,6 +271,15 @@ from .main import CLICK_COMMAND_DEFAULTS, main, new_optgroup
     If set, jobs in the replicated task will wait this long to start until all other jobs are also ready.
     """,
 )
+@optgroup.option(
+    "--skip-tcpxo-setup",
+    is_flag=True,
+    help="""By default Gantry will configure NCCL for TCPXO when running multi-node job on Augusta,
+    but you can use this flag to skip that step if you need a custom configuration.
+    If you do use this flag, you'll probably need to follow all of the steps documented here:
+
+    https://beaker-docs.allen.ai/compute/augusta.html#distributed-workloads""",
+)
 @new_optgroup("Python")
 @optgroup.option(
     "--conda",
