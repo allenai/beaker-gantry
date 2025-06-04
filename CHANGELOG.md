@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Changed
+
+- When `--install` option is a shell script, it will now be `source`-ed instead `eval`-ed so that environment variables set from the script will be set in the main process.
+- Gantry will automatically configure NCCL for TCPXO when running multi-node jobs on Augusta so you don't have to set all of the environment variables document here: https://beaker-docs.apps.allenai.org/compute/augusta.html#distributed-workloads. You can skip this in case you want to configure TCPXO differently by using the flag `--skip-tcpxo-setup`.
+
 ## [v2.5.0](https://github.com/allenai/beaker-gantry/releases/tag/v2.5.0) - 2025-06-03
 
 ### Added
