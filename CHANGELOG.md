@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [v2.6.0](https://github.com/allenai/beaker-gantry/releases/tag/v2.6.0) - 2025-06-04
+
 ### Changed
 
 - When `--install` option is a shell script, it will now be `source`-ed instead `eval`-ed so that environment variables set from the script will be set in the main process.
