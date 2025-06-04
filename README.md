@@ -88,6 +88,16 @@ Gantry is available [on PyPI](https://pypi.org/project/gantry/). Just run
 pip install beaker-gantry
 ```
 
+### Installing globally with `uv`
+
+Gantry can be installed and made available on the PATH using [uv](https://docs.astral.sh/uv/):
+
+```bash
+uv tool install beaker-gantry
+```
+
+With this command, beaker-gantry is automatically installed to an isolated virtual environment.
+
 ### Installing from source
 
 To install Gantry from source, first clone [the repository](https://github.com/allenai/beaker-gantry):
@@ -115,7 +125,7 @@ pip install -e .
 
 2. **Configure Gantry.**
 
-    If you've already configured the [Beaker command-line client](https://github.com/allenai/beaker/), Gantry will 
+    If you've already configured the [Beaker command-line client](https://github.com/allenai/beaker/), Gantry will
     find and use the existing configuration file (usually located at `$HOME/.beaker/config.yml`).
     Otherwise just set the environment variable `BEAKER_TOKEN` to your Beaker [user token](https://beaker.org/user).
 
