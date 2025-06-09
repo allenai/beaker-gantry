@@ -204,6 +204,9 @@ if [[ -d "/var/lib/tcpxo/lib64" ]] && [[ -n "$BEAKER_REPLICA_COUNT" ]] && [[ -z 
     export LD_LIBRARY_PATH="/var/lib/tcpxo/lib64:$LD_LIBRARY_PATH"
     # shellcheck disable=SC1091
     source /var/lib/tcpxo/lib64/nccl-env-profile.sh
+    export NCCL_PROTO=Simple,LL128
+    export NCCL_TUNER_CONFIG_PATH=/var/lib/tcpxo/lib64/a3plus_tuner_config_ll128.textproto
+    export NCCL_SHIMNET_GUEST_CONFIG_CHECKER_CONFIG_FILE=/var/lib/tcpxo/lib64/a3plus_guest_config_ll128.textproto
     log_info "Done."
 fi
 
