@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [v2.6.1](https://github.com/allenai/beaker-gantry/releases/tag/v2.6.1) - 2025-06-10
+
 ### Fixed
 
 - Also set LL128 env vars for NCCL.
