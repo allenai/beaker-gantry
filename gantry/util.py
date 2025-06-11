@@ -11,6 +11,7 @@ from typing import Optional, cast
 import rich
 from beaker import (
     Beaker,
+    BeakerCancelationCode,
     BeakerCluster,
     BeakerDataset,
     BeakerDatasetFileAlgorithmType,
@@ -132,6 +133,20 @@ def display_logs(beaker: Beaker, job: BeakerJob, tail_lines: Optional[int] = Non
     return beaker.job.get(job.id)
 
 
+def get_job_status_str(job: BeakerJob):
+    status = job.status.status
+    canceled_code = job.status.canceled_code
+    if status == BeakerWorkloadStatus.canceled:
+        if canceled_code == BeakerCancelationCode.sibling_task_failed:
+            return "canceled due to sibling task failure"
+        else:
+            return "canceled"
+    elif status == BeakerWorkloadStatus.failed:
+        return f"failed with exit code {job.status.exit_code}"
+    else:
+        return str(BeakerWorkloadStatus(status).name)
+
+
 def display_results(beaker: Beaker, workload: BeakerWorkload, job: BeakerJob):
     status = job.status.status
     if status == BeakerWorkloadStatus.succeeded:
@@ -149,16 +164,37 @@ def display_results(beaker: Beaker, workload: BeakerWorkload, job: BeakerJob):
             from google.protobuf.json_format import MessageToDict
 
             print("[b]Metrics:[/]", MessageToDict(job.metrics))
-    elif status == BeakerWorkloadStatus.canceled:
+    elif status in (BeakerWorkloadStatus.canceled, BeakerWorkloadStatus.failed):
+        if len(list(workload.experiment.tasks)) > 1:
+            show_all_jobs(beaker, workload)
+            print()
         raise ExperimentFailedError(
-            f"Job was canceled, see {beaker.workload.url(workload)} for details"
-        )
-    elif status == BeakerWorkloadStatus.failed:
-        raise ExperimentFailedError(
-            f"Job failed with exit code {job.status.exit_code}, see {beaker.workload.url(workload)} for details"
+            f"Job {get_job_status_str(job)}, {beaker.workload.url(workload)} for details"
         )
     else:
         raise ValueError(f"unexpected workload status '{status}'")
+
+
+def show_all_jobs(beaker: Beaker, workload: BeakerWorkload):
+    print("Tasks:")
+    task_name: Optional[str] = None
+    for task in workload.experiment.tasks:
+        task_name = task.name
+        job = beaker.workload.get_latest_job(workload, task=task)
+        assert job is not None
+        status_str = get_job_status_str(job)
+        style = "[white]"
+        if job.status.status == BeakerWorkloadStatus.failed:
+            style = "[red]"
+        elif job.status.status == BeakerWorkloadStatus.canceled:
+            style = "[yellow]"
+        print(f"❯ {style}'{task_name}'[/] {status_str} - see {beaker.job.url(job)}")
+
+    assert task_name is not None
+    print(
+        f"\nYou can show the logs for a particular task by running:\n"
+        f"[i][blue]gantry[/] [cyan]logs {workload.experiment.id} --tail=1000 --task={task_name}[/][/]"
+    )
 
 
 def resolve_group(
