@@ -11,7 +11,7 @@ from .main import CLICK_COMMAND_DEFAULTS, main, new_optgroup
 @main.command(**CLICK_COMMAND_DEFAULTS)
 @click.help_option("--help", help="Show this message and exit.")
 @click.argument("args", nargs=-1)
-@new_optgroup("Bookkeeping")
+@new_optgroup("Workload settings")
 @optgroup.option(
     "-n",
     "--name",
@@ -237,7 +237,7 @@ from .main import CLICK_COMMAND_DEFAULTS, main, new_optgroup
 @optgroup.option(
     "--retries", type=int, help="""Specify the number of automatic retries for the experiment."""
 )
-@new_optgroup("Multi-node")
+@new_optgroup("Multi-node config")
 @optgroup.option(
     "--replicas",
     type=int,
@@ -280,7 +280,7 @@ from .main import CLICK_COMMAND_DEFAULTS, main, new_optgroup
 
     https://beaker-docs.allen.ai/compute/augusta.html#distributed-workloads""",
 )
-@new_optgroup("Python")
+@new_optgroup("Python settings")
 @optgroup.option(
     "--conda",
     type=click.Path(exists=True, dir_okay=False),
@@ -301,7 +301,8 @@ from .main import CLICK_COMMAND_DEFAULTS, main, new_optgroup
 @optgroup.option(
     "--install",
     type=str,
-    help="""Override the default Python installation command, e.g. '--install "python setup.py install"'.""",
+    help="""Override the default Python installation method with a custom command or shell script,
+    e.g. '--install "python setup.py install"' or '--install "my-custom-install-script.sh"'.""",
 )
 @optgroup.option(
     "--no-conda",
