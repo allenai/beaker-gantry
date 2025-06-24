@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [v2.7.0](https://github.com/allenai/beaker-gantry/releases/tag/v2.7.0) - 2025-06-24
+
 ### Added
 
 - Added `--run` option to `gantry logs` for specifying a run number.
