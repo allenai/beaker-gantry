@@ -28,7 +28,7 @@ def analyze_logs(
     lines: int = 100,
 ):
     """
-    Analyze the logs from a multi-task / multi-replica job to find problematic jobs.
+    Analyze the logs from a multi-task / multi-replica job to find problematic nodes.
     """
     with util.init_client(ensure_workspace=False) as beaker:
         wl = beaker.workload.get(workload)
