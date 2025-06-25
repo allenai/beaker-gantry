@@ -79,7 +79,7 @@ function webi_install_gh {
 function ensure_gh {
     if ! command -v gh &> /dev/null; then
         log_info "Installing GitHub CLI..."
-        capture_logs "webi_install_gh.log" webi_install_gh
+        with_retries 5 10 capture_logs "webi_install_gh.log" webi_install_gh || return 1
         log_info "Done."
     fi
 }
@@ -88,10 +88,10 @@ function ensure_conda {
     if ! command -v conda &> /dev/null; then
         log_info "Installing conda..."
 
-        curl -fsSL -o ~/miniconda.sh -O  https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+        with_retries 5 10 curl -fsSL -o ~/miniconda.sh -O https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh || return 1
         chmod +x ~/miniconda.sh
 
-        capture_logs "setup_conda.log" ~/miniconda.sh -b -p /opt/conda
+        capture_logs "setup_conda.log" ~/miniconda.sh -b -p /opt/conda || return 1
         export PATH="/opt/conda/bin:$PATH"
 
         rm ~/miniconda.sh
@@ -217,7 +217,7 @@ if [[ -n "$GITHUB_TOKEN" ]]; then
 ############################################
 \e[0m"
     # Configure git to use the GitHub CLI as a credential helper so that we can clone private repos.
-    with_retries 5 10 ensure_gh
+    ensure_gh
     gh auth setup-git
 fi
 
@@ -248,7 +248,7 @@ if [[ -z "$NO_PYTHON" ]]; then
 #######################################
 \e[0m"
     if should_use_conda; then
-        with_retries 5 10 ensure_conda
+        ensure_conda
         
         if [[ -z "$VENV_NAME" ]]; then
             if [[ -f "$CONDA_ENV_FILE" ]]; then
