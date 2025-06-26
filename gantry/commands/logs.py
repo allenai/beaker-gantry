@@ -29,12 +29,16 @@ def _get_job(
 @click.option("--task", "task_name", type=str, help="""The name of task to pull logs from.""")
 @click.option("-t", "--tail", type=int, help="""Tail this many lines.""")
 @click.option("--run", type=int, help="""The run number to pull logs from.""")
+@click.option(
+    "-f", "--follow", is_flag=True, help="""Continue streaming logs for the duration of the job."""
+)
 def logs(
     workload: str,
     replica: Optional[int] = None,
     task_name: Optional[int] = None,
     tail: Optional[int] = None,
     run: Optional[int] = None,
+    follow: bool = False,
 ):
     """
     Display the logs for an experiment workload.
@@ -50,35 +54,28 @@ def logs(
         tasks = list(wl.experiment.tasks)
 
         job: Optional[BeakerJob] = None
+        task: Optional[BeakerTask] = None
         if replica is not None:
             for task in tasks:
-                j = _get_job(beaker, wl, task, run=run)
-                if j is None:
-                    print("[y]Experiment has not started yet[/]")
-                    return
-
-                if j.system_details.replica_group_details.rank == replica:
-                    job = j
+                job = _get_job(beaker, wl, task, run=run)
+                if job is not None and job.system_details.replica_group_details.rank == replica:
                     break
             else:
                 raise ConfigurationError(f"Invalid replica rank '{replica}'")
         elif task_name is not None:
             for task in tasks:
                 if task.name == task_name:
-                    j = _get_job(beaker, wl, task, run=run)
-                    if j is None:
-                        print("[y]Experiment has not started yet[/]")
-                        return
-                    else:
-                        job = j
-                        break
+                    job = _get_job(beaker, wl, task, run=run)
+                    break
             else:
                 raise ConfigurationError(f"Invalid task name '{task_name}'")
         else:
-            j = _get_job(beaker, wl, tasks[0], run=run)
+            task = tasks[0]
+            job = _get_job(beaker, wl, task, run=run)
 
         if job is None:
-            print("[y]Experiment has not started yet[/]")
+            print("[yellow]Experiment has not started yet[/]")
             return
 
-        util.display_logs(beaker, job, tail_lines=tail)
+        print(f"Showing logs from job '{job.id}' for task '{task.name}'...")
+        util.display_logs(beaker, job, tail_lines=tail, follow=follow)

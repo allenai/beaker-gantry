@@ -122,11 +122,13 @@ def get_latest_workload(
         return None
 
 
-def display_logs(beaker: Beaker, job: BeakerJob, tail_lines: Optional[int] = None) -> BeakerJob:
+def display_logs(
+    beaker: Beaker, job: BeakerJob, tail_lines: Optional[int] = None, follow: bool = True
+) -> BeakerJob:
     console = rich.get_console()
     print()
     rich.get_console().rule("Logs")
-    for job_log in beaker.job.logs(job, follow=True, tail_lines=tail_lines):
+    for job_log in beaker.job.logs(job, follow=follow, tail_lines=tail_lines):
         console.print(job_log.message.decode(), highlight=False, markup=False)
     print()
     rich.get_console().rule("End logs")
