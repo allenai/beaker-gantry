@@ -1,3 +1,5 @@
+from pathlib import Path
+
 DEFAULT_IMAGE = "ai2/conda"
 
 ENTRYPOINT = "entrypoint.sh"
@@ -15,3 +17,5 @@ RUNTIME_DIR = "/gantry-runtime"
 RESULTS_DIR = "/results"
 
 METRICS_FILE = f"{RESULTS_DIR}/metrics.json"
+
+CONFIG_PATH = Path.home() / ".config" / "gantry" / "config.toml"

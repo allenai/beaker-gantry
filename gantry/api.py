@@ -150,7 +150,7 @@ def launch_experiment(
     propagate_preemption: Optional[bool] = None,
     synchronized_start_timeout: Optional[str] = None,
     mounts: Optional[Sequence[str]] = None,
-    weka: Optional[str] = None,
+    weka: Optional[Sequence[str]] = None,
     budget: Optional[str] = None,
     preemptible: Optional[bool] = None,
     retries: Optional[int] = None,
