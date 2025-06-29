@@ -1,4 +1,5 @@
-DEFAULT_IMAGE = "ai2/conda"
+# https://github.com/allenai/docker-images/tree/main/cuda#basic-versions
+DEFAULT_IMAGE = "ai2/cuda12.8-ubuntu22.04-torch2.6.0"
 
 ENTRYPOINT = "entrypoint.sh"
 
