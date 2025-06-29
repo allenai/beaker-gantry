@@ -1,0 +1,34 @@
+# Example Gantry configuration file
+# This file should be placed at ~/.config/gantry/config.toml
+
+# Default profile to use when --profile is not specified
+default_profile = "default"
+
+# Configuration profiles
+[profiles.default]
+# Default image to use for experiments
+beaker_image = "ai2/conda"
+# Default workspace
+workspace = "ai2/my-workspace"
+# Default number of GPUs
+gpus = 1
+# Default cluster
+cluster = "ai2/allennlp-cirrascale"
+# Default weka mounts
+weka = [
+    "oe-training-default:/weka/oe-training-default",
+    "oe-adapt-default:/weka/oe-adapt-default",
+]
+
+[profiles.training]
+# Training profile with more resources
+beaker_image = "ai2/pytorch"
+gpus = 8
+cluster = "ai2/jupiter-cirrascale"
+priority = "high"
+preemptible = false
+# Environment variables for training
+[profiles.training.env_vars]
+CUDA_VISIBLE_DEVICES = "0,1,2,3,4,5,6,7"
+WANDB_PROJECT = "my-training-project"
+NCCL_DEBUG = "INFO"

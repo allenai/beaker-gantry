@@ -28,6 +28,8 @@ dependencies = [
     "petname>=2.6,<3.0",
     "requests",
     "packaging",
+    "tomli>=2.0.0;python_version<'3.11'",
+    "tomli-w>=1.0.0",
 ]
 
 [project.optional-dependencies]

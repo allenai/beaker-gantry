@@ -189,6 +189,42 @@ You can also use `--save-spec PATH` in combination with `--dry-run` to save the 
 
 Just use the command `gantry config set-gh-token`.
 
+### How can I set default values for CLI options?
+
+Gantry supports a TOML configuration file with multiple profiles. Create a file at `~/.config/gantry/config.toml`:
+
+```toml
+default_profile = "default"
+
+[profiles.default]
+beaker_image = "ai2/conda"
+workspace = "ai2/my-workspace"
+
+[profiles.training]
+beaker_image = "ai2/cuda12.8-ubuntu22.04-torch2.6.0"
+cluster = "ai2/triton-cirrascale"
+```
+
+Then use profiles with the `--profile` option:
+
+```bash
+# Uses default profile
+gantry run -- python train.py
+
+# Uses training profile
+gantry run --profile training -- python train.py
+```
+
+Manage profiles with `gantry config` commands:
+
+```bash
+gantry config init                      # Initialize config file
+gantry config set beaker_image ai2/cuda # Set default image
+gantry config set gpus 2 --profile dev  # Set GPUs for dev profile
+gantry config show                      # Show current profile
+gantry config list-profiles             # List all profiles
+```
+
 ### How can I attach Beaker datasets to an experiment?
 
 Just use the `--dataset` option for `gantry run`. For example:

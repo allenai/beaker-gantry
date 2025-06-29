@@ -28,6 +28,11 @@ class ConfigurationError(GantryError):
     pass
 
 
+class ConfigError(GantryError):
+    """Error related to configuration file handling."""
+    pass
+
+
 class ExperimentFailedError(GantryError):
     pass
 
