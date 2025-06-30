@@ -11,7 +11,7 @@ run-checks :
 .PHONY : docker-image
 docker-image :
 	docker build -f Dockerfile -t $(IMAGE_NAME) .
-	echo "Built image 'olmax', size: $$(docker inspect -f '{{ .Size }}' $(IMAGE_NAME) | numfmt --to=si)"
+	echo "Built image '$(IMAGE_NAME)', size: $$(docker inspect -f '{{ .Size }}' $(IMAGE_NAME) | numfmt --to=si)"
 
 # .PHONY : beaker-image
 # beaker-image : docker-image
