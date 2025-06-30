@@ -8,7 +8,7 @@ run-checks :
 
 .PHONY : docker-image
 docker-image :
-	docker build -f src/Dockerfile -t olmax .
+	docker build -f Dockerfile -t olmax .
 	echo "Built image 'olmax', size: $$(docker inspect -f '{{ .Size }}' olmax | numfmt --to=si)"
 
 # .PHONY : beaker-image
