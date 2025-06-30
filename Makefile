@@ -1,3 +1,5 @@
+IMAGE_NAME=gantry
+
 .PHONY : run-checks
 run-checks :
 	isort --check .
@@ -8,8 +10,8 @@ run-checks :
 
 .PHONY : docker-image
 docker-image :
-	docker build -f Dockerfile -t olmax .
-	echo "Built image 'olmax', size: $$(docker inspect -f '{{ .Size }}' olmax | numfmt --to=si)"
+	docker build -f Dockerfile -t $(IMAGE_NAME) .
+	echo "Built image 'olmax', size: $$(docker inspect -f '{{ .Size }}' $(IMAGE_NAME) | numfmt --to=si)"
 
 # .PHONY : beaker-image
 # beaker-image : docker-image

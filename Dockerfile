@@ -23,10 +23,6 @@ RUN apt-get update && \
     curl -sS https://webi.sh/gh | sh && \
     curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# NOTE: uv curl installing doesn't work at the moment.
-# curl -LsSf https://astral.sh/uv/install.sh | sh
-# COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
-
 ENV PATH /opt/conda/bin:~/.local/bin:$PATH
-WORKDIR /workspace
+WORKDIR ~/
 ENTRYPOINT ["/bin/bash"]
