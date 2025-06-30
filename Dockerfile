@@ -21,12 +21,12 @@ RUN apt-get update && \
     ~/miniconda.sh -b -p /opt/conda && \
     rm ~/miniconda.sh && \
     curl -sS https://webi.sh/gh | sh && \
-    source ~/.config/envman/PATH.env
+    curl -LsSf https://astral.sh/uv/install.sh | sh
 
 # NOTE: uv curl installing doesn't work at the moment.
 # curl -LsSf https://astral.sh/uv/install.sh | sh
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+# COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
-ENV PATH /opt/conda/bin:$PATH
+ENV PATH /opt/conda/bin:~/.local/bin:$PATH
 WORKDIR /workspace
 ENTRYPOINT ["/bin/bash"]
