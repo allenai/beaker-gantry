@@ -128,6 +128,7 @@ def launch_experiment(
     branch: Optional[str] = None,
     conda: Optional[PathOrStr] = None,
     pip: Optional[PathOrStr] = None,
+    uv: Optional[str] = None,
     venv: Optional[str] = None,
     env_vars: Optional[Sequence[str]] = None,
     env_secrets: Optional[Sequence[str]] = None,
@@ -168,17 +169,20 @@ def launch_experiment(
             raise ConfigurationError("--no-python and --install='...' are mutually exclusive.")
         if pip:
             raise ConfigurationError("--pip='...' and --install='...' are mutually exclusive.")
+    
+    # Validate Python environment options
+    if uv is not None:
+        if conda:
+            raise ConfigurationError("--uv and --conda are mutually exclusive.")
+        if no_conda:
+            raise ConfigurationError("--uv and --no-conda are mutually exclusive. UV manages its own Python environments.")
 
     if beaker_image is None and docker_image is None:
         beaker_image = constants.DEFAULT_IMAGE
     elif (beaker_image is None) == (docker_image is None):
-        raise ConfigurationError(
-            "Either --beaker-image or --docker-image must be specified, but not both."
-        )
+        raise ConfigurationError("Either --beaker-image or --docker-image must be specified, but not both.")
 
-    task_resources = BeakerTaskResources(
-        cpu_count=cpus, gpu_count=gpus, memory=memory, shared_memory=shared_memory
-    )
+    task_resources = BeakerTaskResources(cpu_count=cpus, gpu_count=gpus, memory=memory, shared_memory=shared_memory)
 
     # Get git information.
     git_config = GitRepoState.from_env(ref=ref, branch=branch)
@@ -230,7 +234,7 @@ def launch_experiment(
                 print_stderr(
                     f"[yellow]GitHub token secret '{gh_token_secret}' not found in workspace.[/]\n"
                     f"You can create a suitable GitHub token by going to https://github.com/settings/tokens/new "
-                    f"and generating a token with the '\N{ballot box with check} repo' scope."
+                    f"and generating a token with the '\N{BALLOT BOX WITH CHECK} repo' scope."
                 )
                 gh_token = prompt.Prompt.ask(
                     "[i]Please paste your GitHub token here[/]",
@@ -323,9 +327,7 @@ def launch_experiment(
                 if matching_clusters:
                     final_clusters.extend(matching_clusters)
                 elif clusters:
-                    raise ConfigurationError(
-                        f"cluster '{og_pat}' did not match any Beaker clusters"
-                    )
+                    raise ConfigurationError(f"cluster '{og_pat}' did not match any Beaker clusters")
                 elif gpu_types:
                     raise ConfigurationError(
                         f"""GPU type specs "{'", "'.join(gpu_types)}" did not match any Beaker clusters"""
@@ -352,6 +354,7 @@ def launch_experiment(
             gh_token_secret=gh_token_secret if not git_config.is_public else None,
             conda=conda,
             pip=pip,
+            uv=uv,
             venv=venv,
             datasets=datasets_to_use,
             env=env_vars_to_use,
@@ -382,8 +385,7 @@ def launch_experiment(
                 Path(save_spec).is_file()
                 and not yes
                 and not prompt.Confirm.ask(
-                    f"[yellow]The file '{save_spec}' already exists. "
-                    f"[i]Are you sure you want to overwrite it?[/][/]"
+                    f"[yellow]The file '{save_spec}' already exists. [i]Are you sure you want to overwrite it?[/][/]"
                 )
             ):
                 raise KeyboardInterrupt
@@ -482,6 +484,7 @@ def _build_experiment_spec(
     gh_token_secret: Optional[str] = constants.GITHUB_TOKEN_SECRET,
     conda: Optional[PathOrStr] = None,
     pip: Optional[PathOrStr] = None,
+    uv: Optional[str] = None,
     venv: Optional[str] = None,
     datasets: Optional[List[Tuple[str, Optional[str], str]]] = None,
     env: Optional[List[Tuple[str, str]]] = None,
@@ -553,45 +556,33 @@ def _build_experiment_spec(
 
     for name, secret in env_secrets or []:
         task_spec = task_spec.with_env_var(name=name, secret=secret)
-
     if no_python:
         task_spec = task_spec.with_env_var(name="NO_PYTHON", value="1")
+    elif no_conda:
+        task_spec = task_spec.with_env_var(name="NO_CONDA", value="1")
     else:
-        if not no_conda:
-            if conda is not None:
-                task_spec = task_spec.with_env_var(
-                    name="CONDA_ENV_FILE",
-                    value=str(conda),
-                )
-            elif Path(constants.CONDA_ENV_FILE).is_file():
-                task_spec = task_spec.with_env_var(
-                    name="CONDA_ENV_FILE",
-                    value=constants.CONDA_ENV_FILE,
-                )
-            elif Path(constants.CONDA_ENV_FILE_ALTERNATE).is_file():
-                task_spec = task_spec.with_env_var(
-                    name="CONDA_ENV_FILE",
-                    value=constants.CONDA_ENV_FILE_ALTERNATE,
-                )
-            else:
-                task_spec = task_spec.with_env_var(
-                    name="PYTHON_VERSION", value=".".join(platform.python_version_tuple()[:-1])
-                )
-
-            if venv is not None:
-                task_spec = task_spec.with_env_var(
-                    name="VENV_NAME",
-                    value=venv,
-                )
+        if conda is not None:
+            task_spec = task_spec.with_env_var(name="CONDA_ENV_FILE", value=str(conda))
+        elif Path(constants.CONDA_ENV_FILE).is_file():
+            task_spec = task_spec.with_env_var(name="CONDA_ENV_FILE", value=constants.CONDA_ENV_FILE)
+        elif Path(constants.CONDA_ENV_FILE_ALTERNATE).is_file():
+            task_spec = task_spec.with_env_var(name="CONDA_ENV_FILE", value=constants.CONDA_ENV_FILE_ALTERNATE)
         else:
-            task_spec = task_spec.with_env_var(name="NO_CONDA", value="1")
-
-        if pip is not None:
             task_spec = task_spec.with_env_var(
-                name="PIP_REQUIREMENTS_FILE",
-                value=str(pip),
+                name="PYTHON_VERSION", value=".".join(platform.python_version_tuple()[:-1])
             )
 
+        if venv is not None:
+            task_spec = task_spec.with_env_var(name="VENV_NAME", value=venv)
+
+    # Handle Python package installation options
+    if not no_python:
+        if pip is not None:
+            task_spec = task_spec.with_env_var(name="PIP_REQUIREMENTS_FILE", value=str(pip))
+        if uv is not None:
+            task_spec = task_spec.with_env_var(name="USE_UV", value="1")
+            if uv:  # If uv has a value (not just empty string from flag)
+                task_spec = task_spec.with_env_var(name="UV_ARGS", value=uv)
         if install is not None:
             task_spec = task_spec.with_env_var(name="INSTALL_CMD", value=install)
 
@@ -696,9 +687,7 @@ def follow_workload(
             for job_log in beaker.job.logs(job, tail_lines=10 if tail else None, follow=True):
                 console.print(job_log.message.decode(), highlight=False, markup=False)
                 if timeout > 0 and (time.monotonic() - start_time) > timeout:
-                    raise BeakerJobTimeoutError(
-                        f"Timed out while waiting for job '{job.id}' to finish"
-                    )
+                    raise BeakerJobTimeoutError(f"Timed out while waiting for job '{job.id}' to finish")
 
             print()
             rich.get_console().rule("End logs")
