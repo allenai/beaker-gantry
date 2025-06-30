@@ -1,4 +1,4 @@
-DEFAULT_IMAGE = "ai2/conda"
+DEFAULT_IMAGE = "petew/gantry"
 
 ENTRYPOINT = "entrypoint.sh"
 

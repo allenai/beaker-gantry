@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added `-f/--follow` option to `gantry logs`.
 
+### Changed
+
+- Changed default beaker image to [`petew/gantry`](https://beaker.allen.ai/orgs/ai2/workspaces/gantry-testing/images).
+
 ## [v2.7.1](https://github.com/allenai/beaker-gantry/releases/tag/v2.7.1) - 2025-06-25
 
 ### Fixed
