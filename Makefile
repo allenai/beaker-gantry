@@ -14,3 +14,11 @@ dev-tools-image :
 .PHONY : test-dev-tools-image
 test-dev-tools-image :
 	gantry run --timeout -1 --workspace ai2/gantry-testing --beaker-image petew/gantry-dev-tools --allow-dirty --yes -- python -c 'print("Hello, World!")'
+
+.PHONY : build-image
+build-image :
+	docker build -t beaker/gantry:latest .
+
+.PHONY : push-image
+push-image :
+	beaker image create --workspace ai2/$(whoami) --name gantry beaker/gantry:latest
