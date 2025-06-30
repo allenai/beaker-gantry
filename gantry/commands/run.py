@@ -26,7 +26,9 @@ from .main import CLICK_COMMAND_DEFAULTS, main, new_optgroup
     help="""The Beaker workspace to use.
     If not specified, your default workspace will be used.""",
 )
-@optgroup.option("-b", "--budget", type=str, help="""The budget account to associate with the experiment.""")
+@optgroup.option(
+    "-b", "--budget", type=str, help="""The budget account to associate with the experiment."""
+)
 @optgroup.option("--group", "group_name", type=str, help="""A group to assign the experiment to.""")
 @new_optgroup("Launch settings")
 @optgroup.option(
@@ -232,7 +234,9 @@ from .main import CLICK_COMMAND_DEFAULTS, main, new_optgroup
     jobs will default to preemptible.""",
     default=None,
 )
-@optgroup.option("--retries", type=int, help="""Specify the number of automatic retries for the experiment.""")
+@optgroup.option(
+    "--retries", type=int, help="""Specify the number of automatic retries for the experiment."""
+)
 @new_optgroup("Multi-node config")
 @optgroup.option(
     "--replicas",
@@ -254,8 +258,12 @@ from .main import CLICK_COMMAND_DEFAULTS, main, new_optgroup
     When used with '--replicas INT', this allows the replicas to communicate with each
     other using their hostnames.""",
 )
-@optgroup.option("--propagate-failure", is_flag=True, help="""Stop the experiment if any task fails.""")
-@optgroup.option("--propagate-preemption", is_flag=True, help="""Stop the experiment if any task is preempted.""")
+@optgroup.option(
+    "--propagate-failure", is_flag=True, help="""Stop the experiment if any task fails."""
+)
+@optgroup.option(
+    "--propagate-preemption", is_flag=True, help="""Stop the experiment if any task is preempted."""
+)
 @optgroup.option(
     "--synchronized-start-timeout",
     type=str,
