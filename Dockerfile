@@ -1,4 +1,4 @@
-ARG BASE_IMAGE=ubuntu:22.04
+ARG BASE_IMAGE=nvidia/cuda:12.8.1-base-ubuntu22.04
 
 FROM ${BASE_IMAGE}
 
@@ -20,6 +20,8 @@ RUN apt-get update && \
     chmod +x ~/miniconda.sh && \
     ~/miniconda.sh -b -p /opt/conda && \
     rm ~/miniconda.sh && \
+    /opt/conda/bin/conda clean -afy && \
+    rm -rf /opt/conda/pkgs && \
     curl -sS https://webi.sh/gh | sh && \
     curl -LsSf https://astral.sh/uv/install.sh | sh
 
