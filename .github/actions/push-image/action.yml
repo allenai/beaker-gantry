@@ -1,0 +1,64 @@
+name: Push image to GHCR
+description: Push image to GitHub container registry.
+inputs:
+  image:
+    description: The tag of the built image
+    required: true
+  beaker:
+    description: Upload release images to Beaker under this name
+    required: false
+    default: ""
+  latest:
+    description: If the image should also be pushed as latest
+    required: false
+    default: "false"
+runs:
+  using: composite
+  steps:
+    # Tag the local image with the GHCR registry prefix
+    - shell: bash
+      run: |
+        # Tag image with registry.
+        docker tag ${{ inputs.image }} ghcr.io/allenai/${{ inputs.image }}
+
+    # Push the image to GHCR for non-tag pushes (but not PRs)
+    - shell: bash
+      if: "!startsWith(github.ref, 'refs/tags/') && github.event_name != 'pull_request'"
+      run: |
+        # Push image.
+        docker push ghcr.io/allenai/${{ inputs.image }}
+
+    # Push as 'latest' tag for when latest=true and not a PR
+    - shell: bash
+      if: github.event_name != 'pull_request' && inputs.latest == 'true'
+      run: |
+        # Push latest image.
+        image_tag=${{ inputs.image }}
+        latest_tag=ghcr.io/allenai/${image_tag%:*}:latest
+        docker tag "${image_tag}" "${latest_tag}"
+        docker push "${latest_tag}"
+
+    # Push release-tagged image for all tag releases
+    - shell: bash
+      if: startsWith(github.ref, 'refs/tags/')
+      run: |
+        # Push release image.
+        GITHUB_TAG=${GITHUB_REF#refs/tags/}
+        RELEASE=${GITHUB_TAG%-*}
+        RELEASE_IMAGE="ghcr.io/allenai/${{ inputs.image }}-${RELEASE}"
+        docker tag ${{ inputs.image }} "${RELEASE_IMAGE}"
+        docker push "${RELEASE_IMAGE}"
+
+    # Upload to Beaker for tag releases when beaker input is provided
+    - shell: bash
+      if: startsWith(github.ref, 'refs/tags/') && inputs.beaker != ''
+      run: |
+        # Push release to Beaker.
+        SHORT_SHA=$(git rev-parse --short HEAD)
+        # Create a uniquely named image first as backup
+        beaker image create --name "${{ inputs.beaker }}-${SHORT_SHA}-${{ github.run_id }}" ${{ inputs.image }}
+        # We can't delete the old image because it might be used by a running job. Instead, we rename it to an empty
+        # string, so it will not be resolved by the Beaker client.
+        beaker image rename ai2/${{ inputs.beaker }} "" || true
+        # Create the new image with the canonical name
+        beaker image create --name ${{ inputs.beaker }} ${{ inputs.image }}
