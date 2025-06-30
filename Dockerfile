@@ -1,3 +1,4 @@
+# See https://hub.docker.com/r/nvidia/cuda/tags?name=-base-ubuntu22 for good defaults
 ARG BASE_IMAGE=nvidia/cuda:12.8.1-base-ubuntu22.04
 
 FROM ${BASE_IMAGE}
