@@ -1,4 +1,5 @@
 IMAGE_NAME=gantry
+BEAKER_WORKSPACE=ai2/gantry-testing
 
 .PHONY : run-checks
 run-checks :
@@ -13,9 +14,9 @@ docker-image :
 	docker build -f Dockerfile -t $(IMAGE_NAME) .
 	echo "Built image '$(IMAGE_NAME)', size: $$(docker inspect -f '{{ .Size }}' $(IMAGE_NAME) | numfmt --to=si)"
 
-# .PHONY : beaker-image
-# beaker-image : docker-image
-#     ./src/scripts/beaker/create_beaker_image.sh olmax olmax $(BEAKER_WORKSPACE)
+.PHONY : beaker-image
+beaker-image : docker-image
+	./scripts/create_beaker_image.sh $(IMAGE_NAME) $(IMAGE_NAME) $(BEAKER_WORKSPACE)
 
 .PHONY : dev-tools-image
 dev-tools-image :
