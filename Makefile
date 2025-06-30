@@ -6,6 +6,15 @@ run-checks :
 	mypy .
 	pytest -v --durations=5 tests/
 
+.PHONY : docker-image
+docker-image :
+	docker build -f src/Dockerfile -t olmax .
+	echo "Built image 'olmax', size: $$(docker inspect -f '{{ .Size }}' olmax | numfmt --to=si)"
+
+# .PHONY : beaker-image
+# beaker-image : docker-image
+#     ./src/scripts/beaker/create_beaker_image.sh olmax olmax $(BEAKER_WORKSPACE)
+
 .PHONY : dev-tools-image
 dev-tools-image :
 	docker build -f test_fixtures/Dockerfile -t gantry-dev-tools .
