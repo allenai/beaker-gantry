@@ -177,8 +177,7 @@ function ensure_pip {
         python_location=$(dirname "$(which python)")
         pip_location=$(dirname "$(which pip)")
         if [[ "$python_location" != "$pip_location" ]]; then
-            log_error "installing/upgrading PIP failed, install location '$pip_location' doesn't match python location '$python_location'"
-            exit 1
+            log_warning "Install location of PIP ('$pip_location') doesn't match Python location ('$python_location')"
         fi
     fi
 
