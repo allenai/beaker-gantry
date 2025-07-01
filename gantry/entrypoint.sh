@@ -199,7 +199,7 @@ log_info "Results dataset $RESULTS_DATASET_URL mounted to '$RESULTS_DIR'."
 
 if [[ -d "/var/lib/tcpxo/lib64" ]] && [[ -n "$BEAKER_REPLICA_COUNT" ]] && [[ -z "$GANTRY_SKIP_TCPXO_SETUP" ]]; then
     log_info "Configuring NCCL for GPUDirect-TCPXO..."
-    log_info "Note: you can skip this step if needed by using the flag '--setting the env var 'GANTRY_SKIP_TCPXO_SETUP'"
+    log_info "Note: you can skip this step if needed by adding the flag '--skip_tcpxo_setup' to your 'gantry run ...' command."
     export NCCL_LIB_DIR="/var/lib/tcpxo/lib64"
     export LD_LIBRARY_PATH="/var/lib/tcpxo/lib64:$LD_LIBRARY_PATH"
     # shellcheck disable=SC1091
