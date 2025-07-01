@@ -274,7 +274,6 @@ if [[ -z "$NO_PYTHON" ]]; then
         if [[ -n "$PYTHON_VERSION" ]]; then
             log_info "Installing Python $PYTHON_VERSION with uv..."
             capture_logs "uv_python_install.log" uv python install "$PYTHON_VERSION"
-            log_info "Setting UV_PYTHON=$UV_PYTHON"
             export UV_PYTHON="$PYTHON_VERSION"
             log_info "Done."
         fi
@@ -382,18 +381,20 @@ if [[ -z "$NO_PYTHON" ]]; then
     fi
 
     if [[ -z "$INSTALL_CMD" ]]; then
-        if [[ -f 'setup.py' ]] || [[ -f 'pyproject.toml' ]] || [[ -f 'setup.cfg' ]]; then
-            log_info "Installing local project..."
-            if [[ -f "$PIP_REQUIREMENTS_FILE" ]]; then
-                capture_logs "pip_install.log" pip install . -r "$PIP_REQUIREMENTS_FILE"
-            else
-                capture_logs "pip_install.log" pip install .
+        if ! should_use_uv; then
+            if [[ -f 'setup.py' ]] || [[ -f 'pyproject.toml' ]] || [[ -f 'setup.cfg' ]]; then
+                log_info "Installing local project..."
+                if [[ -f "$PIP_REQUIREMENTS_FILE" ]]; then
+                    capture_logs "pip_install.log" pip install . -r "$PIP_REQUIREMENTS_FILE"
+                else
+                    capture_logs "pip_install.log" pip install .
+                fi
+                log_info "Done."
+            elif [[ -f "$PIP_REQUIREMENTS_FILE" ]]; then
+                log_info "Installing packages from '$PIP_REQUIREMENTS_FILE'..."
+                capture_logs "pip_install.log" pip install -r "$PIP_REQUIREMENTS_FILE"
+                log_info "Done."
             fi
-            log_info "Done."
-        elif [[ -f "$PIP_REQUIREMENTS_FILE" ]]; then
-            log_info "Installing packages from '$PIP_REQUIREMENTS_FILE'..."
-            capture_logs "pip_install.log" pip install -r "$PIP_REQUIREMENTS_FILE"
-            log_info "Done."
         fi
     elif [[ -f "$INSTALL_CMD" ]] && [[ "${INSTALL_CMD: -3}" == ".sh" ]]; then
         log_info "Sourcing install script '$INSTALL_CMD'..."
