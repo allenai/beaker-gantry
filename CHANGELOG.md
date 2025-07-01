@@ -16,6 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Changed default beaker image to [`petew/gantry`](https://beaker.allen.ai/orgs/ai2/workspaces/gantry-testing/images).
 
+### Fixed
+
+- Made installing/upgrading the `pip` package manager more robust.
+
 ## [v2.7.1](https://github.com/allenai/beaker-gantry/releases/tag/v2.7.1) - 2025-06-25
 
 ### Fixed

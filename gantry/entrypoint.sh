@@ -162,13 +162,12 @@ function should_use_conda {
 }
 
 function ensure_pip {
-    log_info "Install/upgrading PIP package manager..."
+    log_info "Installing/upgrading PIP package manager..."
     if ! command -v pip &> /dev/null; then
-        capture_logs "ensure_pip.log" python -m ensurepip --upgrade
-    else
-        capture_logs "ensure_pip.log" pip install --upgrade pip
+        capture_logs "install_pip.log" python -m ensurepip
     fi
-    log_info "Done."
+    capture_logs "upgrade_pip.log" pip install --upgrade pip
+    log_info "Done. Using $(pip --version)"
 }
 
 echo -e "\e[36m\e[1m
