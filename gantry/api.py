@@ -156,6 +156,7 @@ def launch_experiment(
     retries: Optional[int] = None,
     results: str = constants.RESULTS_DIR,
     skip_tcpxo_setup: bool = False,
+    python_version: Optional[str] = None,
 ):
     """
     Launch an experiment on Beaker. Same as the ``gantry run`` command.
@@ -375,6 +376,7 @@ def launch_experiment(
             retries=retries,
             results=results,
             skip_tcpxo_setup=skip_tcpxo_setup,
+            python_version=python_version,
         )
 
         if save_spec:
@@ -505,6 +507,7 @@ def _build_experiment_spec(
     retries: Optional[int] = None,
     results: str = constants.RESULTS_DIR,
     skip_tcpxo_setup: bool = False,
+    python_version: Optional[str] = None,
 ):
     task_spec = (
         BeakerTaskSpec.new(
@@ -575,7 +578,10 @@ def _build_experiment_spec(
                 )
             else:
                 task_spec = task_spec.with_env_var(
-                    name="PYTHON_VERSION", value=".".join(platform.python_version_tuple()[:-1])
+                    name="PYTHON_VERSION",
+                    value=python_version
+                    if python_version is not None
+                    else ".".join(platform.python_version_tuple()[:-1]),
                 )
 
             if venv is not None:
