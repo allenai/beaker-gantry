@@ -18,7 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Made installing/upgrading the `pip` package manager more robust.
+- Made installing/upgrading the `pip` package manager more robust, and added a check to ensure the pip version being used is in the active virtual environment.
 
 ## [v2.7.1](https://github.com/allenai/beaker-gantry/releases/tag/v2.7.1) - 2025-06-25
 

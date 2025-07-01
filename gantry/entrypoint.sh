@@ -163,10 +163,25 @@ function should_use_conda {
 
 function ensure_pip {
     log_info "Installing/upgrading PIP package manager..."
+
+    # Use 'ensurepip' if necessary to install pip.
     if ! command -v pip &> /dev/null; then
         capture_logs "install_pip.log" python -m ensurepip
     fi
+
+    # Upgrade pip.
     capture_logs "upgrade_pip.log" pip install --upgrade pip
+
+    # Validate that pip is installed to the active Python environment.
+    if command -v dirname &> /dev/null; then
+        python_location=$(dirname "$(which python)")
+        pip_location=$(dirname "$(which pip)")
+        if [[ "$python_location" != "$pip_location" ]]; then
+            log_error "installing/upgrading PIP failed, install location '$pip_location' doesn't match python location '$python_location'"
+            exit 1
+        fi
+    fi
+
     log_info "Done. Using $(pip --version)"
 }
 
