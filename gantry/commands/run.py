@@ -301,8 +301,8 @@ from .main import CLICK_COMMAND_DEFAULTS, main, new_optgroup
 @optgroup.option(
     "--uv",
     is_flag=True,
-    help="""Use uv for Python package management. Will use `uv sync` to install packages, if a
-    `pyproject.toml` file is present. Otherwise, it will use `uv pip install` to install packages.""",
+    help=f"""Use uv for Python package management. Will use `uv sync` to install packages, if a
+    `pyproject.toml` file is present. Otherwise, it will use `uv pip install -r {constants.PIP_REQUIREMENTS_FILE}` to install packages.""",
 )
 @optgroup.option(
     "--install",
