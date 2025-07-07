@@ -300,6 +300,15 @@ def launch_experiment(
                 raise ValueError(f"Invalid --weka option: '{m}'")
             weka_buckets.append((source, target))
 
+        # Add UV_CACHE_DIR env var pointing to the first weka bucket so that
+        # multiple users can share the same uv cache directory.
+        if weka_buckets:
+            uv_cache_already_set = any(name == "UV_CACHE_DIR" for name, _ in env_vars_to_use)
+            if not uv_cache_already_set:
+                first_weka_target = Path(weka_buckets[0][1])
+                uv_cache_dir = first_weka_target / ".cache" / "uv"
+                env_vars_to_use.append(("UV_CACHE_DIR", str(uv_cache_dir)))
+
         # Validate clusters.
         if clusters or gpu_types:
             cl_objects = list(beaker.cluster.list())
