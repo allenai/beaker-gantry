@@ -26,6 +26,6 @@ RUN apt-get update && \
     curl -sS https://webi.sh/gh | sh && \
     curl -LsSf https://astral.sh/uv/install.sh | sh
 
-ENV PATH /opt/conda/bin:~/.local/bin:$PATH
+ENV PATH=/opt/conda/bin:~/.local/bin:$PATH
 WORKDIR ~/
 ENTRYPOINT ["/bin/bash"]
