@@ -183,13 +183,26 @@ function should_use_uv {
 }
 
 function ensure_pip {
-    log_info "Install/upgrading PIP package manager..."
+    log_info "Installing/upgrading PIP package manager..."
+
+    # Use 'ensurepip' if necessary to install pip.
     if ! command -v pip &> /dev/null; then
-        capture_logs "ensure_pip.log" python -m ensurepip --upgrade
-    else
-        capture_logs "ensure_pip.log" pip install --upgrade pip
+        capture_logs "install_pip.log" python -m ensurepip
     fi
-    log_info "Done."
+
+    # Upgrade pip.
+    capture_logs "upgrade_pip.log" pip install --upgrade pip
+
+    # Validate that pip is installed to the active Python environment.
+    if command -v dirname &> /dev/null; then
+        python_location=$(dirname "$(which python)")
+        pip_location=$(dirname "$(which pip)")
+        if [[ "$python_location" != "$pip_location" ]]; then
+            log_warning "Install location of PIP ('$pip_location') doesn't match Python location ('$python_location')"
+        fi
+    fi
+
+    log_info "Done. Using $(pip --version)"
 }
 
 echo -e "\e[36m\e[1m
@@ -220,7 +233,7 @@ log_info "Results dataset $RESULTS_DATASET_URL mounted to '$RESULTS_DIR'."
 
 if [[ -d "/var/lib/tcpxo/lib64" ]] && [[ -n "$BEAKER_REPLICA_COUNT" ]] && [[ -z "$GANTRY_SKIP_TCPXO_SETUP" ]]; then
     log_info "Configuring NCCL for GPUDirect-TCPXO..."
-    log_info "Note: you can skip this step if needed by using the flag '--setting the env var 'GANTRY_SKIP_TCPXO_SETUP'"
+    log_info "Note: you can skip this step if needed by adding the flag '--skip_tcpxo_setup' to your 'gantry run ...' command."
     export NCCL_LIB_DIR="/var/lib/tcpxo/lib64"
     export LD_LIBRARY_PATH="/var/lib/tcpxo/lib64:$LD_LIBRARY_PATH"
     # shellcheck disable=SC1091

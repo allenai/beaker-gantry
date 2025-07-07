@@ -7,13 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [v2.8.0](https://github.com/allenai/beaker-gantry/releases/tag/v2.8.0) - 2025-07-07
+
 ### Added
 
 - Added `-f/--follow` option to `gantry logs`.
+- Added `--python-version` option to `gantry run` for overriding the default Python version to use.
 
 ### Changed
 
-- Changed default beaker image to [`petew/gantry`](https://beaker.allen.ai/orgs/ai2/workspaces/gantry-testing/images).
+- Changed default beaker image to [`petew/gantry`](https://beaker.allen.ai/orgs/ai2/workspaces/gantry-testing/images) which includes all required gantry tools to reduce start-up time. It also includes `uv`.
+
+### Fixed
+
+- Made installing/upgrading the `pip` package manager more robust, and added a check to ensure the pip version being used is in the active virtual environment.
 
 ## [v2.7.1](https://github.com/allenai/beaker-gantry/releases/tag/v2.7.1) - 2025-06-25
 

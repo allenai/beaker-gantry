@@ -293,6 +293,12 @@ from .main import CLICK_COMMAND_DEFAULTS, main, new_optgroup
     help="""The name of an existing conda environment on the image to use.""",
 )
 @optgroup.option(
+    "--python-version",
+    type=str,
+    help="""The default Python version to use when constructing a new Python environment (e.g. --python-version='3.12').
+    This won't be applied if --venv is specified or a conda environment file is used.""",
+)
+@optgroup.option(
     "--pip",
     type=click.Path(exists=True, dir_okay=False),
     help=f"""Path to a PIP requirements file for reconstructing your Python environment.
