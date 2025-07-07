@@ -128,7 +128,7 @@ def launch_experiment(
     branch: Optional[str] = None,
     conda: Optional[PathOrStr] = None,
     pip: Optional[PathOrStr] = None,
-    uv: Optional[str] = None,
+    uv: bool = False,
     venv: Optional[str] = None,
     env_vars: Optional[Sequence[str]] = None,
     env_secrets: Optional[Sequence[str]] = None,
@@ -171,7 +171,7 @@ def launch_experiment(
             raise ConfigurationError("--pip='...' and --install='...' are mutually exclusive.")
 
     # Validate Python environment options
-    if uv is not None:
+    if uv:
         if conda:
             raise ConfigurationError("--uv and --conda are mutually exclusive.")
         if no_conda:
@@ -299,15 +299,6 @@ def launch_experiment(
             except ValueError:
                 raise ValueError(f"Invalid --weka option: '{m}'")
             weka_buckets.append((source, target))
-
-        # Add UV_CACHE_DIR env var pointing to the first weka bucket so that
-        # multiple users can share the same uv cache directory.
-        if weka_buckets:
-            uv_cache_already_set = any(name == "UV_CACHE_DIR" for name, _ in env_vars_to_use)
-            if not uv_cache_already_set:
-                first_weka_target = Path(weka_buckets[0][1])
-                uv_cache_dir = first_weka_target / ".cache" / "uv"
-                # env_vars_to_use.append(("UV_CACHE_DIR", str(uv_cache_dir)))
 
         # Validate clusters.
         if clusters or gpu_types:
@@ -501,7 +492,7 @@ def _build_experiment_spec(
     gh_token_secret: Optional[str] = constants.GITHUB_TOKEN_SECRET,
     conda: Optional[PathOrStr] = None,
     pip: Optional[PathOrStr] = None,
-    uv: Optional[str] = None,
+    uv: bool = False,
     venv: Optional[str] = None,
     datasets: Optional[List[Tuple[str, Optional[str], str]]] = None,
     env: Optional[List[Tuple[str, str]]] = None,
@@ -601,8 +592,12 @@ def _build_experiment_spec(
     if not no_python:
         if pip is not None:
             task_spec = task_spec.with_env_var(name="PIP_REQUIREMENTS_FILE", value=str(pip))
-        if uv is not None:
+        if uv:
             task_spec = task_spec.with_env_var(name="USE_UV", value="1")
+            if weka_buckets and not any(name == "UV_CACHE_DIR" for name, _ in (env or [])):
+                first_weka_target = Path(weka_buckets[0][1])
+                uv_cache_dir = first_weka_target / ".cache" / "uv"
+                task_spec = task_spec.with_env_var(name="UV_CACHE_DIR", value=str(uv_cache_dir))
         if install is not None:
             task_spec = task_spec.with_env_var(name="INSTALL_CMD", value=install)
 
