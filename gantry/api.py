@@ -585,7 +585,10 @@ def _build_experiment_spec(
         else:
             # Always set PYTHON_VERSION for both conda and uv
             task_spec = task_spec.with_env_var(
-                name="PYTHON_VERSION", value=".".join(platform.python_version_tuple()[:-1])
+                name="PYTHON_VERSION",
+                value=python_version
+                if python_version is not None
+                else ".".join(platform.python_version_tuple()[:-1]),
             )
 
         if venv is not None:
