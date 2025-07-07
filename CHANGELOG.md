@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [v2.8.0](https://github.com/allenai/beaker-gantry/releases/tag/v2.8.0) - 2025-07-07
+
 ### Added
 
 - Added `-f/--follow` option to `gantry logs`.
@@ -14,7 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Changed default beaker image to [`petew/gantry`](https://beaker.allen.ai/orgs/ai2/workspaces/gantry-testing/images).
+- Changed default beaker image to [`petew/gantry`](https://beaker.allen.ai/orgs/ai2/workspaces/gantry-testing/images) which includes all required gantry tools to reduce start-up time. It also includes `uv`.
 
 ### Fixed
 
