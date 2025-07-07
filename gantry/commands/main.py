@@ -31,8 +31,8 @@ CLICK_COMMAND_DEFAULTS = {
 }
 
 
-def new_optgroup(name: str, **kwargs):
-    return optgroup.group(f"\n ❯❯❯ {name}", **kwargs)
+def new_optgroup(name: str):
+    return optgroup.group(f"\n ❯❯❯ {name}")
 
 
 def excepthook(exctype, value, tb):
