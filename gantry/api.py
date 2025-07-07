@@ -182,13 +182,9 @@ def launch_experiment(
     if beaker_image is None and docker_image is None:
         beaker_image = constants.DEFAULT_IMAGE
     elif (beaker_image is None) == (docker_image is None):
-        raise ConfigurationError(
-            "Either --beaker-image or --docker-image must be specified, but not both."
-        )
+        raise ConfigurationError("Either --beaker-image or --docker-image must be specified, but not both.")
 
-    task_resources = BeakerTaskResources(
-        cpu_count=cpus, gpu_count=gpus, memory=memory, shared_memory=shared_memory
-    )
+    task_resources = BeakerTaskResources(cpu_count=cpus, gpu_count=gpus, memory=memory, shared_memory=shared_memory)
 
     # Get git information.
     git_config = GitRepoState.from_env(ref=ref, branch=branch)
@@ -333,9 +329,7 @@ def launch_experiment(
                 if matching_clusters:
                     final_clusters.extend(matching_clusters)
                 elif clusters:
-                    raise ConfigurationError(
-                        f"cluster '{og_pat}' did not match any Beaker clusters"
-                    )
+                    raise ConfigurationError(f"cluster '{og_pat}' did not match any Beaker clusters")
                 elif gpu_types:
                     raise ConfigurationError(
                         f"""GPU type specs "{'", "'.join(gpu_types)}" did not match any Beaker clusters"""
@@ -572,13 +566,9 @@ def _build_experiment_spec(
         if conda is not None:
             task_spec = task_spec.with_env_var(name="CONDA_ENV_FILE", value=str(conda))
         elif Path(constants.CONDA_ENV_FILE).is_file():
-            task_spec = task_spec.with_env_var(
-                name="CONDA_ENV_FILE", value=constants.CONDA_ENV_FILE
-            )
+            task_spec = task_spec.with_env_var(name="CONDA_ENV_FILE", value=constants.CONDA_ENV_FILE)
         elif Path(constants.CONDA_ENV_FILE_ALTERNATE).is_file():
-            task_spec = task_spec.with_env_var(
-                name="CONDA_ENV_FILE", value=constants.CONDA_ENV_FILE_ALTERNATE
-            )
+            task_spec = task_spec.with_env_var(name="CONDA_ENV_FILE", value=constants.CONDA_ENV_FILE_ALTERNATE)
         else:
             # Always set PYTHON_VERSION for both conda and uv
             task_spec = task_spec.with_env_var(
@@ -594,8 +584,6 @@ def _build_experiment_spec(
             task_spec = task_spec.with_env_var(name="PIP_REQUIREMENTS_FILE", value=str(pip))
         if uv is not None:
             task_spec = task_spec.with_env_var(name="USE_UV", value="1")
-            if uv:  # If uv has a value (not just empty string from flag)
-                task_spec = task_spec.with_env_var(name="UV_ARGS", value=uv)
         if install is not None:
             task_spec = task_spec.with_env_var(name="INSTALL_CMD", value=install)
 
@@ -700,9 +688,7 @@ def follow_workload(
             for job_log in beaker.job.logs(job, tail_lines=10 if tail else None, follow=True):
                 console.print(job_log.message.decode(), highlight=False, markup=False)
                 if timeout > 0 and (time.monotonic() - start_time) > timeout:
-                    raise BeakerJobTimeoutError(
-                        f"Timed out while waiting for job '{job.id}' to finish"
-                    )
+                    raise BeakerJobTimeoutError(f"Timed out while waiting for job '{job.id}' to finish")
 
             print()
             rich.get_console().rule("End logs")

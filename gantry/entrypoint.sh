@@ -289,6 +289,10 @@ if [[ -z "$NO_PYTHON" ]]; then
             source "$VENV_NAME/bin/activate"
             log_info "Done."
         else
+            if [[ -n "$UV_CACHE_DIR" ]]; then
+                log_info "Using uv cache directory: $UV_CACHE_DIR"
+            fi
+
             if [[ -f "pyproject.toml" ]]; then
                 log_info "Installing project dependencies with uv sync..."
                 if [[ -n "$UV_ARGS" ]]; then
