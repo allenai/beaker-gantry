@@ -70,16 +70,24 @@ function capture_logs {
     return 1
 }
 
-function webi_install_gh {
+function path_prepend {
+  for ((i=$#; i>0; i--)); do
+      ARG=${!i}
+      if [ -d "$ARG" ] && [[ ":$PATH:" != *":$ARG:"* ]]; then
+          export PATH="$ARG${PATH:+":$PATH"}"
+      fi
+  done
+}
+
+function bootstrap_gh {
     curl -sS https://webi.sh/gh | sh
-    # shellcheck disable=SC1090
-    source ~/.config/envman/PATH.env
 }
 
 function ensure_gh {
     if ! command -v gh &> /dev/null; then
         log_info "Installing GitHub CLI..."
-        with_retries 5 10 capture_logs "webi_install_gh.log" webi_install_gh || return 1
+        with_retries 5 10 capture_logs "bootstrap_gh.log" bootstrap_gh || return 1
+        path_prepend "$HOME/.local/bin"
         log_info "Done."
     fi
 }
@@ -92,7 +100,7 @@ function ensure_conda {
         chmod +x ~/miniconda.sh
 
         capture_logs "setup_conda.log" ~/miniconda.sh -b -p /opt/conda || return 1
-        export PATH="/opt/conda/bin:$PATH"
+        path_prepend "/opt/conda/bin"
 
         rm ~/miniconda.sh
         log_info "Done."
