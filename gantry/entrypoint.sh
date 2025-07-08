@@ -103,11 +103,15 @@ function ensure_conda {
     eval "$(command conda 'shell.bash' 'hook' 2> /dev/null)"
 }
 
+function bootstrap_uv {
+    curl -LsSf https://astral.sh/uv/install.sh | sh
+}
+
 function ensure_uv {
     if ! command -v uv &> /dev/null; then
         log_info "Installing uv..."
-        curl -LsSf https://astral.sh/uv/install.sh | sh
-        export PATH="$HOME/.cargo/bin:$PATH"
+        with_retries 5 10 capture_logs "bootstrap_uv.log" bootstrap_uv || return 1
+        export PATH="$HOME/.cargo/bin:$HOME/.local/bin:$PATH"
         log_info "Done."
     fi
 }
@@ -337,7 +341,6 @@ if [[ -z "$NO_PYTHON" ]]; then
                 source .venv/bin/activate
             fi
         fi
-
     elif should_use_conda; then
         ensure_conda
 
@@ -440,16 +443,16 @@ if [[ -z "$NO_PYTHON" ]]; then
 ########################################
 \e[0m"
 
-    echo "# $(python --version)" > "$GANTRY_DIR/requirements.txt"
-    pip freeze >> "$GANTRY_DIR/requirements.txt"
-
     log_info "Using $(python --version) from '$(which python)'."
-    log_info "Packages:"
-    if which sed >/dev/null; then
-        pip freeze | sed 's/^/- /'
+    echo "# $(python --version)" > "$GANTRY_DIR/requirements.txt"
+
+    if should_use_uv; then
+        uv pip freeze >> "$GANTRY_DIR/requirements.txt"
     else
-        pip freeze
+        pip freeze >> "$GANTRY_DIR/requirements.txt"
     fi
+    log_info "Packages:"
+    cat "$GANTRY_DIR/requirements.txt"
 fi
 
 end_time=$(date +%s)
