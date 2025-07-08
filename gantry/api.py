@@ -567,6 +567,7 @@ def _build_experiment_spec(
 
     for name, secret in env_secrets or []:
         task_spec = task_spec.with_env_var(name=name, secret=secret)
+
     if no_python:
         task_spec = task_spec.with_env_var(name="NO_PYTHON", value="1")
     elif no_conda:
@@ -594,7 +595,6 @@ def _build_experiment_spec(
         if venv is not None:
             task_spec = task_spec.with_env_var(name="VENV_NAME", value=venv)
 
-    # Handle Python package installation options
     if not no_python:
         if pip is not None:
             task_spec = task_spec.with_env_var(name="PIP_REQUIREMENTS_FILE", value=str(pip))

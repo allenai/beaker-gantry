@@ -194,3 +194,24 @@ def test_dry_run_with_replicas(workspace_name: str, run_name: str, tmp_path: Pat
     assert spec.tasks[0].propagate_failure is True
     assert spec.tasks[0].propagate_preemption is True
     assert spec.tasks[0].replicas == 4
+
+
+def test_dry_run_with_uv(workspace_name: str, run_name: str, tmp_path: Path):
+    spec_path = tmp_path / "spec.yaml"
+    result = subprocess.run(
+        _build_run_cmd(
+            workspace_name=workspace_name,
+            run_name=run_name,
+            spec_path=spec_path,
+            options=["--uv", "--weka=oe-training-default:/weka/oe-training-default"],
+        ),
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0
+
+    # Make sure spec is valid.
+    spec = BeakerExperimentSpec.from_file(spec_path)
+    assert spec.tasks[0].env_vars is not None
+    assert any(env_var.name == "USE_UV" for env_var in spec.tasks[0].env_vars)
+    assert any(env_var.name == "UV_CACHE_DIR" for env_var in spec.tasks[0].env_vars)
