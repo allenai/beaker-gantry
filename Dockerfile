@@ -15,6 +15,7 @@ RUN apt-get update && \
        wget \
        libxml2-dev \
        jq \
+       cmake \
        git && \
     rm -rf /var/lib/apt/lists/* && \
     curl -fsSL -v -o ~/miniconda.sh -O https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh && \
