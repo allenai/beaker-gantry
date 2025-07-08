@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- Added `--uv` option that enables using `uv` to install project requirements. Uses a shared uv cache if a weka bucket is specified.
+
 ## [v2.8.0](https://github.com/allenai/beaker-gantry/releases/tag/v2.8.0) - 2025-07-07
 
 ### Added
