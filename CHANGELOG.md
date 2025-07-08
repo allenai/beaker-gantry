@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [v2.8.1](https://github.com/allenai/beaker-gantry/releases/tag/v2.8.1) - 2025-07-08
+
 ### Changed
 
  - Added `cmake` to the default docker image.
