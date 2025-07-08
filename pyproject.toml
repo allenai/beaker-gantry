@@ -95,7 +95,7 @@ profile = "black"
 multi_line_output = 3
 
 [tool.ruff]
-line-length = 120
+line-length = 100
 
 [tool.ruff.lint]
 ignore = ["F403", "F405", "E501"]

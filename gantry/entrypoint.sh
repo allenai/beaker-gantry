@@ -42,7 +42,7 @@ function with_retries {
     while true; do
         "$@" && return 0
 
-        attempts=$((attempts+1)) 
+        attempts=$((attempts+1))
         if [ $attempts -eq "$max_retries" ]; then
             log_error "Retries for exceeded for command '$*'. Check results dataset for additional logs: $RESULTS_DATASET_URL"
             exit 1
@@ -103,6 +103,19 @@ function ensure_conda {
     eval "$(command conda 'shell.bash' 'hook' 2> /dev/null)"
 }
 
+function bootstrap_uv {
+    curl -LsSf https://astral.sh/uv/install.sh | sh
+}
+
+function ensure_uv {
+    if ! command -v uv &> /dev/null; then
+        log_info "Installing uv..."
+        with_retries 5 10 capture_logs "bootstrap_uv.log" bootstrap_uv || return 1
+        export PATH="$HOME/.cargo/bin:$HOME/.local/bin:$PATH"
+        log_info "Done."
+    fi
+}
+
 function clone_repo {
     if [[ -z "$GIT_BRANCH" ]]; then
         if [[ -n "$GITHUB_TOKEN" ]]; then
@@ -136,6 +149,9 @@ function should_use_conda {
     if [[ -n "$NO_CONDA" ]]; then
         # Explicitly told not to use conda.
         return 1
+    elif [[ -n "$USE_UV" ]]; then
+        # Explicitly told to use uv instead.
+        return 1
     elif ! command -v python &> /dev/null; then
         # Need conda to install Python.
         return 0
@@ -158,6 +174,15 @@ function should_use_conda {
     else
         # Default Python version does not match, so we need conda to get a matching version.
         return 0
+    fi
+}
+
+function should_use_uv {
+    if [[ -n "$USE_UV" ]]; then
+        # Explicitly told to use uv.
+        return 0
+    else
+        return 1
     fi
 }
 
@@ -260,14 +285,70 @@ if [[ -z "$NO_PYTHON" ]]; then
 ❯❯❯ [GANTRY] Building Python env... ❮❮❮
 #######################################
 \e[0m"
-    if should_use_conda; then
+    if should_use_uv; then
+        ensure_uv
+
+        if [[ -n "$PYTHON_VERSION" ]]; then
+            log_info "Installing Python $PYTHON_VERSION with uv..."
+            capture_logs "uv_python_install.log" uv python install "$PYTHON_VERSION"
+            export UV_PYTHON="$PYTHON_VERSION"
+            log_info "Done."
+        fi
+
+        if [[ -n "$VENV_NAME" ]]; then
+            if [[ "$VENV_NAME" == */* ]]; then
+                if [[ ! -d "$VENV_NAME" ]]; then
+                    log_error "virtual environment '$VENV_NAME' looks like a path but it doesn't exist"
+                    exit 1
+                fi
+            fi
+            log_info "Activating specified virtual environment '$VENV_NAME'..."
+            source "$VENV_NAME/bin/activate"
+            log_info "Done."
+        else
+            if [[ -n "$UV_CACHE_DIR" ]]; then
+                log_info "Using uv cache directory: $UV_CACHE_DIR"
+            fi
+
+            if [[ -f "pyproject.toml" ]]; then
+                log_info "Installing project dependencies with uv sync..."
+                if [[ -n "$UV_ARGS" ]]; then
+                    log_info "Running: uv sync $UV_ARGS"
+                    capture_logs "uv_sync.log" uv sync $UV_ARGS
+                else
+                    capture_logs "uv_sync.log" uv sync
+                fi
+                log_info "Done."
+
+                # Activate the virtual environment created by uv
+                if [[ -d ".venv" ]]; then
+                    log_info "Activating virtual environment..."
+                    source .venv/bin/activate
+                    log_info "Done."
+                fi
+            elif [[ -f "$PIP_REQUIREMENTS_FILE" ]]; then
+                # Create venv and install requirements
+                log_info "Creating virtual environment with uv..."
+                capture_logs "uv_venv_create.log" uv venv
+                source .venv/bin/activate
+
+                log_info "Installing packages from '$PIP_REQUIREMENTS_FILE' with uv..."
+                capture_logs "uv_pip_install.log" uv pip install -r "$PIP_REQUIREMENTS_FILE"
+                log_info "Done."
+            else
+                log_info "No dependency files found. Creating empty virtual environment..."
+                capture_logs "uv_venv_create.log" uv venv
+                source .venv/bin/activate
+            fi
+        fi
+    elif should_use_conda; then
         ensure_conda
-        
+
         if [[ -z "$VENV_NAME" ]]; then
             if [[ -f "$CONDA_ENV_FILE" ]]; then
                 # Create from the environment file.
                 log_info "Initializing environment from conda env file '$CONDA_ENV_FILE'..."
-                capture_logs "conda_env_create.log" conda env create -n gantry -f "$CONDA_ENV_FILE" 
+                capture_logs "conda_env_create.log" conda env create -n gantry -f "$CONDA_ENV_FILE"
                 conda activate gantry &> /dev/null
                 log_info "Done."
             elif [[ -z "$PYTHON_VERSION" ]]; then
@@ -314,21 +395,26 @@ if [[ -z "$NO_PYTHON" ]]; then
         log_info "Using existing $(python --version) installation at '$(which python)'."
     fi
 
-    ensure_pip
-    
+    # Only ensure pip if not using uv
+    if ! should_use_uv; then
+        ensure_pip
+    fi
+
     if [[ -z "$INSTALL_CMD" ]]; then
-        if [[ -f 'setup.py' ]] || [[ -f 'pyproject.toml' ]] || [[ -f 'setup.cfg' ]]; then
-            log_info "Installing local project..."
-            if [[ -f "$PIP_REQUIREMENTS_FILE" ]]; then
-                capture_logs "pip_install.log" pip install . -r "$PIP_REQUIREMENTS_FILE"
-            else
-                capture_logs "pip_install.log" pip install .
+        if ! should_use_uv; then
+            if [[ -f 'setup.py' ]] || [[ -f 'pyproject.toml' ]] || [[ -f 'setup.cfg' ]]; then
+                log_info "Installing local project..."
+                if [[ -f "$PIP_REQUIREMENTS_FILE" ]]; then
+                    capture_logs "pip_install.log" pip install . -r "$PIP_REQUIREMENTS_FILE"
+                else
+                    capture_logs "pip_install.log" pip install .
+                fi
+                log_info "Done."
+            elif [[ -f "$PIP_REQUIREMENTS_FILE" ]]; then
+                log_info "Installing packages from '$PIP_REQUIREMENTS_FILE'..."
+                capture_logs "pip_install.log" pip install -r "$PIP_REQUIREMENTS_FILE"
+                log_info "Done."
             fi
-            log_info "Done."
-        elif [[ -f "$PIP_REQUIREMENTS_FILE" ]]; then
-            log_info "Installing packages from '$PIP_REQUIREMENTS_FILE'..."
-            capture_logs "pip_install.log" pip install -r "$PIP_REQUIREMENTS_FILE"
-            log_info "Done."
         fi
     elif [[ -f "$INSTALL_CMD" ]] && [[ "${INSTALL_CMD: -3}" == ".sh" ]]; then
         log_info "Sourcing install script '$INSTALL_CMD'..."
@@ -343,30 +429,30 @@ if [[ -z "$NO_PYTHON" ]]; then
         eval "$INSTALL_CMD"
         log_info "Done."
     fi
-    
+
     if [[ -z "$PYTHONPATH" ]]; then
         PYTHONPATH="$(pwd)"
     else
         PYTHONPATH="${PYTHONPATH}:$(pwd)"
     fi
     export PYTHONPATH
-    
+
     echo -e "\e[36m\e[1m
 ########################################
 ❯❯❯ [GANTRY] Python environment info ❮❮❮
 ########################################
 \e[0m"
-    
-    echo "# $(python --version)" > "$GANTRY_DIR/requirements.txt"
-    pip freeze >> "$GANTRY_DIR/requirements.txt"
 
     log_info "Using $(python --version) from '$(which python)'."
-    log_info "Packages:"
-    if which sed >/dev/null; then
-        pip freeze | sed 's/^/- /'
+    echo "# $(python --version)" > "$GANTRY_DIR/requirements.txt"
+
+    if should_use_uv; then
+        uv pip freeze >> "$GANTRY_DIR/requirements.txt"
     else
-        pip freeze
+        pip freeze >> "$GANTRY_DIR/requirements.txt"
     fi
+    log_info "Packages:"
+    cat "$GANTRY_DIR/requirements.txt"
 fi
 
 end_time=$(date +%s)
