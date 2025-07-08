@@ -305,41 +305,40 @@ if [[ -z "$NO_PYTHON" ]]; then
             log_info "Activating specified virtual environment '$VENV_NAME'..."
             source "$VENV_NAME/bin/activate"
             log_info "Done."
-        else
-            if [[ -n "$UV_CACHE_DIR" ]]; then
-                log_info "Using uv cache directory: $UV_CACHE_DIR"
-            fi
 
-            if [[ -f "pyproject.toml" ]]; then
-                log_info "Installing project dependencies with uv sync..."
-                if [[ -n "$UV_ARGS" ]]; then
-                    log_info "Running: uv sync $UV_ARGS"
-                    capture_logs "uv_sync.log" uv sync $UV_ARGS
-                else
-                    capture_logs "uv_sync.log" uv sync
-                fi
-                log_info "Done."
+        if [[ -n "$UV_CACHE_DIR" ]]; then
+            log_info "Using uv cache directory: $UV_CACHE_DIR"
+        fi
 
-                # Activate the virtual environment created by uv
-                if [[ -d ".venv" ]]; then
-                    log_info "Activating virtual environment..."
-                    source .venv/bin/activate
-                    log_info "Done."
-                fi
-            elif [[ -f "$PIP_REQUIREMENTS_FILE" ]]; then
-                # Create venv and install requirements
-                log_info "Creating virtual environment with uv..."
-                capture_logs "uv_venv_create.log" uv venv
-                source .venv/bin/activate
-
-                log_info "Installing packages from '$PIP_REQUIREMENTS_FILE' with uv..."
-                capture_logs "uv_pip_install.log" uv pip install -r "$PIP_REQUIREMENTS_FILE"
-                log_info "Done."
+        if [[ -f "pyproject.toml" ]]; then
+            log_info "Installing project dependencies with uv sync..."
+            if [[ -n "$UV_ARGS" ]]; then
+                log_info "Running: uv sync $UV_ARGS"
+                capture_logs "uv_sync.log" uv sync $UV_ARGS
             else
-                log_info "No dependency files found. Creating empty virtual environment..."
-                capture_logs "uv_venv_create.log" uv venv
-                source .venv/bin/activate
+                capture_logs "uv_sync.log" uv sync
             fi
+            log_info "Done."
+
+            # Activate the virtual environment created by uv
+            if [[ -d ".venv" ]]; then
+                log_info "Activating virtual environment..."
+                source .venv/bin/activate
+                log_info "Done."
+            fi
+        elif [[ -f "$PIP_REQUIREMENTS_FILE" ]]; then
+            # Create venv and install requirements
+            log_info "Creating virtual environment with uv..."
+            capture_logs "uv_venv_create.log" uv venv
+            source .venv/bin/activate
+
+            log_info "Installing packages from '$PIP_REQUIREMENTS_FILE' with uv..."
+            capture_logs "uv_pip_install.log" uv pip install -r "$PIP_REQUIREMENTS_FILE"
+            log_info "Done."
+        else
+            log_info "No dependency files found. Creating empty virtual environment..."
+            capture_logs "uv_venv_create.log" uv venv
+            source .venv/bin/activate
         fi
     elif should_use_conda; then
         ensure_conda
