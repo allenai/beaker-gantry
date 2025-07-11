@@ -10,14 +10,14 @@ mkdir -p "$GANTRY_DIR"
 GANTRY_LOGS_DIR="$GANTRY_DIR/logs"
 mkdir -p "$GANTRY_LOGS_DIR"
 
-RUNTIME_DIR="/gantry-runtime"
-mkdir -p "$RUNTIME_DIR"
-cd "$RUNTIME_DIR"
+GANTRY_RUNTIME_DIR="${GANTRY_RUNTIME_DIR:-/gantry-runtime}"
+mkdir -p "$GANTRY_RUNTIME_DIR"
+cd "$GANTRY_RUNTIME_DIR"
 
 RESULTS_DATASET_URL="\e[94m\e[4mhttps://beaker.org/ds/$BEAKER_RESULT_DATASET_ID\e[0m"
 
-CONDA_ENV_FILE="${CONDA_ENV_FILE:-environment.yml}"
-PIP_REQUIREMENTS_FILE="${PIP_REQUIREMENTS_FILE:-requirements.txt}"
+GANTRY_PYTHON_MANAGER="${GANTRY_PYTHON_MANAGER:-uv}"
+GANTRY_CONDA_FILE="${GANTRY_CONDA_FILE:-environment.yml}"
 
 function log_info {
     echo -e "\e[36m\e[1m❯ [GANTRY INFO]\e[0m $1"
@@ -92,25 +92,6 @@ function ensure_gh {
     fi
 }
 
-function ensure_conda {
-    if ! command -v conda &> /dev/null; then
-        log_info "Installing conda..."
-
-        with_retries 5 10 curl -fsSL -o ~/miniconda.sh -O https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh || return 1
-        chmod +x ~/miniconda.sh
-
-        capture_logs "setup_conda.log" ~/miniconda.sh -b -p /opt/conda || return 1
-        path_prepend "/opt/conda/bin"
-
-        rm ~/miniconda.sh
-        log_info "Done."
-    fi
-
-    # Initialize conda for bash.
-    # See https://stackoverflow.com/a/58081608/4151392
-    eval "$(command conda 'shell.bash' 'hook' 2> /dev/null)"
-}
-
 function clone_repo {
     if [[ -z "$GIT_BRANCH" ]]; then
         if [[ -n "$GITHUB_TOKEN" ]]; then
@@ -130,42 +111,35 @@ function clone_repo {
     return 1
 }
 
-# get existing Python major version, e.g. '3.10'
-function get_python_version {
-    if command -v python &> /dev/null; then
-        local python_version
-        python_version=$(python --version)
-        python_version=${python_version//[A-Za-z ]/}
-        echo "$python_version" | cut -d"." -f1-2
+function ensure_conda {
+    if ! command -v conda &> /dev/null; then
+        log_info "Installing conda..."
+
+        with_retries 5 10 curl -fsSL -o ~/miniconda.sh -O https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh || return 1
+        chmod +x ~/miniconda.sh
+
+        capture_logs "setup_conda.log" ~/miniconda.sh -b -p /opt/conda || return 1
+        path_prepend "/opt/conda/bin"
+
+        rm ~/miniconda.sh
+        log_info "Done."
     fi
+
+    # Initialize conda for bash.
+    # See https://stackoverflow.com/a/58081608/4151392
+    eval "$(command conda 'shell.bash' 'hook' 2> /dev/null)"
 }
 
-function should_use_conda {
-    if [[ -n "$NO_CONDA" ]]; then
-        # Explicitly told not to use conda.
-        return 1
-    elif ! command -v python &> /dev/null; then
-        # Need conda to install Python.
-        return 0
-    elif [[ -n "$VENV_NAME" ]]; then
-        # Existing conda environment has been specified.
-        return 0
-    elif [[ -f "$CONDA_ENV_FILE" ]]; then
-        # Conda environment file has been specified.
-        return 0
-    elif [[ -z "$PYTHON_VERSION" ]]; then
-        # No Python version has been specified, so it's okay to use the default available on the image.
-        return 1
-    fi
+function bootstrap_uv {
+    curl -LsSf https://astral.sh/uv/install.sh | sh
+}
 
-    local default_python_version
-    default_python_version=$(get_python_version)
-    if [[ "$PYTHON_VERSION" == "$default_python_version" ]]; then
-        # Default Python version on image matches specified Python version.
-        return 1
-    else
-        # Default Python version does not match, so we need conda to get a matching version.
-        return 0
+function ensure_uv {
+    if ! command -v uv &> /dev/null; then
+        log_info "Installing uv..."
+        with_retries 5 10 capture_logs "bootstrap_uv.log" bootstrap_uv || return 1
+        path_prepend "$HOME/.cargo/bin" "$HOME/.local/bin"
+        log_info "Done."
     fi
 }
 
@@ -192,6 +166,175 @@ function ensure_pip {
     log_info "Done. Using $(pip --version)"
 }
 
+function run_custom_install {
+    if [[ -f "$GANTRY_INSTALL_CMD" ]] && [[ "${GANTRY_INSTALL_CMD: -3}" == ".sh" ]]; then
+        log_info "Sourcing install script '$GANTRY_INSTALL_CMD'..."
+
+        # shellcheck disable=SC1090
+        source "$GANTRY_INSTALL_CMD" || return 1
+
+        # Reset shell behavior.
+        set -eo pipefail
+        set +x
+
+        log_info "Done."
+    else
+        log_info "Installing packages with given command: $GANTRY_INSTALL_CMD"
+        eval "$GANTRY_INSTALL_CMD" || return 1
+        log_info "Done."
+    fi
+}
+
+function uv_setup_python {
+    ensure_uv || return 1
+
+    GANTRY_UV_FLAGS=""
+    if [[ -n "$GANTRY_PYTHON_VENV" ]]; then
+        if [[ ! -d "$GANTRY_PYTHON_VENV" ]] || [[ ! -f "$GANTRY_PYTHON_VENV/bin/activate" ]]; then
+            log_error "--python-venv '$GANTRY_PYTHON_VENV' should be a path to virtual env directory"
+            exit 1
+        fi
+
+        log_info "Activating virtual environment at '$GANTRY_PYTHON_VENV'..."
+        # shellcheck disable=SC1091
+        source "$GANTRY_PYTHON_VENV/bin/activate" || return 1
+        log_info "Done."
+    elif [[ -z "$GANTRY_USE_SYSTEM_PYTHON" ]]; then
+        log_info "Creating uv virtual environment with Python ${GANTRY_DEFAULT_PYTHON_VERSION}..."
+        capture_logs "uv_venv_create.log" uv venv --python="$GANTRY_DEFAULT_PYTHON_VERSION" || return 1
+        log_info "Done."
+
+        log_info "Activating virtual environment..."
+        # shellcheck disable=SC1091
+        source .venv/bin/activate || return 1
+        log_info "Done."
+    elif command -v python &> /dev/null; then
+        log_info "Using existing $(python --version) installation at '$(which python)'."
+        GANTRY_UV_FLAGS="--system --break-system-packages"
+    else
+        log_error "no system python found"
+        exit 1
+    fi
+
+    UV_PYTHON="$(which python)"
+    export UV_PYTHON
+
+    if [[ -z "$GANTRY_INSTALL_CMD" ]]; then
+        if [[ -f 'pyproject.toml' ]]; then
+            log_info "Installing local project..."
+            # shellcheck disable=SC2086
+            capture_logs "uv_pip_install.log" uv pip install $GANTRY_UV_FLAGS -r pyproject.toml --all-extras || return 1
+            log_info "Done."
+        elif [[ -f 'setup.py' ]]; then
+            log_info "Installing local project..."
+            # shellcheck disable=SC2086
+            capture_logs "uv_pip_install.log" uv pip install $GANTRY_UV_FLAGS -r setup.py --all-extras || return 1
+            log_info "Done."
+        elif [[ -f 'setup.cfg' ]]; then
+            log_info "Installing local project..."
+            # shellcheck disable=SC2086
+            capture_logs "uv_pip_install.log" uv pip install $GANTRY_UV_FLAGS -r setup.cfg --all-extras || return 1
+            log_info "Done."
+        elif [[ -f 'requirements.txt' ]]; then
+            log_info "Installing packages from requirements.txt..."
+            # shellcheck disable=SC2086
+            capture_logs "uv_pip_install.log" uv pip install $GANTRY_UV_FLAGS -r requirements.txt || return 1
+            log_info "Done."
+        fi
+    else
+        run_custom_install || return 1
+    fi
+
+    echo "# $(python --version)" > "$GANTRY_DIR/requirements.txt"
+    uv pip freeze 2> /dev/null >> "$GANTRY_DIR/requirements.txt"
+}
+
+function conda_setup_python {
+    ensure_conda || return 1
+
+    if [[ -z "$GANTRY_CONDA_ENV" ]]; then
+        if [[ -f "$GANTRY_CONDA_FILE" ]]; then
+            # Create from the environment file.
+            log_info "Initializing environment from conda env file '$GANTRY_CONDA_FILE'..."
+            capture_logs "conda_env_create.log" conda env create -n gantry -f "$GANTRY_CONDA_FILE" 
+            conda activate gantry &> /dev/null || return 1
+            log_info "Done."
+        elif [[ -n "$GANTRY_USE_SYSTEM_PYTHON" ]]; then
+            # Try using the default 'base' environment,
+            # and otherwise create a new environment with whatever version of Python conda chooses.
+            if conda activate base &> /dev/null; then
+                log_info "Using default base environment."
+            else
+                log_info "Initializing environment with default Python version..."
+                capture_logs "conda_env_create.log" conda create -y -n gantry pip
+                conda activate gantry &> /dev/null || return 1
+                log_info "Done."
+            fi
+        else
+            # Create a new empty environment with the specific Python version.
+            log_info "Initializing environment with Python $GANTRY_DEFAULT_PYTHON_VERSION..."
+            capture_logs "conda_env_create.log" conda create -y -n gantry "python=$GANTRY_DEFAULT_PYTHON_VERSION" pip
+            conda activate gantry &> /dev/null || return 1
+            log_info "Done."
+        fi
+    else
+        # Check if 'GANTRY_CONDA_ENV' is a path. If so, it should exist.
+        if [[ "$GANTRY_CONDA_ENV" == */* ]]; then
+            if [[ ! -d "$GANTRY_CONDA_ENV" ]]; then
+                log_error "conda environment '$GANTRY_CONDA_ENV' looks like a path but it doesn't exist"
+                exit 1
+            fi
+        fi
+
+        log_info "Activating specified conda environment '$GANTRY_CONDA_ENV'..."
+        conda activate "$GANTRY_CONDA_ENV" &> /dev/null || return 1
+        log_info "Done."
+
+        if [[ -f "$GANTRY_CONDA_FILE" ]]; then
+            log_info "Updating environment from conda env file '$GANTRY_CONDA_FILE'..."
+            capture_logs "conda_env_update.log" conda env update -f "$GANTRY_CONDA_FILE" || return 1
+            log_info "Done."
+        fi
+    fi
+
+    ensure_pip || return 1
+
+    if [[ -z "$GANTRY_INSTALL_CMD" ]]; then
+        if [[ -f 'setup.py' ]] || [[ -f 'pyproject.toml' ]] || [[ -f 'setup.cfg' ]]; then
+            log_info "Installing local project..."
+            capture_logs "pip_install.log" pip install . || return 1
+            log_info "Done."
+        elif [[ -f 'requirements.txt' ]]; then
+            log_info "Installing packages from requirements.txt..."
+            capture_logs "pip_install.log" pip install -r requirements.txt || return 1
+            log_info "Done."
+        fi
+    else
+        run_custom_install || return 1
+    fi
+
+    echo "# $(python --version)" > "$GANTRY_DIR/requirements.txt"
+    pip freeze >> "$GANTRY_DIR/requirements.txt"
+}
+
+function setup_python {
+    if [[ "$GANTRY_PYTHON_MANAGER" == "uv" ]]; then
+        uv_setup_python || return 1
+    elif [[ "$GANTRY_PYTHON_MANAGER" == "conda" ]]; then
+        conda_setup_python || return 1
+    else
+        log_error "unknown python manager '$GANTRY_PYTHON_MANAGER'"
+        exit 1
+    fi
+    
+    if [[ -z "$PYTHONPATH" ]]; then
+        PYTHONPATH="$(pwd)"
+    else
+        PYTHONPATH="${PYTHONPATH}:$(pwd)"
+    fi
+    export PYTHONPATH
+}
+
 echo -e "\e[36m\e[1m
 ##########################################
 ❯❯❯ [GANTRY] Validating environment... ❮❮❮
@@ -199,9 +342,9 @@ echo -e "\e[36m\e[1m
 \e[0m"
 
 log_info "Checking for required env variables..."
-for env_var in "$GITHUB_REPO" "$GIT_REF" "$RESULTS_DIR" "$BEAKER_RESULT_DATASET_ID"; do
-    if [[ -z "$env_var" ]]; then
-        log_error "required environment variable is empty"
+for env_var in "GITHUB_REPO" "GIT_REF" "RESULTS_DIR" "BEAKER_RESULT_DATASET_ID"; do
+    if [[ -z "${!env_var+x}" ]]; then
+        log_error "required environment variable '$env_var' is empty"
         exit 1
     fi
 done
@@ -262,119 +405,33 @@ log_info "Initializing git submodules..."
 capture_logs "init_submodules.log" git submodule update --init --recursive
 log_info "Done."
 
-if [[ -z "$NO_PYTHON" ]]; then
+if [[ -z "$GANTRY_NO_PYTHON" ]]; then
     echo -e "\e[36m\e[1m
 #######################################
 ❯❯❯ [GANTRY] Building Python env... ❮❮❮
 #######################################
 \e[0m"
-    if should_use_conda; then
-        ensure_conda
-        
-        if [[ -z "$VENV_NAME" ]]; then
-            if [[ -f "$CONDA_ENV_FILE" ]]; then
-                # Create from the environment file.
-                log_info "Initializing environment from conda env file '$CONDA_ENV_FILE'..."
-                capture_logs "conda_env_create.log" conda env create -n gantry -f "$CONDA_ENV_FILE" 
-                conda activate gantry &> /dev/null
-                log_info "Done."
-            elif [[ -z "$PYTHON_VERSION" ]]; then
-                # If the Python version hasn't been specified then we try using the default 'base' environment,
-                # and otherwise create a new environment with whatever version of Python conda chooses.
-                if conda activate base &> /dev/null; then
-                    log_info "Using default base environment."
-                else
-                    log_info "Initializing environment with default Python version..."
-                    capture_logs "conda_env_create.log" conda create -y -n gantry pip
-                    conda activate gantry &> /dev/null
-                    log_info "Done."
-                fi
-            else
-                # Create a new empty environment with the specific Python version.
-                log_info "Initializing environment with Python $PYTHON_VERSION..."
-                capture_logs "conda_env_create.log" conda create -y -n gantry "python=$PYTHON_VERSION" pip
-                conda activate gantry &> /dev/null
-                log_info "Done."
-            fi
-        else
-            # Check if 'VENV_NAME' is a path. If so, it should exist.
-            if [[ "$VENV_NAME" == */* ]]; then
-                if [[ ! -d "$VENV_NAME" ]]; then
-                    log_error "conda environment '$VENV_NAME' looks like a path but it doesn't exist"
-                    exit 1
-                fi
-            fi
 
-            log_info "Activating specified conda environment '$VENV_NAME'..."
-            conda activate "$VENV_NAME" &> /dev/null
-            log_info "Done."
-
-            if [[ -f "$CONDA_ENV_FILE" ]]; then
-                log_info "Updating environment from conda env file '$CONDA_ENV_FILE'..."
-                capture_logs "conda_env_update.log" conda env update -f "$CONDA_ENV_FILE"
-                log_info "Done."
-            fi
-        fi
-    elif ! command -v python &> /dev/null; then
-        log_error "You specified '--no-conda', but no Python distribution can be found on the image. Please use an image with Python or remove the '--no-conda' flag."
-        exit 1
-    else
-        log_info "Using existing $(python --version) installation at '$(which python)'."
-    fi
-
-    ensure_pip
-    
-    if [[ -z "$INSTALL_CMD" ]]; then
-        if [[ -f 'setup.py' ]] || [[ -f 'pyproject.toml' ]] || [[ -f 'setup.cfg' ]]; then
-            log_info "Installing local project..."
-            if [[ -f "$PIP_REQUIREMENTS_FILE" ]]; then
-                capture_logs "pip_install.log" pip install . -r "$PIP_REQUIREMENTS_FILE"
-            else
-                capture_logs "pip_install.log" pip install .
-            fi
-            log_info "Done."
-        elif [[ -f "$PIP_REQUIREMENTS_FILE" ]]; then
-            log_info "Installing packages from '$PIP_REQUIREMENTS_FILE'..."
-            capture_logs "pip_install.log" pip install -r "$PIP_REQUIREMENTS_FILE"
-            log_info "Done."
-        fi
-    elif [[ -f "$INSTALL_CMD" ]] && [[ "${INSTALL_CMD: -3}" == ".sh" ]]; then
-        log_info "Sourcing install script '$INSTALL_CMD'..."
-        # shellcheck disable=SC1090
-        source "$INSTALL_CMD"
-        # Reset shell behavior.
-        set -eo pipefail
-        set +x
-        log_info "Done."
-    else
-        log_info "Installing packages with given command: $INSTALL_CMD"
-        eval "$INSTALL_CMD"
-        log_info "Done."
-    fi
-    
-    if [[ -z "$PYTHONPATH" ]]; then
-        PYTHONPATH="$(pwd)"
-    else
-        PYTHONPATH="${PYTHONPATH}:$(pwd)"
-    fi
-    export PYTHONPATH
+    setup_python
     
     echo -e "\e[36m\e[1m
 ########################################
 ❯❯❯ [GANTRY] Python environment info ❮❮❮
 ########################################
 \e[0m"
-    
-    echo "# $(python --version)" > "$GANTRY_DIR/requirements.txt"
-    pip freeze >> "$GANTRY_DIR/requirements.txt"
 
     log_info "Using $(python --version) from '$(which python)'."
-    log_info "Packages:"
-    if which sed >/dev/null; then
-        pip freeze | sed 's/^/- /'
-    else
-        pip freeze
+    if [[ -f "$GANTRY_DIR/requirements.txt" ]]; then
+        log_info "Packages:"
+        cat "$GANTRY_DIR/requirements.txt"
     fi
+elif [[ -n "$GANTRY_INSTALL_CMD" ]]; then
+    echo -e "\e[36m\e[1m
+#######################################
+❯❯❯ [GANTRY] Running custom install ❮❮❮
+#######################################
+\e[0m"
+    run_custom_install
 fi
 
 end_time=$(date +%s)

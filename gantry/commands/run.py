@@ -282,39 +282,41 @@ from .main import CLICK_COMMAND_DEFAULTS, main, new_optgroup
 )
 @new_optgroup("Python settings")
 @optgroup.option(
-    "--conda",
+    "--python-manager",
+    type=click.Choice(["uv", "conda"]),
+    help="""The tool to use to manage Python installations.""",
+)
+@optgroup.option(
+    "--default-python-version",
+    type=str,
+    help="""The default Python version to use when constructing a new Python environment (e.g. --python-version='3.12').""",
+)
+@optgroup.option(
+    "--system-python",
+    is_flag=True,
+    help="""If set, gantry will try to use the default Python installation on the image.""",
+)
+@optgroup.option(
+    "--python-venv",
+    type=str,
+    help="""A path to a Python virtual environment on the image.""",
+)
+@optgroup.option(
+    "--conda-file",
     type=click.Path(exists=True, dir_okay=False),
     help=f"""Path to a conda environment file for reconstructing your Python environment.
-    If not specified, '{constants.CONDA_ENV_FILE}' will be used if it exists.""",
+    If not specified, '{constants.CONDA_FILE}' will be used if it exists.""",
 )
 @optgroup.option(
-    "--venv",
+    "--conda-env",
     type=str,
-    help="""The name of an existing conda environment on the image to use.""",
-)
-@optgroup.option(
-    "--python-version",
-    type=str,
-    help="""The default Python version to use when constructing a new Python environment (e.g. --python-version='3.12').
-    This won't be applied if --venv is specified or a conda environment file is used.""",
-)
-@optgroup.option(
-    "--pip",
-    type=click.Path(exists=True, dir_okay=False),
-    help=f"""Path to a PIP requirements file for reconstructing your Python environment.
-    If not specified, '{constants.PIP_REQUIREMENTS_FILE}' will be used if it exists.""",
+    help="""The name or path to an existing conda environment on the image to use.""",
 )
 @optgroup.option(
     "--install",
     type=str,
-    help="""Override the default Python installation method with a custom command or shell script,
+    help="""Override the default Python project installation method with a custom command or shell script,
     e.g. '--install "python setup.py install"' or '--install "my-custom-install-script.sh"'.""",
-)
-@optgroup.option(
-    "--no-conda",
-    is_flag=True,
-    help="""If set, gantry will skip setting up conda to construct a Python environment
-    and instead will use the default Python environment on the image.""",
 )
 @optgroup.option(
     "--no-python",

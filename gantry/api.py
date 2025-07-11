@@ -9,7 +9,7 @@ import sys
 import time
 from fnmatch import fnmatch
 from pathlib import Path
-from typing import List, Optional, Sequence, Tuple, Union
+from typing import List, Literal, Optional, Sequence, Tuple, Union
 
 import rich
 from beaker import (
@@ -126,9 +126,11 @@ def launch_experiment(
     gh_token_secret: str = constants.GITHUB_TOKEN_SECRET,
     ref: Optional[str] = None,
     branch: Optional[str] = None,
-    conda: Optional[PathOrStr] = None,
-    pip: Optional[PathOrStr] = None,
-    venv: Optional[str] = None,
+    conda_file: Optional[PathOrStr] = None,
+    conda_env: Optional[str] = None,
+    python_manager: Optional[Literal["uv", "conda"]] = None,
+    system_python: bool = False,
+    python_venv: Optional[str] = None,
     env_vars: Optional[Sequence[str]] = None,
     env_secrets: Optional[Sequence[str]] = None,
     dataset_secrets: Optional[Sequence[str]] = None,
@@ -142,7 +144,6 @@ def launch_experiment(
     priority: Optional[str] = None,
     install: Optional[str] = None,
     no_python: bool = False,
-    no_conda: bool = False,
     replicas: Optional[int] = None,
     leader_selection: bool = False,
     host_networking: bool = False,
@@ -156,19 +157,13 @@ def launch_experiment(
     retries: Optional[int] = None,
     results: str = constants.RESULTS_DIR,
     skip_tcpxo_setup: bool = False,
-    python_version: Optional[str] = None,
+    default_python_version: Optional[str] = None,
 ):
     """
     Launch an experiment on Beaker. Same as the ``gantry run`` command.
     """
 
     _validate_args(args)
-
-    if install:
-        if no_python:
-            raise ConfigurationError("--no-python and --install='...' are mutually exclusive.")
-        if pip:
-            raise ConfigurationError("--pip='...' and --install='...' are mutually exclusive.")
 
     if beaker_image is None and docker_image is None:
         beaker_image = constants.DEFAULT_IMAGE
@@ -351,9 +346,11 @@ def launch_experiment(
             beaker_image=beaker_image,
             docker_image=docker_image,
             gh_token_secret=gh_token_secret if not git_config.is_public else None,
-            conda=conda,
-            pip=pip,
-            venv=venv,
+            conda_file=conda_file,
+            conda_env=conda_env,
+            python_manager=python_manager,
+            system_python=system_python,
+            python_venv=python_venv,
             datasets=datasets_to_use,
             env=env_vars_to_use,
             env_secrets=env_secrets_to_use,
@@ -361,7 +358,6 @@ def launch_experiment(
             priority=priority,
             install=install,
             no_python=no_python,
-            no_conda=no_conda,
             replicas=replicas,
             leader_selection=leader_selection,
             host_networking=host_networking or (bool(replicas) and leader_selection),
@@ -376,7 +372,7 @@ def launch_experiment(
             retries=retries,
             results=results,
             skip_tcpxo_setup=skip_tcpxo_setup,
-            python_version=python_version,
+            default_python_version=default_python_version,
         )
 
         if save_spec:
@@ -482,9 +478,11 @@ def _build_experiment_spec(
     beaker_image: Optional[str] = None,
     docker_image: Optional[str] = None,
     gh_token_secret: Optional[str] = constants.GITHUB_TOKEN_SECRET,
-    conda: Optional[PathOrStr] = None,
-    pip: Optional[PathOrStr] = None,
-    venv: Optional[str] = None,
+    conda_file: Optional[PathOrStr] = None,
+    conda_env: Optional[str] = None,
+    python_manager: Optional[Literal["uv", "conda"]] = None,
+    system_python: bool = False,
+    python_venv: Optional[str] = None,
     datasets: Optional[List[Tuple[str, Optional[str], str]]] = None,
     env: Optional[List[Tuple[str, str]]] = None,
     env_secrets: Optional[List[Tuple[str, str]]] = None,
@@ -492,7 +490,6 @@ def _build_experiment_spec(
     priority: Optional[Union[str, BeakerJobPriority]] = None,
     install: Optional[str] = None,
     no_python: bool = False,
-    no_conda: bool = False,
     replicas: Optional[int] = None,
     leader_selection: bool = False,
     host_networking: bool = False,
@@ -507,7 +504,7 @@ def _build_experiment_spec(
     retries: Optional[int] = None,
     results: str = constants.RESULTS_DIR,
     skip_tcpxo_setup: bool = False,
-    python_version: Optional[str] = None,
+    default_python_version: Optional[str] = None,
 ):
     task_spec = (
         BeakerTaskSpec.new(
@@ -558,48 +555,83 @@ def _build_experiment_spec(
         task_spec = task_spec.with_env_var(name=name, secret=secret)
 
     if no_python:
-        task_spec = task_spec.with_env_var(name="NO_PYTHON", value="1")
+        task_spec = task_spec.with_env_var(name="GANTRY_NO_PYTHON", value="1")
     else:
-        if not no_conda:
-            if conda is not None:
-                task_spec = task_spec.with_env_var(
-                    name="CONDA_ENV_FILE",
-                    value=str(conda),
-                )
-            elif Path(constants.CONDA_ENV_FILE).is_file():
-                task_spec = task_spec.with_env_var(
-                    name="CONDA_ENV_FILE",
-                    value=constants.CONDA_ENV_FILE,
-                )
-            elif Path(constants.CONDA_ENV_FILE_ALTERNATE).is_file():
-                task_spec = task_spec.with_env_var(
-                    name="CONDA_ENV_FILE",
-                    value=constants.CONDA_ENV_FILE_ALTERNATE,
-                )
-            else:
-                task_spec = task_spec.with_env_var(
-                    name="PYTHON_VERSION",
-                    value=python_version
-                    if python_version is not None
-                    else ".".join(platform.python_version_tuple()[:-1]),
-                )
+        if default_python_version is None:
+            default_python_version = ".".join(platform.python_version_tuple()[:-1])
 
-            if venv is not None:
-                task_spec = task_spec.with_env_var(
-                    name="VENV_NAME",
-                    value=venv,
-                )
-        else:
-            task_spec = task_spec.with_env_var(name="NO_CONDA", value="1")
+        task_spec = task_spec.with_env_var(
+            name="GANTRY_DEFAULT_PYTHON_VERSION",
+            value=default_python_version,
+        )
 
-        if pip is not None:
+        if system_python:
             task_spec = task_spec.with_env_var(
-                name="PIP_REQUIREMENTS_FILE",
-                value=str(pip),
+                name="GANTRY_USE_SYSTEM_PYTHON",
+                value="1",
             )
 
-        if install is not None:
-            task_spec = task_spec.with_env_var(name="INSTALL_CMD", value=install)
+        if python_manager is None:
+            if (
+                conda_env is not None
+                or conda_file is not None
+                or Path(constants.CONDA_FILE).is_file()
+                or Path(constants.CONDA_FILE_ALTERNATE).is_file()
+            ):
+                python_manager = "conda"
+            else:
+                python_manager = "uv"
+        elif python_manager not in {"uv", "conda"}:
+            raise ConfigurationError(
+                f"unknown option for --python-manager: '{python_manager}'. Should be either 'uv' or 'conda'."
+            )
+
+        task_spec = task_spec.with_env_var(
+            name="GANTRY_PYTHON_MANAGER",
+            value=python_manager,
+        )
+
+        if python_manager == "uv":
+            if conda_env is not None or conda_file is not None:
+                raise ConfigurationError(
+                    "--conda-* options are only relevant when using the conda python manager (--python-manager=conda)"
+                )
+
+            if python_venv is not None:
+                task_spec = task_spec.with_env_var(
+                    name="GANTRY_PYTHON_VENV",
+                    value=python_venv,
+                )
+        elif python_manager == "conda":
+            if python_venv is not None:
+                raise ConfigurationError(
+                    "--python-venv option cannot be used with codna python manager"
+                )
+
+            if conda_env is not None:
+                task_spec = task_spec.with_env_var(
+                    name="GANTRY_CONDA_ENV",
+                    value=conda_env,
+                )
+
+            if conda_file is not None:
+                task_spec = task_spec.with_env_var(
+                    name="GANTRY_CONDA_FILE",
+                    value=str(conda_file),
+                )
+            elif Path(constants.CONDA_FILE).is_file():
+                task_spec = task_spec.with_env_var(
+                    name="GANTRY_CONDA_FILE",
+                    value=constants.CONDA_FILE,
+                )
+            elif Path(constants.CONDA_FILE_ALTERNATE).is_file():
+                task_spec = task_spec.with_env_var(
+                    name="GANTRY_CONDA_FILE",
+                    value=constants.CONDA_FILE_ALTERNATE,
+                )
+
+    if install is not None:
+        task_spec = task_spec.with_env_var(name="GANTRY_INSTALL_CMD", value=install)
 
     if datasets:
         for dataset_id, sub_path, path in datasets:
