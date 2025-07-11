@@ -17,7 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Renamed `--conda` option to `--conda-file` in `gantry run` command.
 - Renamed `--venv` option to `--conda-env` in `gantry run` command.
-- Renamed `--python` to `--default-python-version` in `gantry run` command.
+- Renamed `--python-version` to `--default-python-version` in `gantry run` command.
 - `--install` option to `gantry run` can now be used with `--no-python`.
 
 ### Removed
