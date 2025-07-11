@@ -314,10 +314,8 @@ from .main import CLICK_COMMAND_DEFAULTS, main, new_optgroup
 @optgroup.option(
     "--uv-torch-backend",
     type=str,
-    default="auto",
     help="""The backend to use when installing packages in the PyTorch ecosystem with uv.
     Valid options are 'auto', 'cpu', 'cu128', etc.""",
-    show_default=True,
 )
 @optgroup.option(
     "--conda-file",

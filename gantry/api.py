@@ -130,7 +130,7 @@ def launch_experiment(
     python_manager: Optional[Literal["uv", "conda"]] = None,
     system_python: bool = False,
     python_venv: Optional[str] = None,
-    uv_torch_backend: str = "auto",
+    uv_torch_backend: Optional[str] = None,
     env_vars: Optional[Sequence[str]] = None,
     env_secrets: Optional[Sequence[str]] = None,
     dataset_secrets: Optional[Sequence[str]] = None,
@@ -486,7 +486,7 @@ def _build_experiment_spec(
     python_manager: Optional[Literal["uv", "conda"]] = None,
     system_python: bool = False,
     python_venv: Optional[str] = None,
-    uv_torch_backend: str = "auto",
+    uv_torch_backend: Optional[str] = None,
     datasets: Optional[List[Tuple[str, Optional[str], str]]] = None,
     env: Optional[List[Tuple[str, str]]] = None,
     env_secrets: Optional[List[Tuple[str, str]]] = None,
@@ -556,6 +556,16 @@ def _build_experiment_spec(
 
     if no_python:
         task_spec = task_spec.with_env_var(name="GANTRY_NO_PYTHON", value="1")
+
+        if (
+            python_manager is not None
+            or system_python
+            or python_venv is not None
+            or uv_torch_backend is not None
+            or conda_env is not None
+            or conda_file is not None
+        ):
+            raise ConfigurationError("other python options can't be used with --no-python")
     else:
         task_spec = task_spec.with_env_var(
             name="GANTRY_DEFAULT_PYTHON_VERSION",
@@ -600,11 +610,17 @@ def _build_experiment_spec(
                     value=python_venv,
                 )
 
-            task_spec.with_env_var(name="UV_TORCH_BACKEND", value=uv_torch_backend)
+            if uv_torch_backend is not None:
+                task_spec.with_env_var(name="UV_TORCH_BACKEND", value=uv_torch_backend)
         elif python_manager == "conda":
             if python_venv is not None:
                 raise ConfigurationError(
-                    "--python-venv option cannot be used with codna python manager"
+                    "--python-venv option cannot be used with conda python manager"
+                )
+
+            if uv_torch_backend is not None:
+                raise ConfigurationError(
+                    "--uv-torch-backend option cannot be used with conda python manager"
                 )
 
             if conda_env is not None:
