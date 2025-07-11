@@ -54,7 +54,7 @@ This requires experience with Docker, experience writing Beaker experiment specs
 
 With Gantry, on the other hand, that same workflow simplifies down to this:
 
-1. Write a PIP `requirements.txt` file, a conda `environment.yml` file, or a `setup.py`/`pyproject.toml` file.
+1. Write a `pyproject.toml`/`setup.py` file, a PIP `requirements.txt` file, a or conda `environment.yml` file.
 2. Commit and push your changes.
 3. Submit and track a Beaker experiment with the `gantry run` command.
 4. Make changes and repeat from step 2.
@@ -135,9 +135,9 @@ pip install -e .
 
     Typically you'll have to create one of several different files to specify your Python environment. There are three widely used options:
 
-    1. A PIP [`requirements.txt`](https://pip.pypa.io/en/stable/user_guide/#requirements-files) file.
-    2. A conda [`environment.yml`](https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html#create-env-file-manually) file.
-    3. A [`setup.py`](https://docs.python.org/3/distutils/introduction.html#a-simple-example) or [`pyproject.toml`](https://pip.pypa.io/en/stable/reference/build-system/pyproject-toml/) file.
+    1. A [`pyproject.toml`](https://pip.pypa.io/en/stable/reference/build-system/pyproject-toml/) or [`setup.py`](https://docs.python.org/3/distutils/introduction.html#a-simple-example) file.
+    2. A PIP [`requirements.txt`](https://pip.pypa.io/en/stable/user_guide/#requirements-files) file.
+    3. A conda [`environment.yml`](https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html#create-env-file-manually) file.
 
     Gantry will automatically find and use these files to reconstruct your Python environment at runtime.
     Alternatively you can provide a custom Python install command with the `--install` option to `gantry run`, or skip the Python setup completely with `--no-python`.
@@ -168,11 +168,6 @@ Gantry can use any image that has bash, curl, and git installed.
 ### Will Gantry work for GPU experiments?
 
 Absolutely! This was the main use-case Gantry was developed for. Just set the `--gpus` option for `gantry run` to the number of GPUs you need.
-
-### Can I use both conda environment and PIP requirements files?
-
-Yes you can. Gantry will initialize your environment using your conda environment file (if you have one)
-and then will also check for a PIP requirements file.
 
 ### How can I save results or metrics from an experiment?
 
