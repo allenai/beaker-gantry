@@ -103,7 +103,7 @@ jobs:
                 --workspace "$BEAKER_WORKSPACE" \
                 --timeout -1 \
                 --yes \
-                --docker-image 'python:${{ matrix.python }}' \
+                --docker-image 'python:3.10' \
                 --system-python \
                 -- python --version
 
