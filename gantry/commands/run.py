@@ -5,6 +5,7 @@ from click_option_group import optgroup
 from .. import constants
 from ..api import launch_experiment
 from ..exceptions import *
+from ..util import get_local_python_version
 from .main import CLICK_COMMAND_DEFAULTS, main, new_optgroup
 
 
@@ -157,6 +158,13 @@ from .main import CLICK_COMMAND_DEFAULTS, main, new_optgroup
     e.g. --weka=oe-training-default:/data""",
 )
 @optgroup.option(
+    "--runtime-dir",
+    type=str,
+    default=constants.RUNTIME_DIR,
+    help="""The runtime directory on the image.""",
+    show_default=True,
+)
+@optgroup.option(
     "--env",
     "env_vars",
     type=str,
@@ -289,7 +297,9 @@ from .main import CLICK_COMMAND_DEFAULTS, main, new_optgroup
 @optgroup.option(
     "--default-python-version",
     type=str,
+    default=get_local_python_version(),
     help="""The default Python version to use when constructing a new Python environment (e.g. --python-version='3.12').""",
+    show_default=True,
 )
 @optgroup.option(
     "--system-python",
@@ -302,10 +312,18 @@ from .main import CLICK_COMMAND_DEFAULTS, main, new_optgroup
     help="""A path to a Python virtual environment on the image.""",
 )
 @optgroup.option(
+    "--uv-torch-backend",
+    type=str,
+    default="auto",
+    help="""The backend to use when installing packages in the PyTorch ecosystem with uv.
+    Valid options are 'auto', 'cpu', 'cu128', etc.""",
+    show_default=True,
+)
+@optgroup.option(
     "--conda-file",
     type=click.Path(exists=True, dir_okay=False),
-    help=f"""Path to a conda environment file for reconstructing your Python environment.
-    If not specified, '{constants.CONDA_FILE}' will be used if it exists.""",
+    help="""Path to a conda environment file for reconstructing your Python environment.
+    If not specified, an 'environment.yml'/'environment.yaml' file will be used if it exists.""",
 )
 @optgroup.option(
     "--conda-env",

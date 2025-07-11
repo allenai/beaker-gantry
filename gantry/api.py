@@ -2,7 +2,6 @@
 Gantry's public API.
 """
 
-import platform
 import random
 import string
 import sys
@@ -39,7 +38,7 @@ from . import constants, util
 from .aliases import PathOrStr
 from .exceptions import *
 from .git_utils import GitRepoState
-from .util import print_stderr
+from .util import get_local_python_version, print_stderr
 from .version import VERSION
 
 __all__ = ["GitRepoState", "launch_experiment", "follow_workload"]
@@ -131,6 +130,7 @@ def launch_experiment(
     python_manager: Optional[Literal["uv", "conda"]] = None,
     system_python: bool = False,
     python_venv: Optional[str] = None,
+    uv_torch_backend: str = "auto",
     env_vars: Optional[Sequence[str]] = None,
     env_secrets: Optional[Sequence[str]] = None,
     dataset_secrets: Optional[Sequence[str]] = None,
@@ -156,8 +156,9 @@ def launch_experiment(
     preemptible: Optional[bool] = None,
     retries: Optional[int] = None,
     results: str = constants.RESULTS_DIR,
+    runtime_dir: str = constants.RUNTIME_DIR,
     skip_tcpxo_setup: bool = False,
-    default_python_version: Optional[str] = None,
+    default_python_version: str = get_local_python_version(),
 ):
     """
     Launch an experiment on Beaker. Same as the ``gantry run`` command.
@@ -351,6 +352,7 @@ def launch_experiment(
             python_manager=python_manager,
             system_python=system_python,
             python_venv=python_venv,
+            uv_torch_backend=uv_torch_backend,
             datasets=datasets_to_use,
             env=env_vars_to_use,
             env_secrets=env_secrets_to_use,
@@ -371,6 +373,7 @@ def launch_experiment(
             preemptible=preemptible,
             retries=retries,
             results=results,
+            runtime_dir=runtime_dir,
             skip_tcpxo_setup=skip_tcpxo_setup,
             default_python_version=default_python_version,
         )
@@ -483,6 +486,7 @@ def _build_experiment_spec(
     python_manager: Optional[Literal["uv", "conda"]] = None,
     system_python: bool = False,
     python_venv: Optional[str] = None,
+    uv_torch_backend: str = "auto",
     datasets: Optional[List[Tuple[str, Optional[str], str]]] = None,
     env: Optional[List[Tuple[str, str]]] = None,
     env_secrets: Optional[List[Tuple[str, str]]] = None,
@@ -503,8 +507,9 @@ def _build_experiment_spec(
     preemptible: Optional[bool] = None,
     retries: Optional[int] = None,
     results: str = constants.RESULTS_DIR,
+    runtime_dir: str = constants.RUNTIME_DIR,
     skip_tcpxo_setup: bool = False,
-    default_python_version: Optional[str] = None,
+    default_python_version: str = get_local_python_version(),
 ):
     task_spec = (
         BeakerTaskSpec.new(
@@ -530,6 +535,7 @@ def _build_experiment_spec(
         .with_env_var(name="GIT_REF", value=git_config.ref)
         .with_env_var(name="GANTRY_TASK_NAME", value=task_name)
         .with_env_var(name="RESULTS_DIR", value=results)
+        .with_env_var(name="GANTRY_RUNTIME_DIR", value=runtime_dir)
         .with_dataset("/gantry", beaker=entrypoint_dataset)
     )
 
@@ -548,18 +554,9 @@ def _build_experiment_spec(
     if skip_tcpxo_setup:
         task_spec = task_spec.with_env_var(name="GANTRY_SKIP_TCPXO_SETUP", value="1")
 
-    for name, val in env or []:
-        task_spec = task_spec.with_env_var(name=name, value=val)
-
-    for name, secret in env_secrets or []:
-        task_spec = task_spec.with_env_var(name=name, secret=secret)
-
     if no_python:
         task_spec = task_spec.with_env_var(name="GANTRY_NO_PYTHON", value="1")
     else:
-        if default_python_version is None:
-            default_python_version = ".".join(platform.python_version_tuple()[:-1])
-
         task_spec = task_spec.with_env_var(
             name="GANTRY_DEFAULT_PYTHON_VERSION",
             value=default_python_version,
@@ -602,6 +599,8 @@ def _build_experiment_spec(
                     name="GANTRY_PYTHON_VENV",
                     value=python_venv,
                 )
+
+            task_spec.with_env_var(name="UV_TORCH_BACKEND", value=uv_torch_backend)
         elif python_manager == "conda":
             if python_venv is not None:
                 raise ConfigurationError(
@@ -647,6 +646,12 @@ def _build_experiment_spec(
     if weka_buckets:
         for source, target in weka_buckets:
             task_spec = task_spec.with_dataset(target, weka=source)
+
+    for name, val in env or []:
+        task_spec = task_spec.with_env_var(name=name, value=val)
+
+    for name, secret in env_secrets or []:
+        task_spec = task_spec.with_env_var(name=name, secret=secret)
 
     return BeakerExperimentSpec(
         description=description,

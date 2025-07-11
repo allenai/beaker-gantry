@@ -4,6 +4,9 @@ set -eo pipefail
 
 start_time=$(date +%s)
 
+RESULTS_DIR="${RESULTS_DIR:-/results}"
+mkdir -p "$RESULTS_DIR"
+
 GANTRY_DIR="${RESULTS_DIR}/.gantry"
 mkdir -p "$GANTRY_DIR"
 
@@ -185,6 +188,21 @@ function run_custom_install {
     fi
 }
 
+function uv_install_project {
+    local project_file=$1
+    shift 1
+
+    log_info "Installing local project..."
+    capture_logs "uv_pip_install.log" uv pip install "$@" -r "$project_file" --all-extras . || return 1
+    log_info "Done."
+}
+
+function uv_install_requirements {
+    log_info "Installing packages from requirements.txt..."
+    capture_logs "uv_pip_install.log" uv pip install "$@" -r requirements.txt || return 1
+    log_info "Done."
+}
+
 function uv_setup_python {
     ensure_uv || return 1
 
@@ -221,25 +239,17 @@ function uv_setup_python {
 
     if [[ -z "$GANTRY_INSTALL_CMD" ]]; then
         if [[ -f 'pyproject.toml' ]]; then
-            log_info "Installing local project..."
             # shellcheck disable=SC2086
-            capture_logs "uv_pip_install.log" uv pip install $GANTRY_UV_FLAGS -r pyproject.toml --all-extras || return 1
-            log_info "Done."
+            uv_install_project pyproject.toml $GANTRY_UV_FLAGS || return 1
         elif [[ -f 'setup.py' ]]; then
-            log_info "Installing local project..."
             # shellcheck disable=SC2086
-            capture_logs "uv_pip_install.log" uv pip install $GANTRY_UV_FLAGS -r setup.py --all-extras || return 1
-            log_info "Done."
+            uv_install_project setup.py $GANTRY_UV_FLAGS || return 1
         elif [[ -f 'setup.cfg' ]]; then
-            log_info "Installing local project..."
             # shellcheck disable=SC2086
-            capture_logs "uv_pip_install.log" uv pip install $GANTRY_UV_FLAGS -r setup.cfg --all-extras || return 1
-            log_info "Done."
+            uv_install_project setup.cfg $GANTRY_UV_FLAGS || return 1
         elif [[ -f 'requirements.txt' ]]; then
-            log_info "Installing packages from requirements.txt..."
             # shellcheck disable=SC2086
-            capture_logs "uv_pip_install.log" uv pip install $GANTRY_UV_FLAGS -r requirements.txt || return 1
-            log_info "Done."
+            uv_install_requirements $GANTRY_UV_FLAGS || return 1
         fi
     else
         run_custom_install || return 1

@@ -17,6 +17,8 @@ If you're using an image that comes with an existing system Python installation,
 - Added `--python-manager` option to `gantry run` command.
 - Added `--system-python` flag to `gantry run` command.
 - Added `--python-venv` flag to `gantry run` command.
+- Added `--runtime-dir` option to `gantry run` command.
+- Added `--uv-torch-backend` option to `gantry run` command.
 
 ### Changed
 
