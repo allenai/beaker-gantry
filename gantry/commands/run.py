@@ -292,41 +292,51 @@ from .main import CLICK_COMMAND_DEFAULTS, main, new_optgroup
 @optgroup.option(
     "--python-manager",
     type=click.Choice(["uv", "conda"]),
-    help="""The tool to use to manage Python installations.""",
+    help="""The tool to use to manage Python installations and environments at runtime.
+    If not specified this will default to 'uv' in most cases, unless other '--conda-*' specific options
+    are given.""",
 )
 @optgroup.option(
     "--default-python-version",
     type=str,
     default=get_local_python_version(),
-    help="""The default Python version to use when constructing a new Python environment (e.g. --python-version='3.12').""",
+    help="""The default Python version to use when constructing a new Python environment.
+    This will be ignored if gantry is instructed to use an existing Python distribution/environment
+    on the image, such as with the --system-python flag, or the --python-venv option.""",
     show_default=True,
 )
 @optgroup.option(
     "--system-python",
     is_flag=True,
-    help="""If set, gantry will try to use the default Python installation on the image.""",
+    help="""If set, gantry will try to use the default Python installation on the image.
+    Though the behavior is a little different when using conda as the Python manager, in which
+    case gantry will try to use the base conda environment.""",
 )
 @optgroup.option(
     "--python-venv",
     type=str,
-    help="""A path to a Python virtual environment on the image.""",
+    help="""A path to a Python virtual environment on the image.
+    Only valid when using uv as the --python-manager.""",
 )
 @optgroup.option(
     "--uv-torch-backend",
     type=str,
     help="""The backend to use when installing packages in the PyTorch ecosystem with uv.
-    Valid options are 'auto', 'cpu', 'cu128', etc.""",
+    Valid options are 'auto', 'cpu', 'cu128', etc.
+    Only valid when using uv as the --python-manager.""",
 )
 @optgroup.option(
     "--conda-file",
     type=click.Path(exists=True, dir_okay=False),
     help="""Path to a conda environment file for reconstructing your Python environment.
-    If not specified, an 'environment.yml'/'environment.yaml' file will be used if it exists.""",
+    If not specified, an 'environment.yml'/'environment.yaml' file will be used if it exists.
+    Only valid when using conda as the --python-manager.""",
 )
 @optgroup.option(
     "--conda-env",
     type=str,
-    help="""The name or path to an existing conda environment on the image to use.""",
+    help="""The name or path to an existing conda environment on the image to use.
+    Only valid when using conda as the --python-manager.""",
 )
 @optgroup.option(
     "--install",

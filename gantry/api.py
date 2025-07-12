@@ -582,8 +582,8 @@ def _build_experiment_spec(
             if (
                 conda_env is not None
                 or conda_file is not None
-                or Path(constants.CONDA_FILE).is_file()
-                or Path(constants.CONDA_FILE_ALTERNATE).is_file()
+                or git_config.is_in_tree("environment.yml")
+                or git_config.is_in_tree("environment.yaml")
             ):
                 python_manager = "conda"
             else:
@@ -601,10 +601,15 @@ def _build_experiment_spec(
         if python_manager == "uv":
             if conda_env is not None or conda_file is not None:
                 raise ConfigurationError(
-                    "--conda-* options are only relevant when using the conda python manager (--python-manager=conda)"
+                    "--conda-* options are only relevant when using the conda python manager (--python-manager=conda)."
                 )
 
             if python_venv is not None:
+                if system_python:
+                    raise ConfigurationError(
+                        "--system-python flag is incompatible with --python-venv option."
+                    )
+
                 task_spec = task_spec.with_env_var(
                     name="GANTRY_PYTHON_VENV",
                     value=python_venv,
@@ -615,15 +620,20 @@ def _build_experiment_spec(
         elif python_manager == "conda":
             if python_venv is not None:
                 raise ConfigurationError(
-                    "--python-venv option cannot be used with conda python manager"
+                    "--python-venv option cannot be used with conda python manager. Did you mean --conda-env?"
                 )
 
             if uv_torch_backend is not None:
                 raise ConfigurationError(
-                    "--uv-torch-backend option cannot be used with conda python manager"
+                    "--uv-torch-backend option cannot be used with conda python manager."
                 )
 
             if conda_env is not None:
+                if system_python:
+                    raise ConfigurationError(
+                        "--system-python flag is incompatible with --conda-env option."
+                    )
+
                 task_spec = task_spec.with_env_var(
                     name="GANTRY_CONDA_ENV",
                     value=conda_env,
@@ -634,16 +644,14 @@ def _build_experiment_spec(
                     name="GANTRY_CONDA_FILE",
                     value=str(conda_file),
                 )
-            elif Path(constants.CONDA_FILE).is_file():
-                task_spec = task_spec.with_env_var(
-                    name="GANTRY_CONDA_FILE",
-                    value=constants.CONDA_FILE,
-                )
-            elif Path(constants.CONDA_FILE_ALTERNATE).is_file():
-                task_spec = task_spec.with_env_var(
-                    name="GANTRY_CONDA_FILE",
-                    value=constants.CONDA_FILE_ALTERNATE,
-                )
+            else:
+                for path in ("environment.yml", "environment.yaml"):
+                    if git_config.is_in_tree(path):
+                        task_spec = task_spec.with_env_var(
+                            name="GANTRY_CONDA_FILE",
+                            value=path,
+                        )
+                        break
 
     if install is not None:
         task_spec = task_spec.with_env_var(name="GANTRY_INSTALL_CMD", value=install)

@@ -20,7 +20,6 @@ cd "$GANTRY_RUNTIME_DIR"
 RESULTS_DATASET_URL="\e[94m\e[4mhttps://beaker.org/ds/$BEAKER_RESULT_DATASET_ID\e[0m"
 
 GANTRY_PYTHON_MANAGER="${GANTRY_PYTHON_MANAGER:-uv}"
-GANTRY_CONDA_FILE="${GANTRY_CONDA_FILE:-environment.yml}"
 
 function log_info {
     echo -e "\e[36m\e[1m❯ [GANTRY INFO]\e[0m $1"
@@ -217,7 +216,15 @@ function uv_setup_python {
         # shellcheck disable=SC1091
         source "$GANTRY_PYTHON_VENV/bin/activate" || return 1
         log_info "Done."
-    elif [[ -z "$GANTRY_USE_SYSTEM_PYTHON" ]]; then
+    elif [[ -n "$GANTRY_USE_SYSTEM_PYTHON" ]]; then
+        if ! command -v python &> /dev/null; then
+            log_error "no system python found. If your image doesn't include a Python distribution you should omit the --system-python flag."
+            exit 1
+        fi
+
+        log_info "Using existing $(python --version) installation at '$(which python)'."
+        GANTRY_UV_FLAGS="--system --break-system-packages"
+    else 
         log_info "Creating uv virtual environment with Python ${GANTRY_DEFAULT_PYTHON_VERSION}..."
         capture_logs "uv_venv_create.log" uv venv --python="$GANTRY_DEFAULT_PYTHON_VERSION" || return 1
         log_info "Done."
@@ -226,12 +233,6 @@ function uv_setup_python {
         # shellcheck disable=SC1091
         source .venv/bin/activate || return 1
         log_info "Done."
-    elif command -v python &> /dev/null; then
-        log_info "Using existing $(python --version) installation at '$(which python)'."
-        GANTRY_UV_FLAGS="--system --break-system-packages"
-    else
-        log_error "no system python found"
-        exit 1
     fi
 
     UV_PYTHON="$(which python)"
@@ -260,43 +261,24 @@ function uv_setup_python {
 }
 
 function conda_setup_python {
+    # Validate some options.
+    # --conda-file should be a file if given.
+    if [[ -n "$GANTRY_CONDA_FILE" ]] && [[ ! -f "$GANTRY_CONDA_FILE" ]]; then
+        log_error "conda environment file '$GANTRY_CONDA_FILE' not found."
+        exit 1
+    fi
+    # If --conda-env looks like a path, it should point to a directory.
+    if [[ -n "$GANTRY_CONDA_ENV" ]] && [[ "$GANTRY_CONDA_ENV" == */* ]]; then
+        if [[ ! -d "$GANTRY_CONDA_ENV" ]]; then
+            log_error "conda environment '$GANTRY_CONDA_ENV' looks like a path but it doesn't exist"
+            exit 1
+        fi
+    fi
+
     ensure_conda || return 1
 
-    if [[ -z "$GANTRY_CONDA_ENV" ]]; then
-        if [[ -f "$GANTRY_CONDA_FILE" ]]; then
-            # Create from the environment file.
-            log_info "Initializing environment from conda env file '$GANTRY_CONDA_FILE'..."
-            capture_logs "conda_env_create.log" conda env create -n gantry -f "$GANTRY_CONDA_FILE" 
-            conda activate gantry &> /dev/null || return 1
-            log_info "Done."
-        elif [[ -n "$GANTRY_USE_SYSTEM_PYTHON" ]]; then
-            # Try using the default 'base' environment,
-            # and otherwise create a new environment with whatever version of Python conda chooses.
-            if conda activate base &> /dev/null; then
-                log_info "Using default base environment."
-            else
-                log_info "Initializing environment with default Python version..."
-                capture_logs "conda_env_create.log" conda create -y -n gantry pip
-                conda activate gantry &> /dev/null || return 1
-                log_info "Done."
-            fi
-        else
-            # Create a new empty environment with the specific Python version.
-            log_info "Initializing environment with Python $GANTRY_DEFAULT_PYTHON_VERSION..."
-            capture_logs "conda_env_create.log" conda create -y -n gantry "python=$GANTRY_DEFAULT_PYTHON_VERSION" pip
-            conda activate gantry &> /dev/null || return 1
-            log_info "Done."
-        fi
-    else
-        # Check if 'GANTRY_CONDA_ENV' is a path. If so, it should exist.
-        if [[ "$GANTRY_CONDA_ENV" == */* ]]; then
-            if [[ ! -d "$GANTRY_CONDA_ENV" ]]; then
-                log_error "conda environment '$GANTRY_CONDA_ENV' looks like a path but it doesn't exist"
-                exit 1
-            fi
-        fi
-
-        log_info "Activating specified conda environment '$GANTRY_CONDA_ENV'..."
+    if [[ -n "$GANTRY_CONDA_ENV" ]]; then
+        log_info "Activating conda environment '$GANTRY_CONDA_ENV'..."
         conda activate "$GANTRY_CONDA_ENV" &> /dev/null || return 1
         log_info "Done."
 
@@ -305,6 +287,32 @@ function conda_setup_python {
             capture_logs "conda_env_update.log" conda env update -f "$GANTRY_CONDA_FILE" || return 1
             log_info "Done."
         fi
+    elif [[ -n "$GANTRY_USE_SYSTEM_PYTHON" ]]; then
+        # Try using the default 'base' environment.
+        if conda activate base &> /dev/null; then
+            log_info "Using default conda base environment."
+        else
+            log_error "no conda base environment found (required due to --system-python flag)"
+            exit 1
+        fi
+
+        if [[ -f "$GANTRY_CONDA_FILE" ]]; then
+            log_info "Updating environment from conda env file '$GANTRY_CONDA_FILE'..."
+            capture_logs "conda_env_update.log" conda env update -f "$GANTRY_CONDA_FILE" || return 1
+            log_info "Done."
+        fi
+    elif [[ -f "$GANTRY_CONDA_FILE" ]]; then
+        # Create from the environment file.
+        log_info "Initializing environment from conda env file '$GANTRY_CONDA_FILE'..."
+        capture_logs "conda_env_create.log" conda env create -n gantry -f "$GANTRY_CONDA_FILE" 
+        conda activate gantry &> /dev/null || return 1
+        log_info "Done."
+    else
+        # Create a new empty environment with the default Python version.
+        log_info "Initializing environment with Python $GANTRY_DEFAULT_PYTHON_VERSION..."
+        capture_logs "conda_env_create.log" conda create -y -n gantry "python=$GANTRY_DEFAULT_PYTHON_VERSION" pip
+        conda activate gantry &> /dev/null || return 1
+        log_info "Done."
     fi
 
     ensure_pip || return 1

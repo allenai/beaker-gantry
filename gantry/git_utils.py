@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from functools import cached_property
+from functools import cache, cached_property
+from pathlib import Path
 from typing import cast
 
 import requests
@@ -11,6 +12,7 @@ from git.cmd import Git
 from git.refs import Head, RemoteReference
 from git.repo import Repo
 
+from .aliases import PathOrStr
 from .exceptions import *
 from .util import print_stderr
 
@@ -37,6 +39,7 @@ def _parse_git_remote_url(url: str) -> tuple[str, str]:
     return account, repo
 
 
+@cache
 def _resolve_repo() -> Repo:
     try:
         return Repo(".")
@@ -104,6 +107,19 @@ class GitRepoState:
             return None
         else:
             return f"{self.repo_url}/tree/{self.branch}"
+
+    def is_in_tree(self, path: PathOrStr) -> bool:
+        """
+        Check if a file is in the tree.
+        """
+        try:
+            path = Path(path).resolve().relative_to(Path("./").resolve())
+        except ValueError:
+            return False
+
+        repo = _resolve_repo()
+        tree = repo.commit(self.ref).tree
+        return str(path) in tree
 
     @classmethod
     def from_env(cls, ref: str | None = None, branch: str | None = None) -> GitRepoState:
