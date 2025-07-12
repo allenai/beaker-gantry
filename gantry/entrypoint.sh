@@ -224,9 +224,18 @@ function uv_setup_python {
 
         log_info "Using existing $(python --version) installation at '$(which python)'."
         GANTRY_UV_FLAGS="--system --break-system-packages"
-    else 
+    elif [[ -n "$GANTRY_DEFAULT_PYTHON_VERSION" ]]; then
         log_info "Creating uv virtual environment with Python ${GANTRY_DEFAULT_PYTHON_VERSION}..."
         capture_logs "uv_venv_create.log" uv venv --python="$GANTRY_DEFAULT_PYTHON_VERSION" || return 1
+        log_info "Done."
+
+        log_info "Activating virtual environment..."
+        # shellcheck disable=SC1091
+        source .venv/bin/activate || return 1
+        log_info "Done."
+    else 
+        log_info "Creating uv virtual environment..."
+        capture_logs "uv_venv_create.log" uv venv || return 1
         log_info "Done."
 
         log_info "Activating virtual environment..."
@@ -307,10 +316,16 @@ function conda_setup_python {
         capture_logs "conda_env_create.log" conda env create -n gantry -f "$GANTRY_CONDA_FILE" 
         conda activate gantry &> /dev/null || return 1
         log_info "Done."
-    else
+    elif [[ -n "$GANTRY_DEFAULT_PYTHON_VERSION" ]]; then
         # Create a new empty environment with the default Python version.
         log_info "Initializing environment with Python $GANTRY_DEFAULT_PYTHON_VERSION..."
         capture_logs "conda_env_create.log" conda create -y -n gantry "python=$GANTRY_DEFAULT_PYTHON_VERSION" pip
+        conda activate gantry &> /dev/null || return 1
+        log_info "Done."
+    else
+        # Create a new empty environment with whatever version of Python conda defaults to.
+        log_info "Initializing environment..."
+        capture_logs "conda_env_create.log" conda create -y -n gantry pip
         conda activate gantry &> /dev/null || return 1
         log_info "Done."
     fi
