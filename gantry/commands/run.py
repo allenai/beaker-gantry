@@ -293,7 +293,7 @@ from .main import CLICK_COMMAND_DEFAULTS, main, new_optgroup
     "--python-manager",
     type=click.Choice(["uv", "conda"]),
     help="""The tool to use to manage Python installations and environments at runtime.
-    If not specified this will default to 'uv' in most cases, unless other '--conda-*' specific options
+    If not specified this will default to 'uv' (recommended) in most cases, unless other '--conda-*' specific options
     are given.""",
 )
 @optgroup.option(
