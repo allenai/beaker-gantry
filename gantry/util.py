@@ -1,5 +1,6 @@
 import binascii
 import json
+import platform
 import tempfile
 import time
 from dataclasses import asdict, dataclass
@@ -81,6 +82,10 @@ def unique_name() -> str:
     import petname
 
     return cast(str, petname.generate()) + "-" + str(uuid.uuid4())[:7]
+
+
+def get_local_python_version() -> str:
+    return ".".join(platform.python_version_tuple()[:-1])
 
 
 def stderr_console() -> Console:

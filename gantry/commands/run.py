@@ -5,6 +5,7 @@ from click_option_group import optgroup
 from .. import constants
 from ..api import launch_experiment
 from ..exceptions import *
+from ..util import get_local_python_version
 from .main import CLICK_COMMAND_DEFAULTS, main, new_optgroup
 
 
@@ -157,6 +158,13 @@ from .main import CLICK_COMMAND_DEFAULTS, main, new_optgroup
     e.g. --weka=oe-training-default:/data""",
 )
 @optgroup.option(
+    "--runtime-dir",
+    type=str,
+    default=constants.RUNTIME_DIR,
+    help="""The runtime directory on the image.""",
+    show_default=True,
+)
+@optgroup.option(
     "--env",
     "env_vars",
     type=str,
@@ -282,39 +290,59 @@ from .main import CLICK_COMMAND_DEFAULTS, main, new_optgroup
 )
 @new_optgroup("Python settings")
 @optgroup.option(
-    "--conda",
-    type=click.Path(exists=True, dir_okay=False),
-    help=f"""Path to a conda environment file for reconstructing your Python environment.
-    If not specified, '{constants.CONDA_ENV_FILE}' will be used if it exists.""",
+    "--python-manager",
+    type=click.Choice(["uv", "conda"]),
+    help="""The tool to use to manage Python installations and environments at runtime.
+    If not specified this will default to 'uv' in most cases, unless other '--conda-*' specific options
+    are given.""",
 )
 @optgroup.option(
-    "--venv",
+    "--default-python-version",
     type=str,
-    help="""The name of an existing conda environment on the image to use.""",
+    default=get_local_python_version(),
+    help="""The default Python version to use when constructing a new Python environment.
+    This will be ignored if gantry is instructed to use an existing Python distribution/environment
+    on the image, such as with the --system-python flag, or the --python-venv option.""",
+    show_default=True,
 )
 @optgroup.option(
-    "--python-version",
+    "--system-python",
+    is_flag=True,
+    help="""If set, gantry will try to use the default Python installation on the image.
+    Though the behavior is a little different when using conda as the Python manager, in which
+    case gantry will try to use the base conda environment.""",
+)
+@optgroup.option(
+    "--python-venv",
     type=str,
-    help="""The default Python version to use when constructing a new Python environment (e.g. --python-version='3.12').
-    This won't be applied if --venv is specified or a conda environment file is used.""",
+    help="""A path to a Python virtual environment on the image.
+    Only valid when using uv as the --python-manager.""",
 )
 @optgroup.option(
-    "--pip",
+    "--uv-torch-backend",
+    type=str,
+    help="""The backend to use when installing packages in the PyTorch ecosystem with uv.
+    Valid options are 'auto', 'cpu', 'cu128', etc.
+    Only valid when using uv as the --python-manager.""",
+)
+@optgroup.option(
+    "--conda-file",
     type=click.Path(exists=True, dir_okay=False),
-    help=f"""Path to a PIP requirements file for reconstructing your Python environment.
-    If not specified, '{constants.PIP_REQUIREMENTS_FILE}' will be used if it exists.""",
+    help="""Path to a conda environment file for reconstructing your Python environment.
+    If not specified, an 'environment.yml'/'environment.yaml' file will be used if it exists.
+    Only valid when using conda as the --python-manager.""",
+)
+@optgroup.option(
+    "--conda-env",
+    type=str,
+    help="""The name or path to an existing conda environment on the image to use.
+    Only valid when using conda as the --python-manager.""",
 )
 @optgroup.option(
     "--install",
     type=str,
-    help="""Override the default Python installation method with a custom command or shell script,
+    help="""Override the default Python project installation method with a custom command or shell script,
     e.g. '--install "python setup.py install"' or '--install "my-custom-install-script.sh"'.""",
-)
-@optgroup.option(
-    "--no-conda",
-    is_flag=True,
-    help="""If set, gantry will skip setting up conda to construct a Python environment
-    and instead will use the default Python environment on the image.""",
 )
 @optgroup.option(
     "--no-python",

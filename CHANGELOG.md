@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+This release includes a shift to using [`uv`](https://docs.astral.sh/uv) as the default Python management tool instead of `conda`.
+Users should see much faster setup times with `uv`, but you can opt-out back to `conda` if needed by adding `--python-manager=conda` to `gantry run`.
+
+If you're using an image that comes with an existing system Python installation, you should use the flag `--system-python`.
+
+### Added
+
+- Added `--python-manager` option to `gantry run` command.
+- Added `--system-python` flag to `gantry run` command.
+- Added `--python-venv` flag to `gantry run` command.
+- Added `--runtime-dir` option to `gantry run` command.
+- Added `--uv-torch-backend` option to `gantry run` command.
+
+### Changed
+
+- Renamed `--conda` option to `--conda-file` in `gantry run` command.
+- Renamed `--venv` option to `--conda-env` in `gantry run` command.
+- Renamed `--python-version` to `--default-python-version` in `gantry run` command.
+- `--install` option to `gantry run` can now be used with `--no-python`.
+
+### Removed
+
+- Removed `--pip` option in `gantry run` command.
+- Removed `--no-conda` option in `gantry run` command.
+
 ## [v2.8.1](https://github.com/allenai/beaker-gantry/releases/tag/v2.8.1) - 2025-07-08
 
 ### Changed
