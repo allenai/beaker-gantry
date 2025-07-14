@@ -26,6 +26,7 @@ If you're using an image that comes with an existing system Python installation,
 - Renamed `--venv` option to `--conda-env` in `gantry run` command.
 - Renamed `--python-version` to `--default-python-version` in `gantry run` command.
 - `--install` option to `gantry run` can now be used with `--no-python`.
+- `gantry run --show-logs ...` now has the same affect as `gantry run --timeout=-1 ...`.
 
 ### Removed
 

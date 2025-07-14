@@ -134,9 +134,9 @@ def launch_experiment(
     env_vars: Optional[Sequence[str]] = None,
     env_secrets: Optional[Sequence[str]] = None,
     dataset_secrets: Optional[Sequence[str]] = None,
-    timeout: int = 0,
+    timeout: Optional[int] = None,
     task_timeout: Optional[str] = None,
-    show_logs: bool = True,
+    show_logs: Optional[bool] = None,
     allow_dirty: bool = False,
     dry_run: bool = False,
     yes: bool = False,
@@ -165,6 +165,11 @@ def launch_experiment(
     """
 
     _validate_args(args)
+
+    if timeout is None:
+        timeout = -1 if show_logs else 0
+    if show_logs is None:
+        show_logs = timeout != 0
 
     if beaker_image is None and docker_image is None:
         beaker_image = constants.DEFAULT_IMAGE

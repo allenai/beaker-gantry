@@ -34,18 +34,17 @@ from .main import CLICK_COMMAND_DEFAULTS, main, new_optgroup
 @new_optgroup("Launch settings")
 @optgroup.option(
     "--show-logs/--no-logs",
-    default=True,
-    show_default=True,
-    help="""Whether or not to stream the logs to stdout as the experiment runs.
-    This only takes effect when --timeout is non-zero.""",
+    default=None,
+    help="""Whether or not to stream the logs to stdout as the experiment runs.""",
 )
 @optgroup.option(
     "--timeout",
     type=int,
-    default=0,
+    default=None,
     help="""Time to wait (in seconds) for the experiment to finish.
     A timeout of -1 means wait indefinitely.
-    A timeout of 0 means don't wait at all.""",
+    A timeout of 0 means don't wait at all.
+    This defaults to 0 unless you set --show-logs, in which case it defaults to -1.""",
     show_default=True,
 )
 @optgroup.option(
@@ -282,8 +281,8 @@ from .main import CLICK_COMMAND_DEFAULTS, main, new_optgroup
 @optgroup.option(
     "--skip-tcpxo-setup",
     is_flag=True,
-    help="""By default Gantry will configure NCCL for TCPXO when running multi-node job on Augusta,
-    but you can use this flag to skip that step if you need a custom configuration.
+    help="""By default Gantry will configure NCCL for TCPXO when running a multi-node job on Augusta
+    (--replicas > 1), but you can use this flag to skip that step if you need a custom configuration.
     If you do use this flag, you'll probably need to follow all of the steps documented here:
 
     https://beaker-docs.allen.ai/compute/augusta.html#distributed-workloads""",
@@ -355,6 +354,6 @@ def run(*args, **kwargs):
 
     Example:
 
-    $ gantry run --yes --timeout=-1 -- python -c 'print("Hello, World!")'
+    $ gantry run --yes --show-logs -- python -c 'print("Hello, World!")'
     """
     launch_experiment(*args, **kwargs)
