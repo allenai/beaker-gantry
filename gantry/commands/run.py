@@ -346,7 +346,9 @@ from .main import CLICK_COMMAND_DEFAULTS, main, new_optgroup
 @optgroup.option(
     "--no-python",
     is_flag=True,
-    help="""If set, gantry will skip setting up a Python environment altogether.""",
+    help="""If set, gantry will skip setting up a Python environment altogether.
+    This can be useful if your experiment doesn't need Python or if your image
+    already contains a complete Python environment.""",
 )
 def run(*args, **kwargs):
     """
