@@ -34,6 +34,12 @@ If you're using an image that comes with an existing system Python installation,
 - Removed `--pip` option in `gantry run` command.
 - Removed `--no-conda` option in `gantry run` command.
 
+## [v2.8.2](https://github.com/allenai/beaker-gantry/releases/tag/v2.8.2) - 2025-07-15
+
+### Fixed
+
+- Ensure conda TOS are accepted for default channels.
+
 ## [v2.8.1](https://github.com/allenai/beaker-gantry/releases/tag/v2.8.1) - 2025-07-08
 
 ### Changed
