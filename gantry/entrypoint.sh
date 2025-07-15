@@ -106,9 +106,19 @@ function ensure_conda {
         log_info "Done."
     fi
 
-    # Initialize conda for bash.
-    # See https://stackoverflow.com/a/58081608/4151392
-    eval "$(command conda 'shell.bash' 'hook' 2> /dev/null)"
+    if [[ -z "$GANTRY_CONDA_INITIALIZED" ]]; then
+        log_info "Configuring conda for shell environment..."
+        # Initialize conda for bash.
+        # See https://stackoverflow.com/a/58081608/4151392
+        eval "$(command conda 'shell.bash' 'hook' 2> /dev/null)"
+
+        # Accept TOS for default channels.
+        capture_logs "conda_tos_accept_main.log" conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main || return 1
+        capture_logs "conda_tos_accept_r.log" conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/r || return 1
+
+        GANTRY_CONDA_INITIALIZED="1"
+        log_info "Done."
+    fi
 }
 
 function clone_repo {
