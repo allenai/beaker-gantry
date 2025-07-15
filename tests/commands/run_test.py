@@ -73,7 +73,13 @@ def test_dry_run_not_preemptible(workspace_name: str, run_name: str, tmp_path: P
 
 
 def test_dry_run_with_cluster(
-    workspace_name: str, run_name: str, tmp_path: Path, cluster_name: str, second_cluster_name: str
+    workspace_name: str,
+    run_name: str,
+    tmp_path: Path,
+    cluster_name: str,
+    second_cluster_name: str,
+    cluster_alias: str,
+    second_cluster_alias: str,
 ):
     spec_path = tmp_path / "spec.yaml"
     result = subprocess.run(
@@ -93,7 +99,10 @@ def test_dry_run_with_cluster(
     assert spec.tasks[0].context.preemptible is None
     assert spec.tasks[0].constraints is not None
     assert spec.tasks[0].constraints.cluster is not None
-    assert set(spec.tasks[0].constraints.cluster) == set([cluster_name, second_cluster_name])
+    constrained_clusters = set(spec.tasks[0].constraints.cluster)
+    assert constrained_clusters == set(
+        [cluster_name, second_cluster_name]
+    ) or constrained_clusters == set([cluster_alias, second_cluster_alias])
 
 
 def test_dry_run_with_budget(workspace_name: str, run_name: str, tmp_path: Path):

@@ -34,6 +34,12 @@ If you're using an image that comes with an existing system Python installation,
 - Removed `--pip` option in `gantry run` command.
 - Removed `--no-conda` option in `gantry run` command.
 
+## [v2.8.3](https://github.com/allenai/beaker-gantry/releases/tag/v2.8.3) - 2025-07-15
+
+### Fixed
+
+- Fixed matching clusters based on aliases.
+
 ## [v2.8.2](https://github.com/allenai/beaker-gantry/releases/tag/v2.8.2) - 2025-07-15
 
 ### Fixed
