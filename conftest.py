@@ -28,8 +28,18 @@ def cluster_name() -> str:
 
 
 @pytest.fixture(scope="session")
+def cluster_alias() -> str:
+    return "ai2/jupiter"
+
+
+@pytest.fixture(scope="session")
 def second_cluster_name() -> str:
     return "ai2/saturn-cirrascale"
+
+
+@pytest.fixture(scope="session")
+def second_cluster_alias() -> str:
+    return "ai2/saturn"
 
 
 @pytest.fixture(scope="session")
