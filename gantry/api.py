@@ -305,7 +305,11 @@ def launch_experiment(
 
                 matching_clusters = []
                 for cl in cl_objects:
-                    if not fnmatch(cl.name, pat) or cl.organization_name != org:
+                    cl_aliases = list(cl.aliases) + [cl.name]
+                    if (
+                        not any([fnmatch(alias, pat) for alias in cl_aliases])
+                        or cl.organization_name != org
+                    ):
                         continue
 
                     if gpu_types:
