@@ -395,6 +395,8 @@ echo -e "\e[36m\e[1m
 ##########################################
 \e[0m"
 
+capture_logs "bash_version.log" bash --version
+
 log_info "Checking for required env variables..."
 for env_var in "GITHUB_REPO" "GIT_REF" "RESULTS_DIR" "BEAKER_RESULT_DATASET_ID"; do
     if [[ -z "${!env_var+x}" ]]; then
