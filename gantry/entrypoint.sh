@@ -127,9 +127,19 @@ function ensure_conda {
         log_info "Done."
     fi
 
-    # Initialize conda for bash.
-    # See https://stackoverflow.com/a/58081608/4151392
-    eval "$(command conda 'shell.bash' 'hook' 2> /dev/null)"
+    if [[ -z "$GANTRY_CONDA_INITIALIZED" ]]; then
+        log_info "Configuring conda for shell environment..."
+        # Initialize conda for bash.
+        # See https://stackoverflow.com/a/58081608/4151392
+        eval "$(command conda 'shell.bash' 'hook' 2> /dev/null)"
+
+        # Accept TOS for default channels.
+        capture_logs "conda_tos_accept_main.log" conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main || return 1
+        capture_logs "conda_tos_accept_r.log" conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/r || return 1
+
+        GANTRY_CONDA_INITIALIZED="1"
+        log_info "Done."
+    fi
 }
 
 function bootstrap_uv {
@@ -168,12 +178,14 @@ function ensure_pip {
     log_info "Done. Using $(pip --version)"
 }
 
-function run_custom_install {
-    if [[ -f "$GANTRY_INSTALL_CMD" ]] && [[ "${GANTRY_INSTALL_CMD: -3}" == ".sh" ]]; then
-        log_info "Sourcing install script '$GANTRY_INSTALL_CMD'..."
+function run_custom_cmd {
+    local custom_cmd_purpose=$1
+    local custom_cmd=$2
+    if [[ -f "$custom_cmd" ]] && [[ "${custom_cmd: -3}" == ".sh" ]]; then
+        log_info "Sourcing user-defined $custom_cmd_purpose script '$custom_cmd'..."
 
         # shellcheck disable=SC1090
-        source "$GANTRY_INSTALL_CMD" || return 1
+        source "$custom_cmd" || return 1
 
         # Reset shell behavior.
         set -eo pipefail
@@ -181,8 +193,8 @@ function run_custom_install {
 
         log_info "Done."
     else
-        log_info "Installing packages with given command: $GANTRY_INSTALL_CMD"
-        eval "$GANTRY_INSTALL_CMD" || return 1
+        log_info "Running user-defined $custom_cmd_purpose command: '$custom_cmd'"
+        eval "$custom_cmd" || return 1
         log_info "Done."
     fi
 }
@@ -262,7 +274,7 @@ function uv_setup_python {
             uv_install_requirements $GANTRY_UV_FLAGS || return 1
         fi
     else
-        run_custom_install || return 1
+        run_custom_cmd "install" "$GANTRY_INSTALL_CMD" || return 1
     fi
 
     echo "# $(python --version)" > "$GANTRY_DIR/requirements.txt"
@@ -343,7 +355,7 @@ function conda_setup_python {
             log_info "Done."
         fi
     else
-        run_custom_install || return 1
+        run_custom_cmd "install" "$GANTRY_INSTALL_CMD" || return 1
     fi
 
     echo "# $(python --version)" > "$GANTRY_DIR/requirements.txt"
@@ -367,6 +379,15 @@ function setup_python {
     fi
     export PYTHONPATH
 }
+
+if [[ -n "$GANTRY_PRE_SETUP_CMD" ]]; then
+    echo -e "\e[36m\e[1m
+#########################################
+❯❯❯ [GANTRY] Running custom pre-setup ❮❮❮
+#########################################
+\e[0m"
+    run_custom_cmd "pre-setup" "$GANTRY_PRE_SETUP_CMD"
+fi
 
 echo -e "\e[36m\e[1m
 ##########################################
@@ -464,7 +485,16 @@ elif [[ -n "$GANTRY_INSTALL_CMD" ]]; then
 ❯❯❯ [GANTRY] Running custom install ❮❮❮
 #######################################
 \e[0m"
-    run_custom_install
+    run_custom_cmd "install" "$GANTRY_INSTALL_CMD"
+fi
+
+if [[ -n "$GANTRY_POST_SETUP_CMD" ]]; then
+    echo -e "\e[36m\e[1m
+##########################################
+❯❯❯ [GANTRY] Running custom post-setup ❮❮❮
+##########################################
+\e[0m"
+    run_custom_cmd "post-setup" "$GANTRY_POST_SETUP_CMD"
 fi
 
 end_time=$(date +%s)

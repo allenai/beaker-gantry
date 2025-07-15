@@ -159,6 +159,8 @@ def launch_experiment(
     runtime_dir: str = constants.RUNTIME_DIR,
     skip_tcpxo_setup: bool = False,
     default_python_version: str = get_local_python_version(),
+    pre_setup: Optional[str] = None,
+    post_setup: Optional[str] = None,
 ):
     """
     Launch an experiment on Beaker. Same as the ``gantry run`` command.
@@ -381,6 +383,8 @@ def launch_experiment(
             runtime_dir=runtime_dir,
             skip_tcpxo_setup=skip_tcpxo_setup,
             default_python_version=default_python_version,
+            pre_setup=pre_setup,
+            post_setup=post_setup,
         )
 
         if save_spec:
@@ -515,6 +519,8 @@ def _build_experiment_spec(
     runtime_dir: str = constants.RUNTIME_DIR,
     skip_tcpxo_setup: bool = False,
     default_python_version: str = get_local_python_version(),
+    pre_setup: Optional[str] = None,
+    post_setup: Optional[str] = None,
 ):
     task_spec = (
         BeakerTaskSpec.new(
@@ -660,6 +666,12 @@ def _build_experiment_spec(
 
     if install is not None:
         task_spec = task_spec.with_env_var(name="GANTRY_INSTALL_CMD", value=install)
+
+    if pre_setup is not None:
+        task_spec = task_spec.with_env_var(name="GANTRY_PRE_SETUP_CMD", value=pre_setup)
+
+    if post_setup is not None:
+        task_spec = task_spec.with_env_var(name="GANTRY_POST_SETUP_CMD", value=post_setup)
 
     if datasets:
         for dataset_id, sub_path, path in datasets:

@@ -287,6 +287,17 @@ from .main import CLICK_COMMAND_DEFAULTS, main, new_optgroup
 
     https://beaker-docs.allen.ai/compute/augusta.html#distributed-workloads""",
 )
+@new_optgroup("Setup hooks")
+@optgroup.option(
+    "--pre-setup",
+    type=str,
+    help="""Set a custom command or shell script to run before gantry's setup steps.""",
+)
+@optgroup.option(
+    "--post-setup",
+    type=str,
+    help="""Set a custom command or shell script to run after gantry's setup steps.""",
+)
 @new_optgroup("Python settings")
 @optgroup.option(
     "--python-manager",
