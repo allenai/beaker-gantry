@@ -34,6 +34,10 @@ If you're using an image that comes with an existing system Python installation,
 - Removed `--pip` option in `gantry run` command.
 - Removed `--no-conda` option in `gantry run` command.
 
+### Fixed
+
+- Added work-around for webi `gh` bug (https://github.com/webinstall/webi-installers/issues/1003).
+
 ## [v2.8.3](https://github.com/allenai/beaker-gantry/releases/tag/v2.8.3) - 2025-07-15
 
 ### Fixed
