@@ -480,9 +480,8 @@ def run(
                 elif cl.aliases:
                     org_name = cl.full_name.split("/")[0]
                     for alias in cl.aliases:
-                        if "/" not in alias:
-                            alias = f"{org_name}/{alias}"
-                        if fnmatch(alias, pat):
+                        full_alias = f"{org_name}/{alias}"
+                        if fnmatch(full_alias, pat):
                             matching_clusters.append(cl.full_name)
                             break
 
