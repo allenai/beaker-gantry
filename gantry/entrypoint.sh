@@ -91,10 +91,11 @@ function get_latest_release {
     fi
 }
 
-function bootstrap_gh {
-    # NOTE: webi for gh is broken at the moment, see https://github.com/webinstall/webi-installers/issues/1003
-    # curl -sS https://webi.sh/gh | sh
+function webi_bootstrap_gh {
+    curl -sS https://webi.sh/gh | sh
+}
 
+function manual_bootstrap_gh {
     local target_dir="$HOME/.local/bin"  # same place webi would install gh to
     local target_arch="386"  # or amd64
 
@@ -122,7 +123,12 @@ function bootstrap_gh {
 function ensure_gh {
     if ! command -v gh &> /dev/null; then
         log_info "Installing GitHub CLI..."
-        with_retries 5 10 capture_logs "bootstrap_gh.log" bootstrap_gh || return 1
+        # NOTE: sometimes webi has issues (https://github.com/webinstall/webi-installers/issues/1003)
+        # so we fall back to a manual approach if needed.
+        if ! with_retries 2 5 capture_logs "webi_bootstrap_gh.log" webi_bootstrap_gh; then
+            log_warning "Falling back to manual GitHub CLI install..."
+            with_retries 5 10 capture_logs "manual_bootstrap_gh.log" manual_bootstrap_gh || return 1
+        fi
         path_prepend "$HOME/.local/bin"
         log_info "Done."
     fi
