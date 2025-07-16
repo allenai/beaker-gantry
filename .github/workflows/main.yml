@@ -2,11 +2,13 @@ name: Main
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 on:
   pull_request:
     branches:
       - main
+      - v1
   push:
     branches:
       - main
@@ -194,7 +196,7 @@ jobs:
         run: |
           ./scripts/add_pr_comments_on_release.sh
 
-      - name: Send Slack notifications about release
-        run: |
-          . .venv/bin/activate
-          python ./scripts/slack_notification.py '${{ secrets.SLACK_WEBHOOK_URL}}'
+      # - name: Send Slack notifications about release
+      #   run: |
+      #     . .venv/bin/activate
+      #     python ./scripts/slack_notification.py '${{ secrets.SLACK_WEBHOOK_URL}}'
