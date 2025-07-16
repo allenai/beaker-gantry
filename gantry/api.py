@@ -308,6 +308,13 @@ def launch_experiment(
 
                 matching_clusters = []
                 for cl in cl_objects:
+                    # If 'max_task_timeout' is set to 0 then tasks are not allowed.
+                    if (
+                        cl.HasField("max_task_timeout")
+                        and cl.max_task_timeout.ToMilliseconds() == 0
+                    ):
+                        continue
+
                     cl_aliases = list(cl.aliases) + [cl.name]
                     if (
                         not any([fnmatch(alias, pat) for alias in cl_aliases])
