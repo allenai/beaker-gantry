@@ -101,22 +101,23 @@ from .main import CLICK_COMMAND_DEFAULTS, main, new_optgroup
 @optgroup.option(
     "--cpus",
     type=float,
-    help="""Minimum number of logical CPU cores (e.g. 4.0, 0.5).""",
+    help="""The number of logical CPU cores (e.g. 4.0, 0.5) to assign to each task replica.""",
 )
 @optgroup.option(
     "--gpus",
     type=int,
-    help="""Minimum number of GPUs (e.g. 1).""",
+    help="""The number of GPUs (e.g. 1) to assign to each task replica.""",
 )
 @optgroup.option(
     "--memory",
     type=str,
-    help="""Minimum available system memory as a number with unit suffix (e.g. 2.5GiB).""",
+    help="""The amount of system memory to assign to each task replica.
+    This should be specified as a number with unit suffix (e.g. 2.5GiB).""",
 )
 @optgroup.option(
     "--shared-memory",
     type=str,
-    help="""Size of /dev/shm as a number with unit suffix (e.g. 2.5GiB).""",
+    help="""The size of /dev/shm as a number with unit suffix (e.g. 2.5GiB).""",
 )
 @new_optgroup("Inputs")
 @optgroup.option(
@@ -276,6 +277,7 @@ from .main import CLICK_COMMAND_DEFAULTS, main, new_optgroup
     type=str,
     help="""
     If set, jobs in the replicated task will wait this long to start until all other jobs are also ready.
+    This should be specified as a duration such as '5m', '30s', etc.
     """,
 )
 @optgroup.option(
