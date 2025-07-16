@@ -288,7 +288,7 @@ function uv_setup_python {
         log_info "Using existing $(python --version) installation at '$(which python)'."
         GANTRY_UV_FLAGS="$GANTRY_UV_FLAGS --system --break-system-packages"
     elif [[ -n "$GANTRY_DEFAULT_PYTHON_VERSION" ]]; then
-        log_info "Creating uv virtual environment with Python ${GANTRY_DEFAULT_PYTHON_VERSION}..."
+        log_info "Creating virtual environment with Python ${GANTRY_DEFAULT_PYTHON_VERSION}..."
         capture_logs "uv_venv_create.log" uv venv --python="$GANTRY_DEFAULT_PYTHON_VERSION" || return 1
         log_info "Done."
 
@@ -297,7 +297,7 @@ function uv_setup_python {
         source .venv/bin/activate || return 1
         log_info "Done."
     else 
-        log_info "Creating uv virtual environment..."
+        log_info "Creating virtual environment..."
         capture_logs "uv_venv_create.log" uv venv || return 1
         log_info "Done."
 
