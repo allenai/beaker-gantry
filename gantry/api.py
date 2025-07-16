@@ -308,6 +308,13 @@ def launch_experiment(
 
                 matching_clusters = []
                 for cl in cl_objects:
+                    # If 'max_task_timeout' is set to 0 then tasks are not allowed.
+                    if (
+                        cl.HasField("max_task_timeout")
+                        and cl.max_task_timeout.ToMilliseconds() == 0
+                    ):
+                        continue
+
                     cl_aliases = list(cl.aliases) + [cl.name]
                     if (
                         not any([fnmatch(alias, pat) for alias in cl_aliases])
@@ -332,11 +339,11 @@ def launch_experiment(
                     final_clusters.extend(matching_clusters)
                 elif clusters:
                     raise ConfigurationError(
-                        f"cluster '{og_pat}' did not match any Beaker clusters"
+                        f"cluster '{og_pat}' did not match any Beaker clusters that allow batch jobs"
                     )
                 elif gpu_types:
                     raise ConfigurationError(
-                        f"""GPU type specs "{'", "'.join(gpu_types)}" did not match any Beaker clusters"""
+                        f"""GPU type specs "{'", "'.join(gpu_types)}" did not match any Beaker clusters that allow batch jobs"""
                     )
 
             clusters = list(set(final_clusters))  # type: ignore
