@@ -84,8 +84,18 @@ from .main import CLICK_COMMAND_DEFAULTS, main, new_optgroup
     type=str,
     multiple=True,
     default=None,
-    help="""Launch on any cluster with this type of GPU (e.g. "h100"). Multiple allowed.""",
+    help="""Launch on any cluster with this type of GPU (e.g. "--gpu-type=h100").
+    Multiple allowed.""",
     show_default=True,
+)
+@optgroup.option(
+    "--tag",
+    "tags",
+    type=str,
+    multiple=True,
+    default=None,
+    help="""Launch on any cluster with this tag (e.g. "--tag=storage:weka").
+    Multiple allowed, in which case only clusters that have all specified tags will be used.""",
 )
 @optgroup.option(
     "--hostname",

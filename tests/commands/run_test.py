@@ -105,6 +105,33 @@ def test_dry_run_with_cluster(
     ) or constrained_clusters == set([cluster_alias, second_cluster_alias])
 
 
+def test_dry_run_with_weka_tag(
+    workspace_name: str,
+    run_name: str,
+    tmp_path: Path,
+):
+    spec_path = tmp_path / "spec.yaml"
+    result = subprocess.run(
+        _build_run_cmd(
+            workspace_name=workspace_name,
+            run_name=run_name,
+            spec_path=spec_path,
+            options=["--tag", "storage:weka"],
+        ),
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0
+
+    # Make sure spec is valid.
+    spec = BeakerExperimentSpec.from_file(spec_path)
+    assert spec.tasks[0].context.preemptible is None
+    assert spec.tasks[0].constraints is not None
+    assert spec.tasks[0].constraints.cluster is not None
+    constrained_clusters = set(spec.tasks[0].constraints.cluster)
+    assert constrained_clusters
+
+
 def test_dry_run_with_budget(workspace_name: str, run_name: str, tmp_path: Path):
     spec_path = tmp_path / "spec.yaml"
     result = subprocess.run(
