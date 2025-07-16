@@ -130,6 +130,8 @@ def launch_experiment(
     python_manager: Optional[Literal["uv", "conda"]] = None,
     system_python: bool = False,
     python_venv: Optional[str] = None,
+    uv_extras: Optional[Sequence[str]] = None,
+    uv_all_extras: Optional[bool] = None,
     uv_torch_backend: Optional[str] = None,
     env_vars: Optional[Sequence[str]] = None,
     env_secrets: Optional[Sequence[str]] = None,
@@ -370,6 +372,8 @@ def launch_experiment(
             python_manager=python_manager,
             system_python=system_python,
             python_venv=python_venv,
+            uv_extras=uv_extras,
+            uv_all_extras=uv_all_extras,
             uv_torch_backend=uv_torch_backend,
             datasets=datasets_to_use,
             env=env_vars_to_use,
@@ -506,6 +510,8 @@ def _build_experiment_spec(
     python_manager: Optional[Literal["uv", "conda"]] = None,
     system_python: bool = False,
     python_venv: Optional[str] = None,
+    uv_extras: Optional[Sequence[str]] = None,
+    uv_all_extras: Optional[bool] = None,
     uv_torch_backend: Optional[str] = None,
     datasets: Optional[List[Tuple[str, Optional[str], str]]] = None,
     env: Optional[List[Tuple[str, str]]] = None,
@@ -583,12 +589,20 @@ def _build_experiment_spec(
             python_manager is not None
             or system_python
             or python_venv is not None
+            or uv_all_extras is not None
+            or uv_extras is not None
             or uv_torch_backend is not None
             or conda_env is not None
             or conda_file is not None
         ):
             raise ConfigurationError("other python options can't be used with --no-python")
     else:
+        has_project_file = (
+            git_config.is_in_tree("pyproject.toml")
+            or git_config.is_in_tree("setup.py")
+            or git_config.is_in_tree("setup.cfg")
+        )
+
         task_spec = task_spec.with_env_var(
             name="GANTRY_DEFAULT_PYTHON_VERSION",
             value=default_python_version,
@@ -637,8 +651,36 @@ def _build_experiment_spec(
                     value=python_venv,
                 )
 
+            if uv_all_extras is None:
+                if not uv_extras and has_project_file:
+                    uv_all_extras = True
+                else:
+                    uv_all_extras = False
+            elif uv_extras:
+                raise ConfigurationError(
+                    "--uv-all-extras/--uv-no-extras is mutually exclusive with --uv-extra"
+                )
+
+            if uv_all_extras:
+                if not has_project_file:
+                    raise ConfigurationError(
+                        "--uv-all-extras is only valid when you have a pyproject.toml, setup.py, or setup.cfg file."
+                    )
+
+                task_spec = task_spec.with_env_var(name="GANTRY_UV_ALL_EXTRAS", value="1")
+
+            if uv_extras:
+                if not has_project_file:
+                    raise ConfigurationError(
+                        "--uv-extra is only valid when you have a pyproject.toml, setup.py, or setup.cfg file."
+                    )
+
+                task_spec = task_spec.with_env_var(
+                    name="GANTRY_UV_EXTRAS", value=" ".join(uv_extras)
+                )
+
             if uv_torch_backend is not None:
-                task_spec.with_env_var(name="UV_TORCH_BACKEND", value=uv_torch_backend)
+                task_spec = task_spec.with_env_var(name="UV_TORCH_BACKEND", value=uv_torch_backend)
         elif python_manager == "conda":
             if python_venv is not None:
                 raise ConfigurationError(

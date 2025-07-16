@@ -331,6 +331,24 @@ from .main import CLICK_COMMAND_DEFAULTS, main, new_optgroup
     Only valid when using uv as the --python-manager.""",
 )
 @optgroup.option(
+    "--uv-extra",
+    "uv_extras",
+    type=str,
+    multiple=True,
+    help="""Include optional dependencies for your local project from the specified extra name.
+    Can be specified multiple times.
+    If not provided, all extras will be installed unless --uv-no-extras is given.
+    Only valid when using uv as the --python-manager.""",
+)
+@optgroup.option(
+    "--uv-all-extras/--uv-no-extras",
+    is_flag=True,
+    help="""Install your local project with all extra dependencies, or no extra dependencies.
+    This defaults to true unless --uv-extra is specified.
+    Only valid when using uv as the --python-manager.""",
+    default=None,
+)
+@optgroup.option(
     "--uv-torch-backend",
     type=str,
     help="""The backend to use when installing packages in the PyTorch ecosystem with uv.

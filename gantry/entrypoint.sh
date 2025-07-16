@@ -246,7 +246,7 @@ function uv_install_project {
     shift 1
 
     log_info "Installing local project..."
-    capture_logs "uv_pip_install.log" uv pip install "$@" -r "$project_file" --all-extras . || return 1
+    capture_logs "uv_pip_install.log" uv pip install "$@" -r "$project_file" . || return 1
     log_info "Done."
 }
 
@@ -260,6 +260,15 @@ function uv_setup_python {
     ensure_uv || return 1
 
     GANTRY_UV_FLAGS=""
+
+    if [[ -n "$GANTRY_UV_ALL_EXTRAS" ]]; then
+        GANTRY_UV_FLAGS="$GANTRY_UV_FLAGS --all-extras"
+    elif [[ -n "$GANTRY_UV_EXTRAS" ]]; then
+        for extra_name in $GANTRY_UV_EXTRAS; do
+            GANTRY_UV_FLAGS="$GANTRY_UV_FLAGS --extra=$extra_name"
+        done
+    fi
+
     if [[ -n "$GANTRY_PYTHON_VENV" ]]; then
         if [[ ! -d "$GANTRY_PYTHON_VENV" ]] || [[ ! -f "$GANTRY_PYTHON_VENV/bin/activate" ]]; then
             log_error "--python-venv '$GANTRY_PYTHON_VENV' should be a path to virtual env directory"
@@ -277,7 +286,7 @@ function uv_setup_python {
         fi
 
         log_info "Using existing $(python --version) installation at '$(which python)'."
-        GANTRY_UV_FLAGS="--system --break-system-packages"
+        GANTRY_UV_FLAGS="$GANTRY_UV_FLAGS --system --break-system-packages"
     elif [[ -n "$GANTRY_DEFAULT_PYTHON_VERSION" ]]; then
         log_info "Creating uv virtual environment with Python ${GANTRY_DEFAULT_PYTHON_VERSION}..."
         capture_logs "uv_venv_create.log" uv venv --python="$GANTRY_DEFAULT_PYTHON_VERSION" || return 1

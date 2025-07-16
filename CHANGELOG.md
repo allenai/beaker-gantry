@@ -18,6 +18,8 @@ If you're using an image that comes with an existing system Python installation,
 - Added `--system-python` flag to `gantry run` command.
 - Added `--python-venv` flag to `gantry run` command.
 - Added `--runtime-dir` option to `gantry run` command.
+- Added `--uv-all-extras/--uv-no-extras` option to `gantry run` command.
+- Added `--uv-extra` option to `gantry run` command.
 - Added `--uv-torch-backend` option to `gantry run` command.
 - Added `--pre-setup` and `--post-setup` options to `gantry run` command for customizing setup steps.
 
