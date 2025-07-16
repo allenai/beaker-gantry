@@ -19,6 +19,10 @@ RESULTS_DATASET_URL="\e[94m\e[4mhttps://beaker.org/ds/$BEAKER_RESULT_DATASET_ID\
 CONDA_ENV_FILE="${CONDA_ENV_FILE:-environment.yml}"
 PIP_REQUIREMENTS_FILE="${PIP_REQUIREMENTS_FILE:-requirements.txt}"
 
+function log_debug {
+    echo -e "\e[1m❯ [GANTRY DEBUG]\e[0m $1"
+}
+
 function log_info {
     echo -e "\e[36m\e[1m❯ [GANTRY INFO]\e[0m $1"
 }
@@ -79,14 +83,52 @@ function path_prepend {
   done
 }
 
-function bootstrap_gh {
+function get_latest_release {
+    if command -v jq &> /dev/null; then
+        curl -s "https://api.github.com/repos/$1/releases/latest" | jq -r '.tag_name' | cut -d 'v' -f 2
+    else
+        curl -s "https://api.github.com/repos/$1/releases/latest" | grep -i "tag_name" | awk -F '"' '{print $4}' | cut -d 'v' -f 2
+    fi
+}
+
+function webi_bootstrap_gh {
     curl -sS https://webi.sh/gh | sh
+}
+
+function manual_bootstrap_gh {
+    local target_dir="$HOME/.local/bin"  # same place webi would install gh to
+    local target_arch="386"  # or amd64
+
+    local gh_version
+    gh_version=$(get_latest_release cli/cli) || return 1
+    log_debug "Resolved latest gh release to v${gh_version}"
+
+    local target_name="gh_${gh_version}_linux_${target_arch}"
+    local download_url="https://github.com/cli/cli/releases/download/v${gh_version}/${target_name}.tar.gz"
+
+    log_debug "Downloading gh release from ${download_url}..."
+    curl -sLO "$download_url" || return 1
+
+    log_debug "Extracting release..."
+    tar -xzf "${target_name}.tar.gz" || return 1
+
+    mkdir -p "$target_dir"
+    mv "$target_name/bin/gh" "$target_dir/"
+    rm -rf "$target_name" "${target_name}.tar.gz"
+
+    log_debug "Installed gh to $target_dir"
+    "$target_dir/gh" --version
 }
 
 function ensure_gh {
     if ! command -v gh &> /dev/null; then
         log_info "Installing GitHub CLI..."
-        with_retries 5 10 capture_logs "bootstrap_gh.log" bootstrap_gh || return 1
+        # NOTE: sometimes webi has issues (https://github.com/webinstall/webi-installers/issues/1003)
+        # so we fall back to a manual approach if needed.
+        if ! with_retries 2 5 capture_logs "webi_bootstrap_gh.log" webi_bootstrap_gh; then
+            log_warning "Falling back to manual GitHub CLI install..."
+            with_retries 5 10 capture_logs "manual_bootstrap_gh.log" manual_bootstrap_gh || return 1
+        fi
         path_prepend "$HOME/.local/bin"
         log_info "Done."
     fi
@@ -247,8 +289,9 @@ if [[ -n "$GITHUB_TOKEN" ]]; then
 ❯❯❯ [GANTRY] Installing prerequisites... ❮❮❮
 ############################################
 \e[0m"
-    # Configure git to use the GitHub CLI as a credential helper so that we can clone private repos.
     ensure_gh
+
+    # Configure git to use the GitHub CLI as a credential helper so that we can clone private repos.
     gh auth setup-git
 fi
 
