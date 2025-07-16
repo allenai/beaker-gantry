@@ -590,7 +590,7 @@ def _build_experiment_spec(
             or system_python
             or python_venv is not None
             or uv_all_extras is not None
-            or uv_extras is not None
+            or uv_extras
             or uv_torch_backend is not None
             or conda_env is not None
             or conda_file is not None
