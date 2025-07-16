@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [v2.8.4](https://github.com/allenai/beaker-gantry/releases/tag/v2.8.4) - 2025-07-16
+
 ### Fixed
 
 - Added work-around for webi `gh` bug (https://github.com/webinstall/webi-installers/issues/1003).
