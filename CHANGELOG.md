@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [v1.17.1](https://github.com/allenai/beaker-gantry/releases/tag/v1.17.1) - 2025-07-16
+
 ### Added
 
 - Added support for matching clusters based on aliases.
