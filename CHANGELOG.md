@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added support for choosing clusters based on tags (e.g. `gantry run --tag='storage:weka' ...`).
 
+### Changed
+
+- Gantry will automatically apply a `--tag='storage:weka'` cluster filter rule when you use a `--weka` option.
+
 ## [v2.8.4](https://github.com/allenai/beaker-gantry/releases/tag/v2.8.4) - 2025-07-16
 
 ### Fixed

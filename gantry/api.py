@@ -292,6 +292,10 @@ def launch_experiment(
                 raise ValueError(f"Invalid --weka option: '{m}'")
             weka_buckets.append((source, target))
 
+        if weka_buckets and (not tags or "storage:weka" not in tags):
+            tags = list(tags or [])
+            tags.append("storage:weka")
+
         # Validate clusters.
         if clusters or gpu_types or tags:
             cl_objects = list(beaker.cluster.list())
