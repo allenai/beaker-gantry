@@ -195,7 +195,7 @@ jobs:
         run: |
           ./scripts/add_pr_comments_on_release.sh
 
-      - name: Send Slack notifications about release
-        run: |
-          . .venv/bin/activate
-          python ./scripts/slack_notification.py '${{ secrets.SLACK_WEBHOOK_URL}}'
+      # - name: Send Slack notifications about release
+      #   run: |
+      #     . .venv/bin/activate
+      #     python ./scripts/slack_notification.py '${{ secrets.SLACK_WEBHOOK_URL}}'
