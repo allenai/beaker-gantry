@@ -473,11 +473,24 @@ def run(
         cl_objects = beaker.cluster.list()
         final_clusters = []
         for pat in cluster:
-            matching_clusters = [cl.full_name for cl in cl_objects if fnmatch(cl.full_name, pat)]
+            matching_clusters = []
+            for cl in cl_objects:
+                if fnmatch(cl.full_name, pat):
+                    matching_clusters.append(cl.full_name)
+                elif cl.aliases:
+                    org_name = cl.full_name.split("/")[0]
+                    for alias in cl.aliases:
+                        if "/" not in alias:
+                            alias = f"{org_name}/{alias}"
+                        if fnmatch(alias, pat):
+                            matching_clusters.append(cl.full_name)
+                            break
+
             if matching_clusters:
                 final_clusters.extend(matching_clusters)
             else:
                 raise ConfigurationError(f"cluster '{pat}' did not match any Beaker clusters")
+
         cluster = list(set(final_clusters))  # type: ignore
 
     # Default to preemptible priority when no cluster has been specified.
