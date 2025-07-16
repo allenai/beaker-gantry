@@ -20,7 +20,7 @@ CONDA_ENV_FILE="${CONDA_ENV_FILE:-environment.yml}"
 PIP_REQUIREMENTS_FILE="${PIP_REQUIREMENTS_FILE:-requirements.txt}"
 
 function log_debug {
-    echo "❯ [GANTRY DEBUG] $1"
+    echo -e "\e[1m❯ [GANTRY DEBUG]\e[0m $1"
 }
 
 function log_info {
