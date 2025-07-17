@@ -6,7 +6,6 @@ import random
 import string
 import sys
 import time
-from fnmatch import fnmatch
 from pathlib import Path
 from typing import List, Literal, Optional, Sequence, Tuple, Union
 
@@ -14,6 +13,7 @@ import rich
 from beaker import (
     Beaker,
     BeakerCancelationCode,
+    BeakerCluster,
     BeakerExperimentSpec,
     BeakerGroup,
     BeakerJob,
@@ -114,6 +114,7 @@ def launch_experiment(
     group_name: Optional[str] = None,
     clusters: Optional[Sequence[str]] = None,
     gpu_types: Optional[Sequence[str]] = None,
+    tags: Optional[Sequence[str]] = None,
     hostnames: Optional[Sequence[str]] = None,
     beaker_image: Optional[str] = None,
     docker_image: Optional[str] = None,
@@ -296,59 +297,53 @@ def launch_experiment(
                 raise ValueError(f"Invalid --weka option: '{m}'")
             weka_buckets.append((source, target))
 
+        if weka_buckets and (not tags or "storage:weka" not in tags):
+            tags = list(tags or [])
+            tags.append("storage:weka")
+
         # Validate clusters.
-        if clusters or gpu_types:
-            cl_objects = list(beaker.cluster.list())
+        if clusters or gpu_types or tags:
+            constraints = []
+            if clusters:
+                constraints.append(f'''name matches any of: "{'", "'.join(clusters)}"''')
+            if tags:
+                constraints.append(f'''has the tag(s): "{'", "'.join(tags)}"''')
+            if gpu_types:
+                constraints.append(
+                    f'''has any one of these GPU types: "{'", "'.join(gpu_types)}"'''
+                )
 
-            final_clusters = []
-            for pat in clusters or ["*"]:
-                org = beaker.org_name
+            # Collect all clusters that support batch jobs.
+            all_clusters: List[BeakerCluster] = []
+            for cl in beaker.cluster.list():
+                # If 'max_task_timeout' is set to 0 then tasks are not allowed.
+                if cl.HasField("max_task_timeout") and cl.max_task_timeout.ToMilliseconds() == 0:
+                    continue
+                else:
+                    all_clusters.append(cl)
 
-                og_pat = pat
-                if "/" in pat:
-                    org, pat = pat.split("/", 1)
+            if not all_clusters:
+                raise RuntimeError("Failed to find any clusters that support batch jobs")
 
-                matching_clusters = []
-                for cl in cl_objects:
-                    # If 'max_task_timeout' is set to 0 then tasks are not allowed.
-                    if (
-                        cl.HasField("max_task_timeout")
-                        and cl.max_task_timeout.ToMilliseconds() == 0
-                    ):
-                        continue
+            # Maybe filter clusters based on provided patterns.
+            if clusters:
+                all_clusters = util.filter_clusters_by_name(beaker, all_clusters, clusters)
 
-                    cl_aliases = list(cl.aliases) + [cl.name]
-                    if (
-                        not any([fnmatch(alias, pat) for alias in cl_aliases])
-                        or cl.organization_name != org
-                    ):
-                        continue
+            # Maybe filter based on tags.
+            if tags:
+                all_clusters = util.filter_clusters_by_tags(beaker, all_clusters, tags)
 
-                    if gpu_types:
-                        cl_gpu_type = util.get_gpu_type(beaker, cl)
-                        if not cl_gpu_type:
-                            continue
+            # Filter based on GPU types.
+            if gpu_types:
+                all_clusters = util.filter_clusters_by_gpu_type(beaker, all_clusters, gpu_types)
 
-                        for pattern in gpu_types:
-                            if pattern.lower() in cl_gpu_type.lower():
-                                break
-                        else:
-                            continue
-
-                    matching_clusters.append(f"{cl.organization_name}/{cl.name}")
-
-                if matching_clusters:
-                    final_clusters.extend(matching_clusters)
-                elif clusters:
-                    raise ConfigurationError(
-                        f"cluster '{og_pat}' did not match any Beaker clusters that allow batch jobs"
-                    )
-                elif gpu_types:
-                    raise ConfigurationError(
-                        f"""GPU type specs "{'", "'.join(gpu_types)}" did not match any Beaker clusters that allow batch jobs"""
-                    )
-
-            clusters = list(set(final_clusters))  # type: ignore
+            if not all_clusters:
+                constraints_str = "\n - ".join(constraints)
+                raise ConfigurationError(
+                    f"Failed to find clusters satisfying the given constraints:\n - {constraints_str}"
+                )
+            else:
+                clusters = [f"{cl.organization_name}/{cl.name}" for cl in all_clusters]
 
         # Default to preemptible when no cluster has been specified.
         if not clusters and preemptible is None:

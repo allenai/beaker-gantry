@@ -6,8 +6,9 @@ import time
 from dataclasses import asdict, dataclass
 from datetime import timedelta
 from enum import Enum
+from fnmatch import fnmatch
 from pathlib import Path
-from typing import Optional, cast
+from typing import Iterable, List, Optional, Sequence, cast
 
 import rich
 from beaker import (
@@ -238,6 +239,65 @@ def get_gpu_type(beaker: Beaker, cluster: BeakerCluster) -> str | None:
             return None
     else:
         return None
+
+
+def filter_clusters_by_name(
+    beaker: Beaker, clusters: Iterable[BeakerCluster], patterns: Sequence[str]
+) -> List[BeakerCluster]:
+    final_clusters = []
+    for cl in clusters:
+        cl_aliases = list(cl.aliases) + [cl.name]
+        for pattern in patterns:
+            if "/" in pattern:
+                org, pattern = pattern.split("/", 1)
+            else:
+                org = beaker.org_name
+
+            if cl.organization_name != org:
+                continue
+
+            if "*" in pattern:
+                if not any([fnmatch(alias, pattern) for alias in cl_aliases]):
+                    continue
+            else:
+                if not any([alias == pattern for alias in cl_aliases]):
+                    continue
+
+            final_clusters.append(cl)
+            break
+
+    return final_clusters
+
+
+def filter_clusters_by_tags(
+    beaker: Beaker,
+    clusters: Iterable[BeakerCluster],
+    tags: Sequence[str],
+) -> List[BeakerCluster]:
+    del beaker
+    final_clusters = []
+    for cl in clusters:
+        cl_tags = set(cl.tags)
+        if all([tag in cl_tags for tag in tags]):
+            final_clusters.append(cl)
+    return final_clusters
+
+
+def filter_clusters_by_gpu_type(
+    beaker: Beaker,
+    clusters: Iterable[BeakerCluster],
+    gpu_types: Sequence[str],
+) -> List[BeakerCluster]:
+    final_clusters = []
+    for cl in clusters:
+        cl_gpu_type = get_gpu_type(beaker, cl)
+        if not cl_gpu_type:
+            continue
+        for pattern in gpu_types:
+            if pattern.lower() in cl_gpu_type.lower():
+                final_clusters.append(cl)
+                break
+    return final_clusters
 
 
 def ensure_entrypoint_dataset(beaker: Beaker) -> BeakerDataset:

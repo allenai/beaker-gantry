@@ -72,8 +72,8 @@ from .main import CLICK_COMMAND_DEFAULTS, main, new_optgroup
     type=str,
     multiple=True,
     default=None,
-    help="""A potential cluster to use. This option can be used multiple times to allow multiple clusters.
-    You also specify it as a wildcard, e.g. '--cluster ai2/*-cirrascale'.
+    help="""The name of a cluster to use or a glob pattern, e.g. --cluster='ai2/*-cirrascale'.
+    Multiple allowed.
     If you don't specify a cluster or the priority, the priority will default to 'preemptible' and
     the job will be able to run on any on-premise cluster.""",
     show_default=True,
@@ -84,8 +84,18 @@ from .main import CLICK_COMMAND_DEFAULTS, main, new_optgroup
     type=str,
     multiple=True,
     default=None,
-    help="""Launch on any cluster with this type of GPU (e.g. "h100"). Multiple allowed.""",
+    help="""Filter clusters by GPU type (e.g. "--gpu-type=h100").
+    Multiple allowed.""",
     show_default=True,
+)
+@optgroup.option(
+    "--tag",
+    "tags",
+    type=str,
+    multiple=True,
+    default=None,
+    help="""Filter clusters by a tag (e.g. "--tag=storage:weka").
+    Multiple allowed, in which case only clusters that have all specified tags will be used.""",
 )
 @optgroup.option(
     "--hostname",
