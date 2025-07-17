@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [v2.8.5](https://github.com/allenai/beaker-gantry/releases/tag/v2.8.5) - 2025-07-17
+
 ### Added
 
 - Added support for choosing clusters based on tags (e.g. `gantry run --tag='storage:weka' ...`).
