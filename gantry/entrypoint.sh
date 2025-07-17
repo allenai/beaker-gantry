@@ -132,7 +132,7 @@ function ensure_gh {
             with_retries 5 10 capture_logs "manual_bootstrap_gh.log" manual_bootstrap_gh || return 1
         fi
         path_prepend "$HOME/.local/bin"
-        log_info "Done."
+        log_info "Done. Installed $(gh --version | head -n 1)."
     fi
 }
 
@@ -166,7 +166,7 @@ function ensure_conda {
         path_prepend "/opt/conda/bin"
 
         rm ~/miniconda.sh
-        log_info "Done."
+        log_info "Done. Installed $(conda --version)."
     fi
 
     if [[ -z "$GANTRY_CONDA_INITIALIZED" ]]; then
@@ -196,7 +196,7 @@ function ensure_uv {
         log_info "Installing uv..."
         with_retries 5 10 capture_logs "bootstrap_uv.log" bootstrap_uv || return 1
         path_prepend "$HOME/.cargo/bin" "$HOME/.local/bin"
-        log_info "Done."
+        log_info "Done. Installed $(uv --version)."
     fi
 }
 
@@ -220,7 +220,7 @@ function ensure_pip {
         fi
     fi
 
-    log_info "Done. Using $(pip --version)"
+    log_info "Done. Using $(pip --version)."
 }
 
 function run_custom_cmd {
@@ -331,8 +331,7 @@ function uv_setup_python {
         run_custom_cmd "install" "$GANTRY_INSTALL_CMD" || return 1
     fi
 
-    echo "# $(python --version)" > "$GANTRY_DIR/requirements.txt"
-    uv pip freeze 2> /dev/null >> "$GANTRY_DIR/requirements.txt"
+    uv pip freeze 2> /dev/null > "$GANTRY_DIR/requirements.txt"
 }
 
 function conda_setup_python {
@@ -412,8 +411,7 @@ function conda_setup_python {
         run_custom_cmd "install" "$GANTRY_INSTALL_CMD" || return 1
     fi
 
-    echo "# $(python --version)" > "$GANTRY_DIR/requirements.txt"
-    pip freeze >> "$GANTRY_DIR/requirements.txt"
+    pip freeze > "$GANTRY_DIR/requirements.txt"
 }
 
 function setup_python {
