@@ -201,10 +201,10 @@ gantry run --show-logs --dataset='petew/squad-train:/input-data' -- ls /input-da
 
 ### How can I attach a WEKA bucket to an experiment?
 
-Use the `--weka` option for `gantry run` along with `--cluster` to target clusters that support WEKA. For example:
+Use the `--weka` option for `gantry run`. For example:
 
 ```bash
-gantry run --show-logs --weka='oe-training-default:/mount/weka' --cluster='ai2/*-cirrascale' -- ls -l /mount/weka
+gantry run --show-logs --weka='oe-training-default:/mount/weka' -- ls -l /mount/weka
 ```
 
 ### How can I run distributed batch jobs with Gantry?

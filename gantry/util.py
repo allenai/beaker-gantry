@@ -3,6 +3,7 @@ import json
 import platform
 import tempfile
 import time
+from collections import defaultdict
 from dataclasses import asdict, dataclass
 from datetime import timedelta
 from enum import Enum
@@ -244,10 +245,13 @@ def get_gpu_type(beaker: Beaker, cluster: BeakerCluster) -> str | None:
 def filter_clusters_by_name(
     beaker: Beaker, clusters: Iterable[BeakerCluster], patterns: Sequence[str]
 ) -> List[BeakerCluster]:
+    matches = set()
+    matches_by_pattern = defaultdict(int)
     final_clusters = []
     for cl in clusters:
         cl_aliases = list(cl.aliases) + [cl.name]
         for pattern in patterns:
+            og_pattern = pattern
             if "/" in pattern:
                 org, pattern = pattern.split("/", 1)
             else:
@@ -259,12 +263,17 @@ def filter_clusters_by_name(
             if "*" in pattern:
                 if not any([fnmatch(alias, pattern) for alias in cl_aliases]):
                     continue
-            else:
-                if not any([alias == pattern for alias in cl_aliases]):
-                    continue
+            elif not any([alias == pattern for alias in cl_aliases]):
+                continue
 
-            final_clusters.append(cl)
-            break
+            matches_by_pattern[og_pattern] += 1
+            if cl.id not in matches:
+                matches.add(cl.id)
+                final_clusters.append(cl)
+
+    for pattern in patterns:
+        if matches_by_pattern[pattern] == 0:
+            raise ConfigurationError(f"'{pattern}' didn't match any allowed clusters")
 
     return final_clusters
 
