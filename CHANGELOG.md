@@ -14,7 +14,6 @@ If you're using an image that comes with an existing system Python installation,
 
 ### Added
 
-- Added support for choosing clusters based on tags (e.g. `gantry run --tag='storage:weka' ...`).
 - Added `--python-manager` option to `gantry run` command.
 - Added `--system-python` flag to `gantry run` command.
 - Added `--python-venv` flag to `gantry run` command.
@@ -26,7 +25,6 @@ If you're using an image that comes with an existing system Python installation,
 
 ### Changed
 
-- Gantry will automatically apply a `--tag='storage:weka'` cluster filter rule when you use a `--weka` option.
 - Renamed `--conda` option to `--conda-file` in `gantry run` command.
 - Renamed `--venv` option to `--conda-env` in `gantry run` command.
 - Renamed `--python-version` to `--default-python-version` in `gantry run` command.
@@ -37,6 +35,20 @@ If you're using an image that comes with an existing system Python installation,
 
 - Removed `--pip` option in `gantry run` command.
 - Removed `--no-conda` option in `gantry run` command.
+
+## [v2.8.5](https://github.com/allenai/beaker-gantry/releases/tag/v2.8.5) - 2025-07-17
+
+### Added
+
+- Added support for choosing clusters based on tags (e.g. `gantry run --tag='storage:weka' ...`).
+
+### Changed
+
+- Gantry will automatically apply a `--tag='storage:weka'` cluster filter rule when you use a `--weka` option.
+
+### Fixed
+
+- Fixed bug with attempting to accept TOS on older versions of conda.
 
 ## [v2.8.4](https://github.com/allenai/beaker-gantry/releases/tag/v2.8.4) - 2025-07-16
 
