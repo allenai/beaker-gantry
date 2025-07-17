@@ -115,6 +115,7 @@ def launch_experiment(
     group_name: Optional[str] = None,
     clusters: Optional[Sequence[str]] = None,
     gpu_types: Optional[Sequence[str]] = None,
+    tags: Optional[Sequence[str]] = None,
     hostnames: Optional[Sequence[str]] = None,
     beaker_image: Optional[str] = None,
     docker_image: Optional[str] = None,
@@ -291,9 +292,15 @@ def launch_experiment(
                 raise ValueError(f"Invalid --weka option: '{m}'")
             weka_buckets.append((source, target))
 
+        if weka_buckets and (not tags or "storage:weka" not in tags):
+            tags = list(tags or [])
+            tags.append("storage:weka")
+
         # Validate clusters.
-        if clusters or gpu_types:
+        if clusters or gpu_types or tags:
             cl_objects = list(beaker.cluster.list())
+            gpu_type_matches = 0
+            tag_matches = 0
 
             final_clusters = []
             for pat in clusters or ["*"]:
@@ -305,6 +312,13 @@ def launch_experiment(
 
                 matching_clusters = []
                 for cl in cl_objects:
+                    # If 'max_task_timeout' is set to 0 then tasks are not allowed.
+                    if (
+                        cl.HasField("max_task_timeout")
+                        and cl.max_task_timeout.ToMilliseconds() == 0
+                    ):
+                        continue
+
                     cl_aliases = list(cl.aliases) + [cl.name]
                     if (
                         not any([fnmatch(alias, pat) for alias in cl_aliases])
@@ -319,9 +333,17 @@ def launch_experiment(
 
                         for pattern in gpu_types:
                             if pattern.lower() in cl_gpu_type.lower():
+                                gpu_type_matches += 1
                                 break
                         else:
                             continue
+
+                    if tags:
+                        cl_tags = set(cl.tags)
+                        if not all([tag in cl_tags for tag in tags]):
+                            continue
+                        else:
+                            tag_matches += 1
 
                     matching_clusters.append(f"{cl.organization_name}/{cl.name}")
 
@@ -331,9 +353,17 @@ def launch_experiment(
                     raise ConfigurationError(
                         f"cluster '{og_pat}' did not match any Beaker clusters"
                     )
-                elif gpu_types:
+                elif gpu_types and gpu_type_matches == 0:
                     raise ConfigurationError(
-                        f"""GPU type specs "{'", "'.join(gpu_types)}" did not match any Beaker clusters"""
+                        f"""GPU type spec(s) "{'", "'.join(gpu_types)}" didn't match allowed clusters."""
+                    )
+                elif tags and tag_matches == 0:
+                    raise ConfigurationError(
+                        f"""Cluster tag(s) "{'", "'.join(tags)}" didn't match allowed clusters."""
+                    )
+                else:
+                    raise ConfigurationError(
+                        """Cluster constraints are too narrow, gantry could not find any suitable Beaker clusters."""
                     )
 
             clusters = list(set(final_clusters))  # type: ignore
