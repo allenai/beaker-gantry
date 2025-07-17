@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Gantry will automatically apply a `--tag='storage:weka'` cluster filter rule when you use a `--weka` option.
 
+### Fixed
+
+- Fixed bug with attempting to accept TOS on older versions of conda.
+
 ## [v2.8.4](https://github.com/allenai/beaker-gantry/releases/tag/v2.8.4) - 2025-07-16
 
 ### Fixed
