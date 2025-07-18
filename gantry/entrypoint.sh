@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 
-set -eo pipefail
+function set_shell_defaults {
+    set +x -eo pipefail
+}
+
+set_shell_defaults
 
 start_time=$(date +%s)
 
@@ -37,23 +41,24 @@ function log_error {
     echo -e >&2 "\e[31m\e[1m❯ [GANTRY ERROR]\e[0m $1"
 }
 
-# usage: with_retries "max_retries" "pause_seconds" "command" "args..."
+# usage: with_retries MAX_RETRIES(INT) COMMAND(TEXT) [ARGS(ANY)...]
 function with_retries {
     local max_retries="$1"
     shift 1
-    local pause_seconds="$1"
-    shift 1
-    local attempts=1
+    local attempts=0
 
     while true; do
         "$@" && return 0
 
-        attempts=$((attempts+1)) 
-        if [ $attempts -eq "$max_retries" ]; then
-            log_error "Retries for exceeded for command '$*'. Check results dataset for additional logs: $RESULTS_DATASET_URL"
-            exit 1
+        if ((++attempts >= max_retries)); then
+            log_error "Retries exceeded for command '$*'. Check results dataset for additional logs: $RESULTS_DATASET_URL"
+            return 1
         else
-            log_warning "Command '$*' failed, retrying in $pause_seconds seconds..."
+            local pause_seconds=$((2**(attempts-1)))
+            if ((pause_seconds > 30)); then
+                pause_seconds=30
+            fi
+            log_warning "Command '$*' failed on attempt ${attempts}, retrying in ${pause_seconds} seconds..."
             sleep "$pause_seconds"
         fi
     done
@@ -61,12 +66,12 @@ function with_retries {
 
 log_file_count=0
 
-# usage: capture_logs "log_file" "command" "args..."
+# usage: capture_logs NAME(TEXT) COMMAND(TEXT) [ARGS(ANY)...]
 function capture_logs {
     log_file_count=$((log_file_count+1))
 
     local log_file
-    log_file="$GANTRY_LOGS_DIR/$(printf '%03d' $log_file_count)_$1"
+    log_file="$GANTRY_LOGS_DIR/$(printf '%03d' $log_file_count)_$1.log"
     shift 1
 
     "$@" > "$log_file" 2>&1 && return 0
@@ -79,7 +84,7 @@ function capture_logs {
 function path_prepend {
   for ((i=$#; i>0; i--)); do
       ARG=${!i}
-      if [ -d "$ARG" ] && [[ ":$PATH:" != *":$ARG:"* ]]; then
+      if [[ -d "$ARG" ]] && [[ ":$PATH:" != *":$ARG:"* ]]; then
           export PATH="$ARG${PATH:+":$PATH"}"
       fi
   done
@@ -98,7 +103,7 @@ function webi_bootstrap_gh {
 }
 
 function manual_bootstrap_gh {
-    local target_dir="$HOME/.local/bin"  # same place webi would install gh to
+    local target_dir=~/.local/bin  # same place webi would install gh to
     local target_arch="386"  # or amd64
 
     local gh_version
@@ -115,7 +120,7 @@ function manual_bootstrap_gh {
     tar -xzf "${target_name}.tar.gz" || return 1
 
     mkdir -p "$target_dir"
-    mv "$target_name/bin/gh" "$target_dir/"
+    mv "$target_name/bin/gh" "$target_dir/" || return 1
     rm -rf "$target_name" "${target_name}.tar.gz"
 
     log_debug "Installed gh to $target_dir"
@@ -127,11 +132,11 @@ function ensure_gh {
         log_info "Installing GitHub CLI..."
         # NOTE: sometimes webi has issues (https://github.com/webinstall/webi-installers/issues/1003)
         # so we fall back to a manual approach if needed.
-        if ! with_retries 2 5 capture_logs "webi_bootstrap_gh.log" webi_bootstrap_gh; then
+        if ! with_retries 2 capture_logs "webi_bootstrap_gh" webi_bootstrap_gh; then
             log_warning "Falling back to manual GitHub CLI install..."
-            with_retries 5 10 capture_logs "manual_bootstrap_gh.log" manual_bootstrap_gh || return 1
+            with_retries 5 capture_logs "manual_bootstrap_gh" manual_bootstrap_gh || return 1
         fi
-        path_prepend "$HOME/.local/bin"
+        path_prepend ~/.local/bin
         log_info "Done. Installed $(gh --version | head -n 1)."
     fi
 }
@@ -139,16 +144,16 @@ function ensure_gh {
 function clone_repo {
     if [[ -z "$GIT_BRANCH" ]]; then
         if [[ -n "$GITHUB_TOKEN" ]]; then
-            capture_logs "git_clone.log" gh repo clone "$GITHUB_REPO" . && return 0
+            gh repo clone "$GITHUB_REPO" . && return 0
         else
-            capture_logs "git_clone.log" git clone "https://github.com/$GITHUB_REPO" . && return 0
+            git clone "https://github.com/$GITHUB_REPO" . && return 0
         fi
     else
         log_info "Cloning from single branch '$GIT_BRANCH'..."
         if [[ -n "$GITHUB_TOKEN" ]]; then
-            capture_logs "git_clone.log" gh repo clone "$GITHUB_REPO" . -- -b "$GIT_BRANCH" --single-branch && return 0
+            gh repo clone "$GITHUB_REPO" . -- -b "$GIT_BRANCH" --single-branch && return 0
         else
-            capture_logs "git_clone.log" git clone -b "$GIT_BRANCH" --single-branch "https://github.com/$GITHUB_REPO" . && return 0
+            git clone -b "$GIT_BRANCH" --single-branch "https://github.com/$GITHUB_REPO" . && return 0
         fi
     fi
 
@@ -159,10 +164,10 @@ function ensure_conda {
     if ! command -v conda &> /dev/null; then
         log_info "Installing conda..."
 
-        with_retries 5 10 curl -fsSL -o ~/miniconda.sh -O https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh || return 1
+        with_retries 5 curl -fsSL -o ~/miniconda.sh -O https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh || return 1
         chmod +x ~/miniconda.sh
 
-        capture_logs "setup_conda.log" ~/miniconda.sh -b -p /opt/conda || return 1
+        capture_logs "setup_conda" ~/miniconda.sh -b -p /opt/conda || return 1
         path_prepend "/opt/conda/bin"
 
         rm ~/miniconda.sh
@@ -178,8 +183,8 @@ function ensure_conda {
         # Accept TOS for default channels.
         # NOTE: this will fail if the conda version is too old.
         if command conda tos &> /dev/null 2>&1; then
-            capture_logs "conda_tos_accept_main.log" conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main
-            capture_logs "conda_tos_accept_r.log" conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/r
+            capture_logs "conda_tos_accept_main" conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main
+            capture_logs "conda_tos_accept_r" conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/r
         fi
 
         GANTRY_CONDA_INITIALIZED="1"
@@ -194,8 +199,8 @@ function bootstrap_uv {
 function ensure_uv {
     if ! command -v uv &> /dev/null; then
         log_info "Installing uv..."
-        with_retries 5 10 capture_logs "bootstrap_uv.log" bootstrap_uv || return 1
-        path_prepend "$HOME/.cargo/bin" "$HOME/.local/bin"
+        with_retries 5 capture_logs "bootstrap_uv" bootstrap_uv || return 1
+        path_prepend ~/.cargo/bin ~/.local/bin
         log_info "Done. Installed $(uv --version)."
     fi
 }
@@ -205,11 +210,11 @@ function ensure_pip {
 
     # Use 'ensurepip' if necessary to install pip.
     if ! command -v pip &> /dev/null; then
-        capture_logs "install_pip.log" python -m ensurepip
+        capture_logs "install_pip" python -m ensurepip
     fi
 
     # Upgrade pip.
-    capture_logs "upgrade_pip.log" pip install --upgrade pip
+    capture_logs "upgrade_pip" pip install --upgrade pip
 
     # Validate that pip is installed to the active Python environment.
     if command -v dirname &> /dev/null; then
@@ -233,8 +238,7 @@ function run_custom_cmd {
         source "$custom_cmd" || return 1
 
         # Reset shell behavior.
-        set -eo pipefail
-        set +x
+        set_shell_defaults
 
         log_info "Done."
     else
@@ -249,13 +253,13 @@ function uv_install_project {
     shift 1
 
     log_info "Installing local project..."
-    capture_logs "uv_pip_install.log" uv pip install "$@" -r "$project_file" . || return 1
+    capture_logs "uv_pip_install" uv pip install "$@" -r "$project_file" . || return 1
     log_info "Done."
 }
 
 function uv_install_requirements {
     log_info "Installing packages from requirements.txt..."
-    capture_logs "uv_pip_install.log" uv pip install "$@" -r requirements.txt || return 1
+    capture_logs "uv_pip_install" uv pip install "$@" -r requirements.txt || return 1
     log_info "Done."
 }
 
@@ -275,7 +279,7 @@ function uv_setup_python {
     if [[ -n "$GANTRY_PYTHON_VENV" ]]; then
         if [[ ! -d "$GANTRY_PYTHON_VENV" ]] || [[ ! -f "$GANTRY_PYTHON_VENV/bin/activate" ]]; then
             log_error "--python-venv '$GANTRY_PYTHON_VENV' should be a path to virtual env directory"
-            exit 1
+            return 1
         fi
 
         log_info "Activating virtual environment at '$GANTRY_PYTHON_VENV'..."
@@ -285,14 +289,14 @@ function uv_setup_python {
     elif [[ -n "$GANTRY_USE_SYSTEM_PYTHON" ]]; then
         if ! command -v python &> /dev/null; then
             log_error "no system python found. If your image doesn't include a Python distribution you should omit the --system-python flag."
-            exit 1
+            return 1
         fi
 
         log_info "Using existing $(python --version) installation at '$(which python)'."
         GANTRY_UV_FLAGS="$GANTRY_UV_FLAGS --system --break-system-packages"
     elif [[ -n "$GANTRY_DEFAULT_PYTHON_VERSION" ]]; then
         log_info "Creating virtual environment with Python ${GANTRY_DEFAULT_PYTHON_VERSION}..."
-        capture_logs "uv_venv_create.log" uv venv --python="$GANTRY_DEFAULT_PYTHON_VERSION" || return 1
+        capture_logs "uv_venv_create" uv venv --python="$GANTRY_DEFAULT_PYTHON_VERSION" || return 1
         log_info "Done."
 
         log_info "Activating virtual environment..."
@@ -301,7 +305,7 @@ function uv_setup_python {
         log_info "Done."
     else 
         log_info "Creating virtual environment..."
-        capture_logs "uv_venv_create.log" uv venv || return 1
+        capture_logs "uv_venv_create" uv venv || return 1
         log_info "Done."
 
         log_info "Activating virtual environment..."
@@ -339,13 +343,13 @@ function conda_setup_python {
     # --conda-file should be a file if given.
     if [[ -n "$GANTRY_CONDA_FILE" ]] && [[ ! -f "$GANTRY_CONDA_FILE" ]]; then
         log_error "conda environment file '$GANTRY_CONDA_FILE' not found."
-        exit 1
+        return 1
     fi
     # If --conda-env looks like a path, it should point to a directory.
     if [[ -n "$GANTRY_CONDA_ENV" ]] && [[ "$GANTRY_CONDA_ENV" == */* ]]; then
         if [[ ! -d "$GANTRY_CONDA_ENV" ]]; then
             log_error "conda environment '$GANTRY_CONDA_ENV' looks like a path but it doesn't exist"
-            exit 1
+            return 1
         fi
     fi
 
@@ -358,7 +362,7 @@ function conda_setup_python {
 
         if [[ -f "$GANTRY_CONDA_FILE" ]]; then
             log_info "Updating environment from conda env file '$GANTRY_CONDA_FILE'..."
-            capture_logs "conda_env_update.log" conda env update -f "$GANTRY_CONDA_FILE" || return 1
+            capture_logs "conda_env_update" conda env update -f "$GANTRY_CONDA_FILE" || return 1
             log_info "Done."
         fi
     elif [[ -n "$GANTRY_USE_SYSTEM_PYTHON" ]]; then
@@ -367,30 +371,30 @@ function conda_setup_python {
             log_info "Using default conda base environment."
         else
             log_error "no conda base environment found (required due to --system-python flag)"
-            exit 1
+            return 1
         fi
 
         if [[ -f "$GANTRY_CONDA_FILE" ]]; then
             log_info "Updating environment from conda env file '$GANTRY_CONDA_FILE'..."
-            capture_logs "conda_env_update.log" conda env update -f "$GANTRY_CONDA_FILE" || return 1
+            capture_logs "conda_env_update" conda env update -f "$GANTRY_CONDA_FILE" || return 1
             log_info "Done."
         fi
     elif [[ -f "$GANTRY_CONDA_FILE" ]]; then
         # Create from the environment file.
         log_info "Initializing environment from conda env file '$GANTRY_CONDA_FILE'..."
-        capture_logs "conda_env_create.log" conda env create -n gantry -f "$GANTRY_CONDA_FILE" 
+        capture_logs "conda_env_create" conda env create -n gantry -f "$GANTRY_CONDA_FILE" 
         conda activate gantry &> /dev/null || return 1
         log_info "Done."
     elif [[ -n "$GANTRY_DEFAULT_PYTHON_VERSION" ]]; then
         # Create a new empty environment with the default Python version.
         log_info "Initializing environment with Python $GANTRY_DEFAULT_PYTHON_VERSION..."
-        capture_logs "conda_env_create.log" conda create -y -n gantry "python=$GANTRY_DEFAULT_PYTHON_VERSION" pip
+        capture_logs "conda_env_create" conda create -y -n gantry "python=$GANTRY_DEFAULT_PYTHON_VERSION" pip
         conda activate gantry &> /dev/null || return 1
         log_info "Done."
     else
         # Create a new empty environment with whatever version of Python conda defaults to.
         log_info "Initializing environment..."
-        capture_logs "conda_env_create.log" conda create -y -n gantry pip
+        capture_logs "conda_env_create" conda create -y -n gantry pip
         conda activate gantry &> /dev/null || return 1
         log_info "Done."
     fi
@@ -400,11 +404,11 @@ function conda_setup_python {
     if [[ -z "$GANTRY_INSTALL_CMD" ]]; then
         if [[ -f 'setup.py' ]] || [[ -f 'pyproject.toml' ]] || [[ -f 'setup.cfg' ]]; then
             log_info "Installing local project..."
-            capture_logs "pip_install.log" pip install . || return 1
+            capture_logs "pip_install" pip install . || return 1
             log_info "Done."
         elif [[ -f 'requirements.txt' ]]; then
             log_info "Installing packages from requirements.txt..."
-            capture_logs "pip_install.log" pip install -r requirements.txt || return 1
+            capture_logs "pip_install" pip install -r requirements.txt || return 1
             log_info "Done."
         fi
     else
@@ -421,7 +425,7 @@ function setup_python {
         conda_setup_python || return 1
     else
         log_error "unknown python manager '$GANTRY_PYTHON_MANAGER'"
-        exit 1
+        return 1
     fi
     
     if [[ -z "$PYTHONPATH" ]]; then
@@ -447,7 +451,7 @@ echo -e "\e[36m\e[1m
 ##########################################
 \e[0m"
 
-capture_logs "bash_version.log" bash --version
+log_info "Shell is $(bash --version | head -n 1)."
 
 log_info "Checking for required env variables..."
 for env_var in "GITHUB_REPO" "GIT_REF" "RESULTS_DIR" "BEAKER_RESULT_DATASET_ID"; do
@@ -463,6 +467,8 @@ for tool in "git" "curl"; do
     if ! command -v "$tool" &> /dev/null; then
         log_error "required tool '$tool' is not installed, please build or use an existing image that comes with '$tool'."
         exit 1
+    else
+        log_info "Using $($tool --version | head -n 1)."
     fi
 done
 log_info "Done."
@@ -503,15 +509,15 @@ echo -e "\e[36m\e[1m
 git config --global advice.detachedHead false
 
 log_info "Cloning source code..."
-with_retries 5 10 clone_repo
+with_retries 5 capture_logs "clone_repo" clone_repo
 log_info "Done."
 
 log_info "Checking out '$GIT_REF'..."
-capture_logs "git_checkout.log" git checkout "$GIT_REF"
+capture_logs "git_checkout" git checkout "$GIT_REF"
 log_info "Done."
 
 log_info "Initializing git submodules..."
-capture_logs "init_submodules.log" git submodule update --init --recursive
+capture_logs "init_submodules" git submodule update --init --recursive
 log_info "Done."
 
 if [[ -z "$GANTRY_NO_PYTHON" ]]; then
