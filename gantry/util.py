@@ -9,7 +9,7 @@ from datetime import timedelta
 from enum import Enum
 from fnmatch import fnmatch
 from pathlib import Path
-from typing import Iterable, List, Optional, Sequence, cast
+from typing import Dict, Iterable, List, Optional, Sequence, cast
 
 import rich
 from beaker import (
@@ -246,7 +246,7 @@ def filter_clusters_by_name(
     beaker: Beaker, clusters: Iterable[BeakerCluster], patterns: Sequence[str]
 ) -> List[BeakerCluster]:
     matches = set()
-    matches_by_pattern = defaultdict(int)
+    matches_by_pattern: Dict[str, int] = defaultdict(int)
     final_clusters = []
     for cl in clusters:
         cl_aliases = list(cl.aliases) + [cl.name]
