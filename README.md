@@ -19,7 +19,8 @@
 </div>
 
 <!-- begin intro -->
-![2025-04-23 16 40 53](https://github.com/user-attachments/assets/b888c8cb-4df9-49f6-9891-492f56d0df78)
+![2025-07-18 12 49 12](https://github.com/user-attachments/assets/82fa93ae-f512-4e76-ab95-95a535515e5b)
+
 
 ⚡️*Easy to use*
 
