@@ -132,7 +132,7 @@ pip install -e .
 
     The first time you call `gantry run ...` you'll also be prompted to provide a [GitHub personal access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token) with the `repo` scope if your repository is private. This allows Gantry to clone your private repository when it runs in Beaker. You don't have to do this just yet (Gantry will prompt you for it), but if you need to update this token later you can use the `gantry config set-gh-token` command.
 
-3. **Specify your Python environment.**
+3. (Optional) **Specify your Python environment.**
 
     Typically you'll have to create one of several different files to specify your Python environment. There are three widely used options:
 
@@ -155,6 +155,19 @@ gantry run --show-logs -- python -c 'print("Hello, World!")'
 ```
 
 *❗Note: Everything after the `--` is the command + arguments you want to run on Beaker. It's necessary to include the `--` if any of your arguments look like options themselves (like `-c` in this example) so gantry can differentiate them from its own options.*
+
+In this case we didn't request any GPUs nor a specific cluster, so this could run on any Beaker cluster.
+We can use the `--gpu-type` and `--gpus` options to get GPUs. For example:
+
+```bash
+gantry run --show-logs --gpu-type=h100 --gpus=1 -- python -c 'print("Hello, World!")'
+```
+
+Or we can use the `--cluster` option to request clusters by their name or aliases. For example:
+
+```bash
+gantry run --show-logs --cluster=ai2/jupiter --gpus=1 -- python -c 'print("Hello, World!")'
+```
 
 Try `gantry run --help` to see all of the available options.
 <!-- end quickstart -->
