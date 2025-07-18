@@ -5,6 +5,7 @@ from click_option_group import optgroup
 from .. import constants
 from ..api import launch_experiment
 from ..exceptions import *
+from ..util import get_local_python_version
 from .main import CLICK_COMMAND_DEFAULTS, main, new_optgroup
 
 
@@ -33,18 +34,17 @@ from .main import CLICK_COMMAND_DEFAULTS, main, new_optgroup
 @new_optgroup("Launch settings")
 @optgroup.option(
     "--show-logs/--no-logs",
-    default=True,
-    show_default=True,
-    help="""Whether or not to stream the logs to stdout as the experiment runs.
-    This only takes effect when --timeout is non-zero.""",
+    default=None,
+    help="""Whether or not to stream the logs to stdout as the experiment runs.""",
 )
 @optgroup.option(
     "--timeout",
     type=int,
-    default=0,
+    default=None,
     help="""Time to wait (in seconds) for the experiment to finish.
     A timeout of -1 means wait indefinitely.
-    A timeout of 0 means don't wait at all.""",
+    A timeout of 0 means don't wait at all.
+    This defaults to 0 unless you set --show-logs, in which case it defaults to -1.""",
     show_default=True,
 )
 @optgroup.option(
@@ -72,8 +72,8 @@ from .main import CLICK_COMMAND_DEFAULTS, main, new_optgroup
     type=str,
     multiple=True,
     default=None,
-    help="""A potential cluster to use. This option can be used multiple times to allow multiple clusters.
-    You also specify it as a wildcard, e.g. '--cluster ai2/*-cirrascale'.
+    help="""The name of a cluster to use or a glob pattern, e.g. --cluster='ai2/*-cirrascale'.
+    Multiple allowed.
     If you don't specify a cluster or the priority, the priority will default to 'preemptible' and
     the job will be able to run on any on-premise cluster.""",
     show_default=True,
@@ -84,7 +84,7 @@ from .main import CLICK_COMMAND_DEFAULTS, main, new_optgroup
     type=str,
     multiple=True,
     default=None,
-    help="""Launch on any cluster with this type of GPU (e.g. "--gpu-type=h100").
+    help="""Filter clusters by GPU type (e.g. "--gpu-type=h100").
     Multiple allowed.""",
     show_default=True,
 )
@@ -94,7 +94,7 @@ from .main import CLICK_COMMAND_DEFAULTS, main, new_optgroup
     type=str,
     multiple=True,
     default=None,
-    help="""Launch on any cluster with this tag (e.g. "--tag=storage:weka").
+    help="""Filter clusters by a tag (e.g. "--tag=storage:weka").
     Multiple allowed, in which case only clusters that have all specified tags will be used.""",
 )
 @optgroup.option(
@@ -111,22 +111,23 @@ from .main import CLICK_COMMAND_DEFAULTS, main, new_optgroup
 @optgroup.option(
     "--cpus",
     type=float,
-    help="""Minimum number of logical CPU cores (e.g. 4.0, 0.5).""",
+    help="""The number of logical CPU cores (e.g. 4.0, 0.5) to assign to each task replica.""",
 )
 @optgroup.option(
     "--gpus",
     type=int,
-    help="""Minimum number of GPUs (e.g. 1).""",
+    help="""The number of GPUs (e.g. 1) to assign to each task replica.""",
 )
 @optgroup.option(
     "--memory",
     type=str,
-    help="""Minimum available system memory as a number with unit suffix (e.g. 2.5GiB).""",
+    help="""The amount of system memory to assign to each task replica.
+    This should be specified as a number with unit suffix (e.g. 2.5GiB).""",
 )
 @optgroup.option(
     "--shared-memory",
     type=str,
-    help="""Size of /dev/shm as a number with unit suffix (e.g. 2.5GiB).""",
+    help="""The size of /dev/shm as a number with unit suffix (e.g. 2.5GiB).""",
 )
 @new_optgroup("Inputs")
 @optgroup.option(
@@ -165,6 +166,13 @@ from .main import CLICK_COMMAND_DEFAULTS, main, new_optgroup
     multiple=True,
     help="""A weka bucket to mount in the form of 'bucket-name:/mount/location',
     e.g. --weka=oe-training-default:/data""",
+)
+@optgroup.option(
+    "--runtime-dir",
+    type=str,
+    default=constants.RUNTIME_DIR,
+    help="""The runtime directory on the image.""",
+    show_default=True,
 )
 @optgroup.option(
     "--env",
@@ -279,57 +287,109 @@ from .main import CLICK_COMMAND_DEFAULTS, main, new_optgroup
     type=str,
     help="""
     If set, jobs in the replicated task will wait this long to start until all other jobs are also ready.
+    This should be specified as a duration such as '5m', '30s', etc.
     """,
 )
 @optgroup.option(
     "--skip-tcpxo-setup",
     is_flag=True,
-    help="""By default Gantry will configure NCCL for TCPXO when running multi-node job on Augusta,
-    but you can use this flag to skip that step if you need a custom configuration.
+    help="""By default Gantry will configure NCCL for TCPXO when running a multi-node job on Augusta
+    (--replicas > 1), but you can use this flag to skip that step if you need a custom configuration.
     If you do use this flag, you'll probably need to follow all of the steps documented here:
 
     https://beaker-docs.allen.ai/compute/augusta.html#distributed-workloads""",
 )
+@new_optgroup("Setup hooks")
+@optgroup.option(
+    "--pre-setup",
+    type=str,
+    help="""Set a custom command or shell script to run before gantry's setup steps.""",
+)
+@optgroup.option(
+    "--post-setup",
+    type=str,
+    help="""Set a custom command or shell script to run after gantry's setup steps.""",
+)
 @new_optgroup("Python settings")
 @optgroup.option(
-    "--conda",
-    type=click.Path(exists=True, dir_okay=False),
-    help=f"""Path to a conda environment file for reconstructing your Python environment.
-    If not specified, '{constants.CONDA_ENV_FILE}' will be used if it exists.""",
+    "--python-manager",
+    type=click.Choice(["uv", "conda"]),
+    help="""The tool to use to manage Python installations and environments at runtime.
+    If not specified this will default to 'uv' (recommended) in most cases, unless other '--conda-*' specific options
+    are given.""",
 )
 @optgroup.option(
-    "--venv",
+    "--default-python-version",
     type=str,
-    help="""The name of an existing conda environment on the image to use.""",
+    default=get_local_python_version(),
+    help="""The default Python version to use when constructing a new Python environment.
+    This will be ignored if gantry is instructed to use an existing Python distribution/environment
+    on the image, such as with the --system-python flag, or the --python-venv option.""",
+    show_default=True,
 )
 @optgroup.option(
-    "--python-version",
+    "--system-python",
+    is_flag=True,
+    help="""If set, gantry will try to use the default Python installation on the image.
+    Though the behavior is a little different when using conda as the Python manager, in which
+    case gantry will try to use the base conda environment.""",
+)
+@optgroup.option(
+    "--python-venv",
     type=str,
-    help="""The default Python version to use when constructing a new Python environment (e.g. --python-version='3.12').
-    This won't be applied if --venv is specified or a conda environment file is used.""",
+    help="""A path to a Python virtual environment on the image.
+    Only valid when using uv as the --python-manager.""",
 )
 @optgroup.option(
-    "--pip",
+    "--uv-extra",
+    "uv_extras",
+    type=str,
+    multiple=True,
+    help="""Include optional dependencies for your local project from the specified extra name.
+    Can be specified multiple times.
+    If not provided, all extras will be installed unless --uv-no-extras is given.
+    Only valid when using uv as the --python-manager.""",
+)
+@optgroup.option(
+    "--uv-all-extras/--uv-no-extras",
+    is_flag=True,
+    help="""Install your local project with all extra dependencies, or no extra dependencies.
+    This defaults to true unless --uv-extra is specified.
+    Only valid when using uv as the --python-manager.""",
+    default=None,
+)
+@optgroup.option(
+    "--uv-torch-backend",
+    type=str,
+    help="""The backend to use when installing packages in the PyTorch ecosystem with uv.
+    Valid options are 'auto', 'cpu', 'cu128', etc.
+    Only valid when using uv as the --python-manager.""",
+)
+@optgroup.option(
+    "--conda-file",
     type=click.Path(exists=True, dir_okay=False),
-    help=f"""Path to a PIP requirements file for reconstructing your Python environment.
-    If not specified, '{constants.PIP_REQUIREMENTS_FILE}' will be used if it exists.""",
+    help="""Path to a conda environment file for reconstructing your Python environment.
+    If not specified, an 'environment.yml'/'environment.yaml' file will be used if it exists.
+    Only valid when using conda as the --python-manager.""",
+)
+@optgroup.option(
+    "--conda-env",
+    type=str,
+    help="""The name or path to an existing conda environment on the image to use.
+    Only valid when using conda as the --python-manager.""",
 )
 @optgroup.option(
     "--install",
     type=str,
-    help="""Override the default Python installation method with a custom command or shell script,
+    help="""Override the default Python project installation method with a custom command or shell script,
     e.g. '--install "python setup.py install"' or '--install "my-custom-install-script.sh"'.""",
-)
-@optgroup.option(
-    "--no-conda",
-    is_flag=True,
-    help="""If set, gantry will skip setting up conda to construct a Python environment
-    and instead will use the default Python environment on the image.""",
 )
 @optgroup.option(
     "--no-python",
     is_flag=True,
-    help="""If set, gantry will skip setting up a Python environment altogether.""",
+    help="""If set, gantry will skip setting up a Python environment altogether.
+    This can be useful if your experiment doesn't need Python or if your image
+    already contains a complete Python environment.""",
 )
 def run(*args, **kwargs):
     """
@@ -337,6 +397,6 @@ def run(*args, **kwargs):
 
     Example:
 
-    $ gantry run --yes --timeout=-1 -- python -c 'print("Hello, World!")'
+    $ gantry run --yes --show-logs -- python -c 'print("Hello, World!")'
     """
     launch_experiment(*args, **kwargs)

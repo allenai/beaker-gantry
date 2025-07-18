@@ -54,7 +54,7 @@ This requires experience with Docker, experience writing Beaker experiment specs
 
 With Gantry, on the other hand, that same workflow simplifies down to this:
 
-1. Write a PIP `requirements.txt` file, a conda `environment.yml` file, or a `setup.py`/`pyproject.toml` file.
+1. Write a `pyproject.toml`/`setup.py` file, a PIP `requirements.txt` file, a or conda `environment.yml` file.
 2. Commit and push your changes.
 3. Submit and track a Beaker experiment with the `gantry run` command.
 4. Make changes and repeat from step 2.
@@ -135,9 +135,9 @@ pip install -e .
 
     Typically you'll have to create one of several different files to specify your Python environment. There are three widely used options:
 
-    1. A PIP [`requirements.txt`](https://pip.pypa.io/en/stable/user_guide/#requirements-files) file.
-    2. A conda [`environment.yml`](https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html#create-env-file-manually) file.
-    3. A [`setup.py`](https://docs.python.org/3/distutils/introduction.html#a-simple-example) or [`pyproject.toml`](https://pip.pypa.io/en/stable/reference/build-system/pyproject-toml/) file.
+    1. A [`pyproject.toml`](https://pip.pypa.io/en/stable/reference/build-system/pyproject-toml/) or [`setup.py`](https://docs.python.org/3/distutils/introduction.html#a-simple-example) file.
+    2. A PIP [`requirements.txt`](https://pip.pypa.io/en/stable/user_guide/#requirements-files) file.
+    3. A conda [`environment.yml`](https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html#create-env-file-manually) file.
 
     Gantry will automatically find and use these files to reconstruct your Python environment at runtime.
     Alternatively you can provide a custom Python install command with the `--install` option to `gantry run`, or skip the Python setup completely with `--no-python`.
@@ -150,7 +150,7 @@ First make sure you've committed *and* pushed all changes so far in your reposit
 Then (from the root of your repository) run:
 
 ```bash
-gantry run --timeout -1 -- python -c 'print("Hello, World!")'
+gantry run --show-logs -- python -c 'print("Hello, World!")'
 ```
 
 *❗Note: Everything after the `--` is the command + arguments you want to run on Beaker. It's necessary to include the `--` if any of your arguments look like options themselves (like `-c` in this example) so gantry can differentiate them from its own options.*
@@ -162,17 +162,19 @@ Try `gantry run --help` to see all of the available options.
 
 ### Can I use my own Docker/Beaker image?
 
-You sure can! Just set the `--beaker-image` or `--docker-image` flag.
+You sure can! Just set the `--beaker-image TEXT` or `--docker-image TEXT` option.
 Gantry can use any image that has bash, curl, and git installed.
+
+If your image comes with a Python environment that you want gantry to use, add the flag `--system-python`.
+For example:
+
+```bash
+gantry run --show-logs --docker-image='python:3.10' --system-python -- python --version
+```
 
 ### Will Gantry work for GPU experiments?
 
-Absolutely! This was the main use-case Gantry was developed for. Just set the `--gpus` option for `gantry run` to the number of GPUs you need.
-
-### Can I use both conda environment and PIP requirements files?
-
-Yes you can. Gantry will initialize your environment using your conda environment file (if you have one)
-and then will also check for a PIP requirements file.
+Absolutely! This was the main use-case Gantry was developed for. Just set the `--gpus INT` option for `gantry run` to the number of GPUs you need, and optionally `--gpu-type TEXT` (e.g. `--gpu-type=h100`).
 
 ### How can I save results or metrics from an experiment?
 
@@ -180,26 +182,81 @@ By default Gantry uses the `/results` directory on the image as the location of 
 That means that everything your experiment writes to this directory will be persisted as a Beaker dataset when the experiment finalizes.
 And you can also create Beaker metrics for your experiment by writing a JSON file called `metrics.json` in the `/results` directory.
 
-### How can I just see the Beaker experiment spec that Gantry uses?
+### How can I see the Beaker experiment spec that Gantry uses?
 
 You can use the `--dry-run` option with `gantry run` to see what Gantry will submit without actually submitting an experiment.
 You can also use `--save-spec PATH` in combination with `--dry-run` to save the actual experiment spec to a YAML file.
 
 ### How can I update Gantry's GitHub token?
 
-Just use the command `gantry config set-gh-token`.
+Use the command `gantry config set-gh-token`.
 
 ### How can I attach Beaker datasets to an experiment?
 
-Just use the `--dataset` option for `gantry run`. For example:
+Use the `--dataset` option for `gantry run`. For example:
 
 ```bash
-gantry run --dataset 'petew/squad-train:/input-data' -- ls /input-data
+gantry run --show-logs --dataset='petew/squad-train:/input-data' -- ls /input-data
+```
+
+### How can I attach a WEKA bucket to an experiment?
+
+Use the `--weka` option for `gantry run`. For example:
+
+```bash
+gantry run --show-logs --weka='oe-training-default:/mount/weka' -- ls -l /mount/weka
 ```
 
 ### How can I run distributed batch jobs with Gantry?
 
-The three options `--replicas` (int), `--leader-selection` (flag), and `--host-networking` (flag) used together give you the ability to run distributed batch jobs. See the [Beaker docs](https://beaker-docs.apps.allenai.org/experiments/distributed-training.html#batch-jobs) for more information.
+The three options `--replicas INT`, `--leader-selection`, `--host-networking` used together give you the ability to run distributed batch jobs. See the [Beaker docs](https://beaker-docs.apps.allenai.org/experiments/distributed-training.html#batch-jobs) for more information.
+Consider also setting `--propagate-failure`, `--propagate-preemption`, and `--synchronized-start-timeout TEXT` depending on your workload.
+
+For example:
+
+```bash
+gantry run \
+  --show-logs \
+  --replicas=2 \
+  --leader-selection \
+  --host-networking \
+  --propagate-failure \
+  --propagate-preemption \
+  --synchronized-start-timeout=5m \
+  --gpu-type=h100 \
+  --gpus=8 \
+  -- torchrun \
+    '--nnodes="${BEAKER_REPLICA_COUNT}:${BEAKER_REPLICA_COUNT}"' \
+    '--nproc-per-node="${BEAKER_ASSIGNED_GPU_COUNT}"' \
+    '--rdzv_id=12347' \
+    '--rdzv_backend=static' \
+    '--rdzv_endpoint="${BEAKER_LEADER_REPLICA_HOSTNAME}:29400"' \
+    '--node_rank="${BEAKER_REPLICA_RANK}"' \
+    '--rdzv_conf="read_timeout=420"' \
+    train.py
+```
+
+### How can I customize the Python setup steps?
+
+If gantry's default Python setup steps don't work for you, you can override them through the `--install TEXT` option with a custom command or shell script.
+For example:
+
+```bash
+gantry run --show-logs --install='pip install -e .[dev]' -- python -c 'import my_project'
+```
+
+### Can I use conda like with older versions of gantry?
+
+Yes, you can still use conda if you wish by committing a conda `environment.yml` file to your repo or by simply specifying `--python-manager=conda`.
+For example:
+
+```bash
+gantry run --show-logs --python-manager=conda -- which python
+```
+
+### Can I use gantry with non-Python workloads?
+
+Absolutely, just add the flag `--no-python` and optionally set `--install` or `--post-setup` to a custom command or shell script if you need custom setup steps.
 
 ### Why "Gantry"?
 

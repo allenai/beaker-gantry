@@ -2,19 +2,18 @@
 Gantry's public API.
 """
 
-import platform
 import random
 import string
 import sys
 import time
-from fnmatch import fnmatch
 from pathlib import Path
-from typing import List, Optional, Sequence, Tuple, Union
+from typing import List, Literal, Optional, Sequence, Tuple, Union
 
 import rich
 from beaker import (
     Beaker,
     BeakerCancelationCode,
+    BeakerCluster,
     BeakerExperimentSpec,
     BeakerGroup,
     BeakerJob,
@@ -39,7 +38,7 @@ from . import constants, util
 from .aliases import PathOrStr
 from .exceptions import *
 from .git_utils import GitRepoState
-from .util import print_stderr
+from .util import get_local_python_version, print_stderr
 from .version import VERSION
 
 __all__ = ["GitRepoState", "launch_experiment", "follow_workload"]
@@ -127,15 +126,20 @@ def launch_experiment(
     gh_token_secret: str = constants.GITHUB_TOKEN_SECRET,
     ref: Optional[str] = None,
     branch: Optional[str] = None,
-    conda: Optional[PathOrStr] = None,
-    pip: Optional[PathOrStr] = None,
-    venv: Optional[str] = None,
+    conda_file: Optional[PathOrStr] = None,
+    conda_env: Optional[str] = None,
+    python_manager: Optional[Literal["uv", "conda"]] = None,
+    system_python: bool = False,
+    python_venv: Optional[str] = None,
+    uv_extras: Optional[Sequence[str]] = None,
+    uv_all_extras: Optional[bool] = None,
+    uv_torch_backend: Optional[str] = None,
     env_vars: Optional[Sequence[str]] = None,
     env_secrets: Optional[Sequence[str]] = None,
     dataset_secrets: Optional[Sequence[str]] = None,
-    timeout: int = 0,
+    timeout: Optional[int] = None,
     task_timeout: Optional[str] = None,
-    show_logs: bool = True,
+    show_logs: Optional[bool] = None,
     allow_dirty: bool = False,
     dry_run: bool = False,
     yes: bool = False,
@@ -143,7 +147,6 @@ def launch_experiment(
     priority: Optional[str] = None,
     install: Optional[str] = None,
     no_python: bool = False,
-    no_conda: bool = False,
     replicas: Optional[int] = None,
     leader_selection: bool = False,
     host_networking: bool = False,
@@ -156,8 +159,11 @@ def launch_experiment(
     preemptible: Optional[bool] = None,
     retries: Optional[int] = None,
     results: str = constants.RESULTS_DIR,
+    runtime_dir: str = constants.RUNTIME_DIR,
     skip_tcpxo_setup: bool = False,
-    python_version: Optional[str] = None,
+    default_python_version: str = get_local_python_version(),
+    pre_setup: Optional[str] = None,
+    post_setup: Optional[str] = None,
 ):
     """
     Launch an experiment on Beaker. Same as the ``gantry run`` command.
@@ -165,11 +171,10 @@ def launch_experiment(
 
     _validate_args(args)
 
-    if install:
-        if no_python:
-            raise ConfigurationError("--no-python and --install='...' are mutually exclusive.")
-        if pip:
-            raise ConfigurationError("--pip='...' and --install='...' are mutually exclusive.")
+    if timeout is None:
+        timeout = -1 if show_logs else 0
+    if show_logs is None:
+        show_logs = timeout != 0
 
     if beaker_image is None and docker_image is None:
         beaker_image = constants.DEFAULT_IMAGE
@@ -298,75 +303,47 @@ def launch_experiment(
 
         # Validate clusters.
         if clusters or gpu_types or tags:
-            cl_objects = list(beaker.cluster.list())
-            gpu_type_matches = 0
-            tag_matches = 0
+            constraints = []
+            if clusters:
+                constraints.append(f'''name matches any of: "{'", "'.join(clusters)}"''')
+            if tags:
+                constraints.append(f'''has the tag(s): "{'", "'.join(tags)}"''')
+            if gpu_types:
+                constraints.append(
+                    f'''has any one of these GPU types: "{'", "'.join(gpu_types)}"'''
+                )
 
-            final_clusters = []
-            for pat in clusters or ["*"]:
-                org = beaker.org_name
-
-                og_pat = pat
-                if "/" in pat:
-                    org, pat = pat.split("/", 1)
-
-                matching_clusters = []
-                for cl in cl_objects:
-                    # If 'max_task_timeout' is set to 0 then tasks are not allowed.
-                    if (
-                        cl.HasField("max_task_timeout")
-                        and cl.max_task_timeout.ToMilliseconds() == 0
-                    ):
-                        continue
-
-                    cl_aliases = list(cl.aliases) + [cl.name]
-                    if (
-                        not any([fnmatch(alias, pat) for alias in cl_aliases])
-                        or cl.organization_name != org
-                    ):
-                        continue
-
-                    if gpu_types:
-                        cl_gpu_type = util.get_gpu_type(beaker, cl)
-                        if not cl_gpu_type:
-                            continue
-
-                        for pattern in gpu_types:
-                            if pattern.lower() in cl_gpu_type.lower():
-                                gpu_type_matches += 1
-                                break
-                        else:
-                            continue
-
-                    if tags:
-                        cl_tags = set(cl.tags)
-                        if not all([tag in cl_tags for tag in tags]):
-                            continue
-                        else:
-                            tag_matches += 1
-
-                    matching_clusters.append(f"{cl.organization_name}/{cl.name}")
-
-                if matching_clusters:
-                    final_clusters.extend(matching_clusters)
-                elif clusters:
-                    raise ConfigurationError(
-                        f"cluster '{og_pat}' did not match any Beaker clusters"
-                    )
-                elif gpu_types and gpu_type_matches == 0:
-                    raise ConfigurationError(
-                        f"""GPU type spec(s) "{'", "'.join(gpu_types)}" didn't match allowed clusters."""
-                    )
-                elif tags and tag_matches == 0:
-                    raise ConfigurationError(
-                        f"""Cluster tag(s) "{'", "'.join(tags)}" didn't match allowed clusters."""
-                    )
+            # Collect all clusters that support batch jobs.
+            all_clusters: List[BeakerCluster] = []
+            for cl in beaker.cluster.list():
+                # If 'max_task_timeout' is set to 0 then tasks are not allowed.
+                if cl.HasField("max_task_timeout") and cl.max_task_timeout.ToMilliseconds() == 0:
+                    continue
                 else:
-                    raise ConfigurationError(
-                        """Cluster constraints are too narrow, gantry could not find any suitable Beaker clusters."""
-                    )
+                    all_clusters.append(cl)
 
-            clusters = list(set(final_clusters))  # type: ignore
+            if not all_clusters:
+                raise RuntimeError("Failed to find any clusters that support batch jobs")
+
+            # Maybe filter clusters based on provided patterns.
+            if clusters:
+                all_clusters = util.filter_clusters_by_name(beaker, all_clusters, clusters)
+
+            # Maybe filter based on tags.
+            if tags:
+                all_clusters = util.filter_clusters_by_tags(beaker, all_clusters, tags)
+
+            # Filter based on GPU types.
+            if gpu_types:
+                all_clusters = util.filter_clusters_by_gpu_type(beaker, all_clusters, gpu_types)
+
+            if not all_clusters:
+                constraints_str = "\n - ".join(constraints)
+                raise ConfigurationError(
+                    f"Failed to find clusters satisfying the given constraints:\n - {constraints_str}"
+                )
+            else:
+                clusters = [f"{cl.organization_name}/{cl.name}" for cl in all_clusters]
 
         # Default to preemptible when no cluster has been specified.
         if not clusters and preemptible is None:
@@ -385,9 +362,14 @@ def launch_experiment(
             beaker_image=beaker_image,
             docker_image=docker_image,
             gh_token_secret=gh_token_secret if not git_config.is_public else None,
-            conda=conda,
-            pip=pip,
-            venv=venv,
+            conda_file=conda_file,
+            conda_env=conda_env,
+            python_manager=python_manager,
+            system_python=system_python,
+            python_venv=python_venv,
+            uv_extras=uv_extras,
+            uv_all_extras=uv_all_extras,
+            uv_torch_backend=uv_torch_backend,
             datasets=datasets_to_use,
             env=env_vars_to_use,
             env_secrets=env_secrets_to_use,
@@ -395,7 +377,6 @@ def launch_experiment(
             priority=priority,
             install=install,
             no_python=no_python,
-            no_conda=no_conda,
             replicas=replicas,
             leader_selection=leader_selection,
             host_networking=host_networking or (bool(replicas) and leader_selection),
@@ -409,8 +390,11 @@ def launch_experiment(
             preemptible=preemptible,
             retries=retries,
             results=results,
+            runtime_dir=runtime_dir,
             skip_tcpxo_setup=skip_tcpxo_setup,
-            python_version=python_version,
+            default_python_version=default_python_version,
+            pre_setup=pre_setup,
+            post_setup=post_setup,
         )
 
         if save_spec:
@@ -516,9 +500,14 @@ def _build_experiment_spec(
     beaker_image: Optional[str] = None,
     docker_image: Optional[str] = None,
     gh_token_secret: Optional[str] = constants.GITHUB_TOKEN_SECRET,
-    conda: Optional[PathOrStr] = None,
-    pip: Optional[PathOrStr] = None,
-    venv: Optional[str] = None,
+    conda_file: Optional[PathOrStr] = None,
+    conda_env: Optional[str] = None,
+    python_manager: Optional[Literal["uv", "conda"]] = None,
+    system_python: bool = False,
+    python_venv: Optional[str] = None,
+    uv_extras: Optional[Sequence[str]] = None,
+    uv_all_extras: Optional[bool] = None,
+    uv_torch_backend: Optional[str] = None,
     datasets: Optional[List[Tuple[str, Optional[str], str]]] = None,
     env: Optional[List[Tuple[str, str]]] = None,
     env_secrets: Optional[List[Tuple[str, str]]] = None,
@@ -526,7 +515,6 @@ def _build_experiment_spec(
     priority: Optional[Union[str, BeakerJobPriority]] = None,
     install: Optional[str] = None,
     no_python: bool = False,
-    no_conda: bool = False,
     replicas: Optional[int] = None,
     leader_selection: bool = False,
     host_networking: bool = False,
@@ -540,8 +528,11 @@ def _build_experiment_spec(
     preemptible: Optional[bool] = None,
     retries: Optional[int] = None,
     results: str = constants.RESULTS_DIR,
+    runtime_dir: str = constants.RUNTIME_DIR,
     skip_tcpxo_setup: bool = False,
-    python_version: Optional[str] = None,
+    default_python_version: str = get_local_python_version(),
+    pre_setup: Optional[str] = None,
+    post_setup: Optional[str] = None,
 ):
     task_spec = (
         BeakerTaskSpec.new(
@@ -567,6 +558,7 @@ def _build_experiment_spec(
         .with_env_var(name="GIT_REF", value=git_config.ref)
         .with_env_var(name="GANTRY_TASK_NAME", value=task_name)
         .with_env_var(name="RESULTS_DIR", value=results)
+        .with_env_var(name="GANTRY_RUNTIME_DIR", value=runtime_dir)
         .with_dataset("/gantry", beaker=entrypoint_dataset)
     )
 
@@ -585,55 +577,149 @@ def _build_experiment_spec(
     if skip_tcpxo_setup:
         task_spec = task_spec.with_env_var(name="GANTRY_SKIP_TCPXO_SETUP", value="1")
 
-    for name, val in env or []:
-        task_spec = task_spec.with_env_var(name=name, value=val)
-
-    for name, secret in env_secrets or []:
-        task_spec = task_spec.with_env_var(name=name, secret=secret)
-
     if no_python:
-        task_spec = task_spec.with_env_var(name="NO_PYTHON", value="1")
+        task_spec = task_spec.with_env_var(name="GANTRY_NO_PYTHON", value="1")
+
+        if (
+            python_manager is not None
+            or system_python
+            or python_venv is not None
+            or uv_all_extras is not None
+            or uv_extras
+            or uv_torch_backend is not None
+            or conda_env is not None
+            or conda_file is not None
+        ):
+            raise ConfigurationError("other python options can't be used with --no-python")
     else:
-        if not no_conda:
-            if conda is not None:
-                task_spec = task_spec.with_env_var(
-                    name="CONDA_ENV_FILE",
-                    value=str(conda),
-                )
-            elif Path(constants.CONDA_ENV_FILE).is_file():
-                task_spec = task_spec.with_env_var(
-                    name="CONDA_ENV_FILE",
-                    value=constants.CONDA_ENV_FILE,
-                )
-            elif Path(constants.CONDA_ENV_FILE_ALTERNATE).is_file():
-                task_spec = task_spec.with_env_var(
-                    name="CONDA_ENV_FILE",
-                    value=constants.CONDA_ENV_FILE_ALTERNATE,
-                )
-            else:
-                task_spec = task_spec.with_env_var(
-                    name="PYTHON_VERSION",
-                    value=python_version
-                    if python_version is not None
-                    else ".".join(platform.python_version_tuple()[:-1]),
-                )
+        has_project_file = (
+            git_config.is_in_tree("pyproject.toml")
+            or git_config.is_in_tree("setup.py")
+            or git_config.is_in_tree("setup.cfg")
+        )
 
-            if venv is not None:
-                task_spec = task_spec.with_env_var(
-                    name="VENV_NAME",
-                    value=venv,
-                )
-        else:
-            task_spec = task_spec.with_env_var(name="NO_CONDA", value="1")
+        task_spec = task_spec.with_env_var(
+            name="GANTRY_DEFAULT_PYTHON_VERSION",
+            value=default_python_version,
+        )
 
-        if pip is not None:
+        if system_python:
             task_spec = task_spec.with_env_var(
-                name="PIP_REQUIREMENTS_FILE",
-                value=str(pip),
+                name="GANTRY_USE_SYSTEM_PYTHON",
+                value="1",
             )
 
-        if install is not None:
-            task_spec = task_spec.with_env_var(name="INSTALL_CMD", value=install)
+        if python_manager is None:
+            if (
+                conda_env is not None
+                or conda_file is not None
+                or git_config.is_in_tree("environment.yml")
+                or git_config.is_in_tree("environment.yaml")
+            ):
+                python_manager = "conda"
+            else:
+                python_manager = "uv"
+        elif python_manager not in {"uv", "conda"}:
+            raise ConfigurationError(
+                f"unknown option for --python-manager: '{python_manager}'. Should be either 'uv' or 'conda'."
+            )
+
+        task_spec = task_spec.with_env_var(
+            name="GANTRY_PYTHON_MANAGER",
+            value=python_manager,
+        )
+
+        if python_manager == "uv":
+            if conda_env is not None or conda_file is not None:
+                raise ConfigurationError(
+                    "--conda-* options are only relevant when using the conda python manager (--python-manager=conda)."
+                )
+
+            if python_venv is not None:
+                if system_python:
+                    raise ConfigurationError(
+                        "--system-python flag is incompatible with --python-venv option."
+                    )
+
+                task_spec = task_spec.with_env_var(
+                    name="GANTRY_PYTHON_VENV",
+                    value=python_venv,
+                )
+
+            if uv_all_extras is None:
+                if not uv_extras and has_project_file:
+                    uv_all_extras = True
+                else:
+                    uv_all_extras = False
+            elif uv_extras:
+                raise ConfigurationError(
+                    "--uv-all-extras/--uv-no-extras is mutually exclusive with --uv-extra"
+                )
+
+            if uv_all_extras:
+                if not has_project_file:
+                    raise ConfigurationError(
+                        "--uv-all-extras is only valid when you have a pyproject.toml, setup.py, or setup.cfg file."
+                    )
+
+                task_spec = task_spec.with_env_var(name="GANTRY_UV_ALL_EXTRAS", value="1")
+
+            if uv_extras:
+                if not has_project_file:
+                    raise ConfigurationError(
+                        "--uv-extra is only valid when you have a pyproject.toml, setup.py, or setup.cfg file."
+                    )
+
+                task_spec = task_spec.with_env_var(
+                    name="GANTRY_UV_EXTRAS", value=" ".join(uv_extras)
+                )
+
+            if uv_torch_backend is not None:
+                task_spec = task_spec.with_env_var(name="UV_TORCH_BACKEND", value=uv_torch_backend)
+        elif python_manager == "conda":
+            if python_venv is not None:
+                raise ConfigurationError(
+                    "--python-venv option cannot be used with conda python manager. Did you mean --conda-env?"
+                )
+
+            if uv_torch_backend is not None:
+                raise ConfigurationError(
+                    "--uv-torch-backend option cannot be used with conda python manager."
+                )
+
+            if conda_env is not None:
+                if system_python:
+                    raise ConfigurationError(
+                        "--system-python flag is incompatible with --conda-env option."
+                    )
+
+                task_spec = task_spec.with_env_var(
+                    name="GANTRY_CONDA_ENV",
+                    value=conda_env,
+                )
+
+            if conda_file is not None:
+                task_spec = task_spec.with_env_var(
+                    name="GANTRY_CONDA_FILE",
+                    value=str(conda_file),
+                )
+            else:
+                for path in ("environment.yml", "environment.yaml"):
+                    if git_config.is_in_tree(path):
+                        task_spec = task_spec.with_env_var(
+                            name="GANTRY_CONDA_FILE",
+                            value=path,
+                        )
+                        break
+
+    if install is not None:
+        task_spec = task_spec.with_env_var(name="GANTRY_INSTALL_CMD", value=install)
+
+    if pre_setup is not None:
+        task_spec = task_spec.with_env_var(name="GANTRY_PRE_SETUP_CMD", value=pre_setup)
+
+    if post_setup is not None:
+        task_spec = task_spec.with_env_var(name="GANTRY_POST_SETUP_CMD", value=post_setup)
 
     if datasets:
         for dataset_id, sub_path, path in datasets:
@@ -649,6 +735,12 @@ def _build_experiment_spec(
     if weka_buckets:
         for source, target in weka_buckets:
             task_spec = task_spec.with_dataset(target, weka=source)
+
+    for name, val in env or []:
+        task_spec = task_spec.with_env_var(name=name, value=val)
+
+    for name, secret in env_secrets or []:
+        task_spec = task_spec.with_env_var(name=name, secret=secret)
 
     return BeakerExperimentSpec(
         description=description,

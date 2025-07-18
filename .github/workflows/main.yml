@@ -53,7 +53,7 @@ jobs:
               isort --check .
               black --check .
 
-          - name: Example - Hello, World!
+          - name: Example - no python
             run: |
               gantry run \
                 --workspace "$BEAKER_WORKSPACE" \
@@ -62,7 +62,7 @@ jobs:
                 --yes \
                 -- echo "Hello, World!"
 
-          - name: Example - Metrics 
+          - name: Example - metrics 
             run: |
               gantry run \
                 --workspace "$BEAKER_WORKSPACE" \
@@ -70,22 +70,42 @@ jobs:
                 --yes \
                 -- python examples/metrics/run.py
 
-          - name: Example - Conda
+          - name: Example - conda from scratch
             run: |
               gantry run \
                 --workspace "$BEAKER_WORKSPACE" \
                 --timeout -1 \
-                --conda test_fixtures/conda/environment.yml \
+                --python-manager conda \
+                --beaker-image petew/gantry-dev-tools \
                 --yes \
                 -- python --version
 
-          - name: Example - Install Python
+          - name: Example - conda env file
             run: |
               gantry run \
                 --workspace "$BEAKER_WORKSPACE" \
                 --timeout -1 \
-                --beaker-image petew/gantry-dev-tools \
+                --conda-file test_fixtures/conda/environment.yml \
                 --yes \
+                -- python --version
+
+          - name: Example - uv from scratch
+            run: |
+              gantry run \
+                --workspace "$BEAKER_WORKSPACE" \
+                --timeout -1 \
+                --yes \
+                --beaker-image petew/gantry-dev-tools \
+                -- python --version
+
+          - name: Example - uv with system python
+            run: |
+              gantry run \
+                --workspace "$BEAKER_WORKSPACE" \
+                --timeout -1 \
+                --yes \
+                --docker-image 'python:3.10' \
+                --system-python \
                 -- python --version
 
     steps:

@@ -2,6 +2,7 @@ import logging
 import os
 import signal
 import sys
+from typing import Optional
 
 import click
 import rich
@@ -31,8 +32,8 @@ CLICK_COMMAND_DEFAULTS = {
 }
 
 
-def new_optgroup(name: str):
-    return optgroup.group(f"\n ❯❯❯ {name}")
+def new_optgroup(name: str, help: Optional[str] = None):
+    return optgroup.group(f"\n ❯❯❯ {name}", help=help)
 
 
 def excepthook(exctype, value, tb):
