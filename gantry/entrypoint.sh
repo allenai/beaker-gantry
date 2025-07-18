@@ -25,6 +25,10 @@ RESULTS_DATASET_URL="\e[94m\e[4mhttps://beaker.org/ds/$BEAKER_RESULT_DATASET_ID\
 
 GANTRY_PYTHON_MANAGER="${GANTRY_PYTHON_MANAGER:-uv}"
 
+###################################################################################################
+#################################### Start helper functions... ####################################
+###################################################################################################
+
 function log_debug {
     echo -e "\e[1m❯ [GANTRY DEBUG]\e[0m $1"
 }
@@ -39,6 +43,16 @@ function log_warning {
 
 function log_error {
     echo -e >&2 "\e[31m\e[1m❯ [GANTRY ERROR]\e[0m $1"
+}
+
+function log_header {
+    local header="❯❯❯ [GANTRY] $1 ❮❮❮"
+    local header_border=${header//?/#}
+    echo -e "\e[36m\e[1m
+$header_border
+$header  $2
+$header_border
+\e[0m"
 }
 
 # usage: with_retries MAX_RETRIES(INT) COMMAND(TEXT) [ARGS(ANY)...]
@@ -164,7 +178,7 @@ function ensure_conda {
     if ! command -v conda &> /dev/null; then
         log_info "Installing conda..."
 
-        with_retries 5 curl -fsSL -o ~/miniconda.sh -O https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh || return 1
+        with_retries 5 capture_logs "download_miniconda" curl -fsSL -o ~/miniconda.sh -O https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh || return 1
         chmod +x ~/miniconda.sh
 
         capture_logs "setup_conda" ~/miniconda.sh -b -p /opt/conda || return 1
@@ -232,7 +246,7 @@ function run_custom_cmd {
     local custom_cmd_purpose=$1
     local custom_cmd=$2
     if [[ -f "$custom_cmd" ]] && [[ "${custom_cmd: -3}" == ".sh" ]]; then
-        log_info "Sourcing user-defined $custom_cmd_purpose script '$custom_cmd'..."
+        log_info "Sourcing user-defined ${custom_cmd_purpose} script '${custom_cmd}'..."
 
         # shellcheck disable=SC1090
         source "$custom_cmd" || return 1
@@ -242,7 +256,7 @@ function run_custom_cmd {
 
         log_info "Done."
     else
-        log_info "Running user-defined $custom_cmd_purpose command: '$custom_cmd'"
+        log_info "Running user-defined ${custom_cmd_purpose} command: '${custom_cmd}'"
         eval "$custom_cmd" || return 1
         log_info "Done."
     fi
@@ -436,31 +450,29 @@ function setup_python {
     export PYTHONPATH
 }
 
+####################################################################################################
+########################################## Start setup... ##########################################
+####################################################################################################
+
 if [[ -n "$GANTRY_PRE_SETUP_CMD" ]]; then
-    echo -e "\e[36m\e[1m
-#########################################
-❯❯❯ [GANTRY] Running custom pre-setup ❮❮❮
-#########################################
-\e[0m"
+    log_header "Running custom pre-setup..."
     run_custom_cmd "pre-setup" "$GANTRY_PRE_SETUP_CMD"
 fi
 
-echo -e "\e[36m\e[1m
-##########################################
-❯❯❯ [GANTRY] Validating environment... ❮❮❮
-##########################################
-\e[0m"
+######################################
+log_header "Validating environment..."
+######################################
 
-log_info "Shell is $(bash --version | head -n 1)."
-
-log_info "Checking for required env variables..."
-for env_var in "GITHUB_REPO" "GIT_REF" "RESULTS_DIR" "BEAKER_RESULT_DATASET_ID"; do
+for env_var in "GITHUB_REPO" "GIT_REF" "RESULTS_DIR" "BEAKER_RESULT_DATASET_ID" "BEAKER_NODE_HOSTNAME" "BEAKER_NODE_ID" "BEAKER_ASSIGNED_GPU_COUNT"; do
     if [[ -z "${!env_var+x}" ]]; then
         log_error "required environment variable '$env_var' is empty"
         exit 1
     fi
 done
-log_info "Done."
+
+log_info "Shell is $(bash --version | head -n 1)."
+log_info "Running on Beaker node '${BEAKER_NODE_HOSTNAME}' (${BEAKER_NODE_ID})"
+log_info "Results dataset ${RESULTS_DATASET_URL} mounted to '${RESULTS_DIR}'."
 
 log_info "Checking for required tools..."
 for tool in "git" "curl"; do
@@ -472,8 +484,6 @@ for tool in "git" "curl"; do
     fi
 done
 log_info "Done."
-
-log_info "Results dataset $RESULTS_DATASET_URL mounted to '$RESULTS_DIR'."
 
 if [[ -d "/var/lib/tcpxo/lib64" ]] && [[ -n "$BEAKER_REPLICA_COUNT" ]] && [[ -z "$GANTRY_SKIP_TCPXO_SETUP" ]]; then
     log_info "Configuring NCCL for GPUDirect-TCPXO..."
@@ -489,22 +499,17 @@ if [[ -d "/var/lib/tcpxo/lib64" ]] && [[ -n "$BEAKER_REPLICA_COUNT" ]] && [[ -z 
 fi
 
 if [[ -n "$GITHUB_TOKEN" ]]; then
-    echo -e "\e[36m\e[1m
-############################################
-❯❯❯ [GANTRY] Installing prerequisites... ❮❮❮
-############################################
-\e[0m"
+    ########################################
+    log_header "Installing prerequisites..."
+    ########################################
     ensure_gh
-
     # Configure git to use the GitHub CLI as a credential helper so that we can clone private repos.
     gh auth setup-git
 fi
 
-echo -e "\e[36m\e[1m
-#######################################
-❯❯❯ [GANTRY] Cloning source code... ❮❮❮
-#######################################
-\e[0m"
+###################################
+log_header "Cloning source code..."
+###################################
 
 git config --global advice.detachedHead false
 
@@ -521,49 +526,44 @@ capture_logs "init_submodules" git submodule update --init --recursive
 log_info "Done."
 
 if [[ -z "$GANTRY_NO_PYTHON" ]]; then
-    echo -e "\e[36m\e[1m
-#######################################
-❯❯❯ [GANTRY] Building Python env... ❮❮❮
-#######################################
-\e[0m"
-
+    ###################################
+    log_header "Building Python env..."
+    ###################################
     setup_python
     
-    echo -e "\e[36m\e[1m
-########################################
-❯❯❯ [GANTRY] Python environment info ❮❮❮
-########################################
-\e[0m"
-
+    ####################################
+    log_header "Python environment info"
+    ####################################
     log_info "Using $(python --version) from '$(which python)'."
     if [[ -f "$GANTRY_DIR/requirements.txt" ]]; then
         log_info "Packages:"
         cat "$GANTRY_DIR/requirements.txt"
     fi
 elif [[ -n "$GANTRY_INSTALL_CMD" ]]; then
-    echo -e "\e[36m\e[1m
-#######################################
-❯❯❯ [GANTRY] Running custom install ❮❮❮
-#######################################
-\e[0m"
+    ######################################
+    log_header "Running custom install..."
+    ######################################
     run_custom_cmd "install" "$GANTRY_INSTALL_CMD"
 fi
 
 if [[ -n "$GANTRY_POST_SETUP_CMD" ]]; then
-    echo -e "\e[36m\e[1m
-##########################################
-❯❯❯ [GANTRY] Running custom post-setup ❮❮❮
-##########################################
-\e[0m"
+    #########################################
+    log_header "Running custom post-setup..."
+    #########################################
     run_custom_cmd "post-setup" "$GANTRY_POST_SETUP_CMD"
 fi
 
+if ((BEAKER_ASSIGNED_GPU_COUNT > 0)) && command -v nvidia-smi &> /dev/null; then
+    #################################
+    log_header "NVIDIA system status"
+    #################################
+    nvidia-smi
+fi
+
 end_time=$(date +%s)
-echo -e "\e[36m\e[1m
-#################################
-❯❯❯ [GANTRY] Setup complete ✓ ❮❮❮  (finished in $((end_time-start_time)) seconds)
-#################################
-\e[0m"
+##############################################################################
+log_header "Setup complete ✓" "(finished in $((end_time-start_time)) seconds)"
+##############################################################################
 
 # Execute the arguments to this script as commands themselves.
 # shellcheck disable=SC2296
