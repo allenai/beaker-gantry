@@ -46,7 +46,7 @@ function log_error {
 }
 
 function log_header {
-    local header="❯❯❯ [GANTRY] $1 ❮❮❮"
+    local header="### [GANTRY] $1 ###"
     local header_border="${header//?/#}"
     echo -e "\e[36m\e[1m
 $header_border
@@ -562,7 +562,7 @@ fi
 
 end_time=$(date +%s)
 ##############################################################################
-log_header "Setup complete ✓" "(finished in $((end_time-start_time)) seconds)"
+log_header "Setup complete" "(finished in $((end_time-start_time)) seconds)"
 ##############################################################################
 
 # Execute the arguments to this script as commands themselves.
