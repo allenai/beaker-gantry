@@ -11,6 +11,15 @@ N = 500000
 M = 2000
 
 
+def get_local_rank() -> int:
+    return int(os.environ["LOCAL_RANK"])
+
+
+def print_rank0(*args, **kwargs):
+    if get_local_rank() == 0:
+        print(*args, **kwargs)
+
+
 def timed_allreduce(
     mat: torch.Tensor,
     start_event: torch.cuda.Event,
@@ -39,44 +48,47 @@ def timed_allreduce(
 def main():
     os.environ.setdefault("OMP_NUM_THREADS", "8")
 
-    device = torch.device(f"cuda:{int(os.environ['LOCAL_RANK'])}")
+    device = torch.device(f"cuda:{get_local_rank()}")
     torch.cuda.set_device(device)
 
-    print("Initializing distributed process group...")
-    dist.init_process_group("nccl", timeout=timedelta(seconds=30), device_id=device)
-    print("Done.")
+    try:
+        print_rank0("Initializing distributed process group...")
+        dist.init_process_group("nccl", timeout=timedelta(seconds=30), device_id=device)
+        print_rank0("Done.")
 
-    mat = torch.rand(N, M, dtype=torch.float32).to(device)
+        mat = torch.rand(N, M, dtype=torch.float32).to(device)
 
-    start_event: torch.cuda.Event = torch.cuda.Event(enable_timing=True)
-    end_event: torch.cuda.Event = torch.cuda.Event(enable_timing=True)
+        start_event: torch.cuda.Event = torch.cuda.Event(enable_timing=True)
+        end_event: torch.cuda.Event = torch.cuda.Event(enable_timing=True)
 
-    # do a few warm up iterations
-    print("Starting warm-up...")
-    for i in range(2):
-        timed_allreduce(mat, start_event, end_event, device)
-    print("Done.")
+        # do a few warm up iterations
+        print_rank0("Starting warm-up...")
+        for i in range(2):
+            timed_allreduce(mat, start_event, end_event, device)
+        print_rank0("Done.")
 
-    # real benchmark
-    print("Starting benchmark...")
-    algbw_gather = []
-    for i in range(TRIALS):
-        print(f"{i+1}")
-        algbw_gather += timed_allreduce(mat, start_event, end_event, device)
+        # real benchmark
+        print_rank0("Starting benchmark...")
+        algbw_gather = []
+        for i in range(TRIALS):
+            print_rank0(f"{i+1}")
+            algbw_gather += timed_allreduce(mat, start_event, end_event, device)
 
-    algbw = torch.mean(torch.stack(algbw_gather))
+        algbw = torch.mean(torch.stack(algbw_gather))
 
-    # the 2*(n-1)/n busbw correction factor specific to all-reduce is explained here:
-    # https://github.com/NVIDIA/nccl-tests/blob/master/doc/PERFORMANCE.md#allreduce
-    # busbw reflects how optimally the hardware is used
-    n = dist.get_world_size()
-    busbw = algbw * (2 * (n - 1) / n)
+        # the 2*(n-1)/n busbw correction factor specific to all-reduce is explained here:
+        # https://github.com/NVIDIA/nccl-tests/blob/master/doc/PERFORMANCE.md#allreduce
+        # busbw reflects how optimally the hardware is used
+        n = dist.get_world_size()
+        busbw = algbw * (2 * (n - 1) / n)
 
-    print(
-        f"The average bandwidth of all_reduce with a {M*N*4/1e9}GB payload ({TRIALS} trials, {n} ranks):\n"
-        f"algbw: {algbw/1e9:.3f} GBps ({algbw*8/1e9:.1f} Gbps)\n"
-        f"busbw: {busbw/1e9:.3f} GBps ({busbw*8/1e9:.1f} Gbps)\n"
-    )
+        print_rank0(
+            f"The average bandwidth of all_reduce with a {M*N*4/1e9}GB payload ({TRIALS} trials, {n} ranks):\n"
+            f"algbw: {algbw/1e9:.3f} GBps ({algbw*8/1e9:.1f} Gbps)\n"
+            f"busbw: {busbw/1e9:.3f} GBps ({busbw*8/1e9:.1f} Gbps)\n"
+        )
+    finally:
+        dist.destroy_process_group()
 
 
 if __name__ == "__main__":
