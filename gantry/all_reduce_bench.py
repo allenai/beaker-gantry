@@ -37,6 +37,8 @@ def timed_allreduce(
 
 
 def main():
+    os.environ.setdefault("OMP_NUM_THREADS", "8")
+
     device = torch.device(f"cuda:{int(os.environ['LOCAL_RANK'])}")
     torch.cuda.set_device(device)
 
