@@ -39,7 +39,10 @@ def timed_allreduce(
 def main():
     device = torch.device(f"cuda:{int(os.environ['LOCAL_RANK'])}")
     torch.cuda.set_device(device)
+
+    print("Initializing distributed process group...")
     dist.init_process_group("nccl", timeout=timedelta(seconds=30), device_id=device)
+    print("Done.")
 
     mat = torch.rand(N, M, dtype=torch.float32).to(device)
 
@@ -47,10 +50,13 @@ def main():
     end_event: torch.cuda.Event = torch.cuda.Event(enable_timing=True)
 
     # do a few warm up iterations
+    print("Starting warm-up...")
     for i in range(2):
         timed_allreduce(mat, start_event, end_event, device)
+    print("Done.")
 
     # real benchmark
+    print("Starting benchmark...")
     algbw_gather = []
     for i in range(TRIALS):
         print(f"{i+1}")
