@@ -39,7 +39,7 @@ def timed_allreduce(
 def main():
     device = torch.device(f"cuda:{int(os.environ['LOCAL_RANK'])}")
     torch.cuda.set_device(device)
-    dist.init_process_group("nccl", timeout=timedelta(seconds=30))
+    dist.init_process_group("nccl", timeout=timedelta(seconds=30), device_id=device)
 
     mat = torch.rand(N, M, dtype=torch.float32).to(device)
 
