@@ -308,7 +308,7 @@ from .main import CLICK_COMMAND_DEFAULTS, main, new_optgroup
     'exec' means gantry will call 'exec "$@"' to execute your command.
     'bash' means gantry will call 'bash -c "$*"' to execute your command.
     One reason you might prefer 'bash' over 'exec' is if you have shell variables in your arguments that
-    want expanded at runtime.""",
+    you want expanded at runtime.""",
     show_default=True,
 )
 @new_optgroup("Setup hooks")
