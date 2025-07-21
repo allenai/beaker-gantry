@@ -71,7 +71,7 @@ def main():
         print_rank0("Starting benchmark...")
         algbw_gather = []
         for i in range(TRIALS):
-            print_rank0(f"{i+1}")
+            print_rank0(f"Run {i+1}...")
             algbw_gather += timed_allreduce(mat, start_event, end_event, device)
 
         algbw = torch.mean(torch.stack(algbw_gather))
