@@ -284,7 +284,7 @@ Then change your `gantry run` command like this:
 -    '--node-rank="$BEAKER_REPLICA_RANK"' \
 -    '--rdzv-conf="read_timeout=420"' \
 -    -m gantry.all_reduce_bench
-+  -- launch-torchrun.sh
++  -- ./launch-torchrun.sh
 ```
 
 ### How can I customize the Python setup steps?
