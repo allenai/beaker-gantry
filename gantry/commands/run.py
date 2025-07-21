@@ -168,13 +168,6 @@ from .main import CLICK_COMMAND_DEFAULTS, main, new_optgroup
     e.g. --weka=oe-training-default:/data""",
 )
 @optgroup.option(
-    "--runtime-dir",
-    type=str,
-    default=constants.RUNTIME_DIR,
-    help="""The runtime directory on the image.""",
-    show_default=True,
-)
-@optgroup.option(
     "--env",
     "env_vars",
     type=str,
@@ -298,6 +291,25 @@ from .main import CLICK_COMMAND_DEFAULTS, main, new_optgroup
     If you do use this flag, you'll probably need to follow all of the steps documented here:
 
     https://beaker-docs.allen.ai/compute/augusta.html#distributed-workloads""",
+)
+@new_optgroup("Runtime")
+@optgroup.option(
+    "--runtime-dir",
+    type=str,
+    default=constants.RUNTIME_DIR,
+    help="""The runtime directory on the image.""",
+    show_default=True,
+)
+@optgroup.option(
+    "--exec-method",
+    type=click.Choice(["exec", "bash"]),
+    default="exec",
+    help="""Defines how your command+arguments are evaluated and executed at runtime.
+    'exec' means gantry will call 'exec "$@"' to execute your command.
+    'bash' means gantry will call 'bash -c "$*"' to execute your command.
+    One reason you might prefer 'bash' over 'exec' is if you have shell variables in your arguments that
+    want expanded at runtime.""",
+    show_default=True,
 )
 @new_optgroup("Setup hooks")
 @optgroup.option(

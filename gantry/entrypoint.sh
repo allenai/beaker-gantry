@@ -47,7 +47,7 @@ function log_error {
 
 function log_header {
     local header="❯❯❯ [GANTRY] $1 ❮❮❮"
-    local header_border=${header//?/#}
+    local header_border="${header//?/#}"
     echo -e "\e[36m\e[1m
 $header_border
 $header  $2
@@ -302,7 +302,7 @@ function uv_setup_python {
         log_info "Done."
     elif [[ -n "$GANTRY_USE_SYSTEM_PYTHON" ]]; then
         if ! command -v python &> /dev/null; then
-            log_error "no system python found. If your image doesn't include a Python distribution you should omit the --system-python flag."
+            log_error "No system python found. If your image doesn't include a Python distribution you should omit the --system-python flag."
             return 1
         fi
 
@@ -384,7 +384,7 @@ function conda_setup_python {
         if conda activate base &> /dev/null; then
             log_info "Using default conda base environment."
         else
-            log_error "no conda base environment found (required due to --system-python flag)"
+            log_error "No conda base environment found (required due to --system-python flag)"
             return 1
         fi
 
@@ -438,7 +438,7 @@ function setup_python {
     elif [[ "$GANTRY_PYTHON_MANAGER" == "conda" ]]; then
         conda_setup_python || return 1
     else
-        log_error "unknown python manager '$GANTRY_PYTHON_MANAGER'"
+        log_error "Unknown python manager '$GANTRY_PYTHON_MANAGER'"
         return 1
     fi
     
@@ -463,9 +463,9 @@ fi
 log_header "Validating environment..."
 ######################################
 
-for env_var in "GITHUB_REPO" "GIT_REF" "RESULTS_DIR" "BEAKER_RESULT_DATASET_ID" "BEAKER_NODE_HOSTNAME" "BEAKER_NODE_ID" "BEAKER_ASSIGNED_GPU_COUNT"; do
+for env_var in "GANTRY_EXEC_METHOD" "GITHUB_REPO" "GIT_REF" "RESULTS_DIR" "BEAKER_RESULT_DATASET_ID" "BEAKER_NODE_HOSTNAME" "BEAKER_NODE_ID" "BEAKER_ASSIGNED_GPU_COUNT"; do
     if [[ -z "${!env_var+x}" ]]; then
-        log_error "required environment variable '$env_var' is empty"
+        log_error "Required environment variable '$env_var' is empty"
         exit 1
     fi
 done
@@ -477,7 +477,7 @@ log_info "Results dataset ${RESULTS_DATASET_URL} mounted to '${RESULTS_DIR}'."
 log_info "Checking for required tools..."
 for tool in "git" "curl"; do
     if ! command -v "$tool" &> /dev/null; then
-        log_error "required tool '$tool' is not installed, please build or use an existing image that comes with '$tool'."
+        log_error "Required tool '$tool' is not installed, please build or use an existing image that comes with '$tool'."
         exit 1
     else
         log_info "Using $($tool --version | head -n 1)."
@@ -566,5 +566,11 @@ log_header "Setup complete ✓" "(finished in $((end_time-start_time)) seconds)"
 ##############################################################################
 
 # Execute the arguments to this script as commands themselves.
-# shellcheck disable=SC2296
-exec "$@" 2>&1
+if [[ "$GANTRY_EXEC_METHOD" == "exec" ]]; then
+    exec "$@"
+elif [[ "$GANTRY_EXEC_METHOD" == "bash" ]]; then
+    bash -c "$*"
+else
+    log_error "Unknown value for --exec-method, got '$GANTRY_EXEC_METHOD'."
+    exit 1
+fi

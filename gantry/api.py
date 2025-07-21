@@ -160,6 +160,7 @@ def launch_experiment(
     retries: Optional[int] = None,
     results: str = constants.RESULTS_DIR,
     runtime_dir: str = constants.RUNTIME_DIR,
+    exec_method: Literal["exec", "bash"] = "exec",
     skip_tcpxo_setup: bool = False,
     default_python_version: str = get_local_python_version(),
     pre_setup: Optional[str] = None,
@@ -391,6 +392,7 @@ def launch_experiment(
             retries=retries,
             results=results,
             runtime_dir=runtime_dir,
+            exec_method=exec_method,
             skip_tcpxo_setup=skip_tcpxo_setup,
             default_python_version=default_python_version,
             pre_setup=pre_setup,
@@ -529,11 +531,17 @@ def _build_experiment_spec(
     retries: Optional[int] = None,
     results: str = constants.RESULTS_DIR,
     runtime_dir: str = constants.RUNTIME_DIR,
+    exec_method: Literal["exec", "bash"] = "exec",
     skip_tcpxo_setup: bool = False,
     default_python_version: str = get_local_python_version(),
     pre_setup: Optional[str] = None,
     post_setup: Optional[str] = None,
 ):
+    if exec_method not in ("exec", "bash"):
+        raise ConfigurationError(
+            f"expected one of 'exec', 'bash' for --exec-method, but got '{exec_method}'."
+        )
+
     task_spec = (
         BeakerTaskSpec.new(
             task_name,
@@ -559,6 +567,7 @@ def _build_experiment_spec(
         .with_env_var(name="GANTRY_TASK_NAME", value=task_name)
         .with_env_var(name="RESULTS_DIR", value=results)
         .with_env_var(name="GANTRY_RUNTIME_DIR", value=runtime_dir)
+        .with_env_var(name="GANTRY_EXEC_METHOD", value=exec_method)
         .with_dataset("/gantry", beaker=entrypoint_dataset)
     )
 

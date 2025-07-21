@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- Added `--exec-method` option to `gantry run` command for changing how gantry evaluates/executes your command.
+
 ## [v3.0.0rc1](https://github.com/allenai/beaker-gantry/releases/tag/v3.0.0rc1) - 2025-07-18
 
 This release includes a shift to using [`uv`](https://docs.astral.sh/uv) as the default Python management tool instead of `conda`.
