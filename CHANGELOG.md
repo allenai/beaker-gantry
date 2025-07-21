@@ -7,15 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-### Added
+## [v3.0.0rc2](https://github.com/allenai/beaker-gantry/releases/tag/v3.0.0rc2) - 2025-07-21
+
+**Changes since v3.0.0rc1...**
 
 - Added `--exec-method` option to `gantry run` command for changing how gantry evaluates/executes your command.
-
-### Changed
-
 - You can now use the `--group` option to `gantry run` multiple times.
 
-## [v3.0.0rc1](https://github.com/allenai/beaker-gantry/releases/tag/v3.0.0rc1) - 2025-07-18
+**All changes...**
 
 This release includes a shift to using [`uv`](https://docs.astral.sh/uv) as the default Python management tool instead of `conda`.
 Users should see much faster setup times with `uv`, but you can opt-out back to `conda` if needed by adding `--python-manager=conda` to `gantry run`.
@@ -32,6 +31,7 @@ If you're using an image that comes with an existing system Python installation,
 - Added `--uv-extra` option to `gantry run` command.
 - Added `--uv-torch-backend` option to `gantry run` command.
 - Added `--pre-setup` and `--post-setup` options to `gantry run` command for customizing setup steps.
+- Added `--exec-method` option to `gantry run` command for changing how gantry evaluates/executes your command.
 
 ### Changed
 
@@ -40,6 +40,7 @@ If you're using an image that comes with an existing system Python installation,
 - Renamed `--python-version` to `--default-python-version` in `gantry run` command.
 - `--install` option to `gantry run` can now be used with `--no-python`.
 - `gantry run --show-logs ...` now has the same affect as `gantry run --timeout=-1 ...`.
+- You can now use the `--group` option to `gantry run` multiple times.
 
 ### Removed
 
