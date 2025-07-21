@@ -28,6 +28,7 @@ from beaker import (
 )
 from beaker.exceptions import (
     BeakerExperimentConflict,
+    BeakerGroupNotFound,
     BeakerImageNotFound,
     BeakerSecretNotFound,
 )
@@ -111,7 +112,7 @@ def launch_experiment(
     description: Optional[str] = None,
     task_name: str = "main",
     workspace: Optional[str] = None,
-    group_name: Optional[str] = None,
+    group_names: Optional[Sequence[str]] = None,
     clusters: Optional[Sequence[str]] = None,
     gpu_types: Optional[Sequence[str]] = None,
     tags: Optional[Sequence[str]] = None,
@@ -214,18 +215,25 @@ def launch_experiment(
                 raise ConfigurationError("Budget account must be specified!")
 
         # Maybe resolve or create group.
-        group: Optional[BeakerGroup] = None
-        if group_name is not None:
-            group = util.resolve_group(beaker, group_name)
-            if group is None:
-                if prompt.Confirm.ask(
-                    f"Group [green]{group_name}[/] not found in workspace, would you like to create this group?"
-                ):
-                    group = beaker.group.create(group_name)
-                    print(f"Group created: {util.group_url(beaker, group)}")
-                else:
-                    print_stderr("[yellow]canceled[/]")
-                    sys.exit(1)
+        groups: List[BeakerGroup] = []
+        if group_names:
+            for group_name in group_names:
+                group = util.resolve_group(beaker, group_name)
+                if group is None:
+                    if "/" in group_name and not group_name.startswith(f"{beaker.user_name}/"):
+                        raise BeakerGroupNotFound(group_name)
+
+                    if prompt.Confirm.ask(
+                        f"Group [green]{group_name}[/] not found in workspace, would you like to create this group?"
+                    ):
+                        group_name = group_name.split("/", 1)[-1]
+                        group = beaker.group.create(group_name)
+                        print(f"Group created: {util.group_url(beaker, group)}")
+                    else:
+                        print_stderr("[yellow]canceled[/]")
+                        sys.exit(1)
+
+                groups.append(group)
 
         # Get the entrypoint dataset.
         entrypoint_dataset = util.ensure_entrypoint_dataset(beaker)
@@ -359,6 +367,7 @@ def launch_experiment(
             entrypoint_dataset=entrypoint_dataset.id,
             git_config=git_config,
             budget=budget,
+            group_names=[group.full_name for group in groups],
             description=description,
             beaker_image=beaker_image,
             docker_image=docker_image,
@@ -428,7 +437,7 @@ def launch_experiment(
             rich.get_console().rule("[b]Dry run[/]")
             print(
                 f"[b]Workspace:[/] {beaker.workspace.url()}\n"
-                f"[b]Group:[/] {None if group is None else util.group_url(beaker, group)}\n"
+                f"[b]Groups:[/] {', '.join([util.group_url(beaker, group) for group in groups])}\n"
                 f"[b]Commit:[/] {git_config.ref_url}\n"
                 f"[b]Branch:[/] {git_config.branch_url}\n"
                 f"[b]Name:[/] {name}\n"
@@ -457,9 +466,8 @@ def launch_experiment(
             f"Experiment URL: {beaker.workload.url(workload)}"
         )
 
-        if group is not None:
-            beaker.group.update(group, add_experiment_ids=[workload.experiment.id])
-            print(f"Group URL: {util.group_url(beaker, group)}")
+        for group in groups:
+            print(f"Group '{group.full_name}': {util.group_url(beaker, group)}")
 
         # Can return right away if timeout is 0.
         if timeout == 0:
@@ -498,6 +506,7 @@ def _build_experiment_spec(
     entrypoint_dataset: str,
     git_config: GitRepoState,
     budget: Optional[str] = None,
+    group_names: Optional[List[str]] = None,
     description: Optional[str] = None,
     beaker_image: Optional[str] = None,
     docker_image: Optional[str] = None,
@@ -755,6 +764,7 @@ def _build_experiment_spec(
         description=description,
         budget=budget,
         tasks=[task_spec],
+        groups=group_names,
         retry=None if not retries else BeakerRetrySpec(allowed_task_retries=retries),
     )
 

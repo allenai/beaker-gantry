@@ -216,11 +216,17 @@ def resolve_group(
     if workspace_name is not None or fall_back_to_default_workspace:
         workspace = beaker.workspace.get(workspace_name)
 
-    groups = list(beaker.group.list(workspace=workspace, name_or_description=group_name, limit=1))
-    if groups and groups[0].name == group_name:
-        return groups[0]
-    else:
-        return None
+    group_owner: Optional[str] = None
+    if "/" in group_name:
+        group_owner, group_name = group_name.split("/", 1)
+
+    for group in beaker.group.list(workspace=workspace, name_or_description=group_name):
+        if group_owner is not None:
+            if f"{group_owner}/{group_name}" == group.full_name:
+                return group
+        elif group_name == group.name:
+            return group
+    return None
 
 
 def group_url(beaker: Beaker, group: BeakerGroup) -> str:

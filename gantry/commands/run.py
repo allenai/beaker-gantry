@@ -30,7 +30,14 @@ from .main import CLICK_COMMAND_DEFAULTS, main, new_optgroup
 @optgroup.option(
     "-b", "--budget", type=str, help="""The budget account to associate with the experiment."""
 )
-@optgroup.option("--group", "group_name", type=str, help="""A group to assign the experiment to.""")
+@optgroup.option(
+    "--group",
+    "group_names",
+    type=str,
+    multiple=True,
+    default=None,
+    help="""A group to assign the experiment to. Multiple allowed.""",
+)
 @new_optgroup("Launch settings")
 @optgroup.option(
     "--show-logs/--no-logs",
