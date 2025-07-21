@@ -236,18 +236,55 @@ gantry run \
   --host-networking \
   --propagate-failure \
   --propagate-preemption \
-  --synchronized-start-timeout=5m \
-  --gpu-type=h100 \
+  --synchronized-start-timeout='5m' \
+  --gpu-type='h100' \
   --gpus=8 \
+  --beaker-image='ai2/cuda12.8-ubuntu22.04-torch2.7.0' \
+  --system-python \
+  --exec-method='bash' \
   -- torchrun \
-    '--nnodes="${BEAKER_REPLICA_COUNT}:${BEAKER_REPLICA_COUNT}"' \
-    '--nproc-per-node="${BEAKER_ASSIGNED_GPU_COUNT}"' \
-    '--rdzv_id=12347' \
-    '--rdzv_backend=static' \
-    '--rdzv_endpoint="${BEAKER_LEADER_REPLICA_HOSTNAME}:29400"' \
-    '--node_rank="${BEAKER_REPLICA_RANK}"' \
-    '--rdzv_conf="read_timeout=420"' \
-    train.py
+    '--nnodes="$BEAKER_REPLICA_COUNT:$BEAKER_REPLICA_COUNT"' \
+    '--nproc-per-node="$BEAKER_ASSIGNED_GPU_COUNT"' \
+    '--rdzv-id=12347' \
+    '--rdzv-backend=static' \
+    '--rdzv-endpoint="$BEAKER_LEADER_REPLICA_HOSTNAME:29400"' \
+    '--node-rank="$BEAKER_REPLICA_RANK"' \
+    '--rdzv-conf="read_timeout=420"' \
+    -m gantry.all_reduce_bench
+```
+
+Note that we have environment variables like `BEAKER_REPLICA_COUNT` in the arguments to our `torchrun` command that we want to have expanded *at runtime*.
+To accomplish this we do two things:
+1. We wrap those arguments in single quotes to avoid expanding them locally.
+2. We set `--exec-method=bash` to tell gantry to run our command and arguments with `bash -c`, which will do variable expansion.
+
+Alternatively you could put your whole `torchrun` command into a script, let's call it `launch-torchrun.sh`, without single quotes around the arguments.
+Then change your `gantry run` command like this:
+
+```diff
+ gantry run \
+   --show-logs \
+   --replicas=2 \
+   --leader-selection \
+   --host-networking \
+   --propagate-failure \
+   --propagate-preemption \
+   --synchronized-start-timeout='5m' \
+   --gpu-type='h100' \
+   --gpus=8 \
+   --beaker-image='ai2/cuda12.8-ubuntu22.04-torch2.7.0' \
+   --system-python \
+-  --exec-method='bash' \
+-  -- torchrun \
+-    '--nnodes="$BEAKER_REPLICA_COUNT:$BEAKER_REPLICA_COUNT"' \
+-    '--nproc-per-node="$BEAKER_ASSIGNED_GPU_COUNT"' \
+-    '--rdzv-id=12347' \
+-    '--rdzv-backend=static' \
+-    '--rdzv-endpoint="$BEAKER_LEADER_REPLICA_HOSTNAME:29400"' \
+-    '--node-rank="$BEAKER_REPLICA_RANK"' \
+-    '--rdzv-conf="read_timeout=420"' \
+-    -m gantry.all_reduce_bench
++  -- ./launch-torchrun.sh
 ```
 
 ### How can I customize the Python setup steps?
@@ -256,7 +293,7 @@ If gantry's default Python setup steps don't work for you, you can override them
 For example:
 
 ```bash
-gantry run --show-logs --install='pip install -e .[dev]' -- python -c 'import my_project'
+gantry run --show-logs --install='pip install -r custom_requirements.txt' -- echo "Hello, World!"
 ```
 
 ### Can I use conda like with older versions of gantry?
