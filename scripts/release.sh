@@ -1,30 +1,38 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-set -e
+set +x -eo pipefail
+
+function confirm {
+    read -rp "$1 [Y/n] " prompt
+    if ! [[ $prompt == "y" || $prompt == "Y" || $prompt == "yes" || $prompt == "Yes" ]]; then
+        echo "❯ Canceled."
+        exit 1
+    fi
+}
+
+echo "❯ Syncing local repo with remote..."
+git pull > /dev/null
+git tag -l | xargs git tag -d > /dev/null 2>&1
+git fetch -t > /dev/null 2>&1
 
 TAG=$(python -c 'from gantry.version import VERSION; print("v" + VERSION)')
+export TAG
 
-read -p "Creating new release for $TAG. Do you want to continue? [Y/n] " prompt
-if ! [[ $prompt == "y" || $prompt == "Y" || $prompt == "yes" || $prompt == "Yes" ]]; then
-    echo "Cancelled"
-    exit 1
-fi
-
+confirm "❯ Creating new release $TAG. Do you want to continue?"
 python scripts/prepare_changelog.py
 
-read -p "Changelog updated. Does it look right? [Y/n] " prompt
-if ! [[ $prompt == "y" || $prompt == "Y" || $prompt == "yes" || $prompt == "Yes" ]]; then
-    echo "Cancelled"
-    exit 1
-fi
+echo "❯ Release notes preview:"
+echo "------------------------"
+python scripts/release_notes.py
+echo "------------------------"
+confirm "❯ Does this look right?"
 
-echo "Creating new commit..."
-git add -A
-git commit -m "(chore) bump version to $TAG for release" || true && git push
+git add -A > /dev/null 2>&1
+git commit -m "(chore) bump version to $TAG for release" > /dev/null 2>&1 || true && git push > /dev/null
 
-echo "Creating new git tag $TAG..."
-git tag "$TAG" -m "$TAG"
-git push --tags
+echo "❯ Creating new git tag $TAG..."
+git tag "$TAG" -m "$TAG" > /dev/null
+git push --tags > /dev/null
 
-echo "All changes/tags pushed. GitHub Actions will handle the rest."
-echo 'https://github.com/allenai/beaker-gantry/actions/workflows/main.yml'
+echo "❯ All changes/tags pushed. GitHub Actions will handle the rest."
+echo '❯ See: https://github.com/allenai/beaker-gantry/actions/workflows/main.yml'
