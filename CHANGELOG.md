@@ -7,18 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
-### Changed
+**Changes since v3.0.0rc2...**
 
 - Renamed `--python-venv` flag to `--uv-venv`.
-
-## [v3.0.0rc2](https://github.com/allenai/beaker-gantry/releases/tag/v3.0.0rc2) - 2025-07-21
 
 **Changes since v3.0.0rc1...**
 
 - Added `--exec-method` option to `gantry run` command for changing how gantry evaluates/executes your command.
 - You can now use the `--group` option to `gantry run` multiple times.
 
-**All changes...**
+**All changes since v2...**
 
 This release includes a shift to using [`uv`](https://docs.astral.sh/uv) as the default Python management tool instead of `conda`.
 Users should see much faster setup times with `uv`, but you can opt-out back to `conda` if needed by adding `--python-manager=conda` to `gantry run`.
