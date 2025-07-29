@@ -290,15 +290,15 @@ function uv_setup_python {
         done
     fi
 
-    if [[ -n "$GANTRY_PYTHON_VENV" ]]; then
-        if [[ ! -d "$GANTRY_PYTHON_VENV" ]] || [[ ! -f "$GANTRY_PYTHON_VENV/bin/activate" ]]; then
-            log_error "--python-venv '$GANTRY_PYTHON_VENV' should be a path to virtual env directory"
+    if [[ -n "$GANTRY_UV_VENV" ]]; then
+        if [[ ! -d "$GANTRY_UV_VENV" ]] || [[ ! -f "$GANTRY_UV_VENV/bin/activate" ]]; then
+            log_error "--uv-venv '$GANTRY_UV_VENV' should be a path to virtual env directory"
             return 1
         fi
 
-        log_info "Activating virtual environment at '$GANTRY_PYTHON_VENV'..."
+        log_info "Activating virtual environment at '$GANTRY_UV_VENV'..."
         # shellcheck disable=SC1091
-        source "$GANTRY_PYTHON_VENV/bin/activate" || return 1
+        source "$GANTRY_UV_VENV/bin/activate" || return 1
         log_info "Done."
     elif [[ -n "$GANTRY_USE_SYSTEM_PYTHON" ]]; then
         if ! command -v python &> /dev/null; then

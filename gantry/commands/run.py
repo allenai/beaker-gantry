@@ -343,7 +343,7 @@ from .main import CLICK_COMMAND_DEFAULTS, main, new_optgroup
     default=get_local_python_version(),
     help="""The default Python version to use when constructing a new Python environment.
     This will be ignored if gantry is instructed to use an existing Python distribution/environment
-    on the image, such as with the --system-python flag, or the --python-venv option.""",
+    on the image, such as with the --system-python flag, or the --uv-venv option.""",
     show_default=True,
 )
 @optgroup.option(
@@ -354,10 +354,26 @@ from .main import CLICK_COMMAND_DEFAULTS, main, new_optgroup
     case gantry will try to use the base conda environment.""",
 )
 @optgroup.option(
-    "--python-venv",
+    "--install",
     type=str,
-    help="""A path to a Python virtual environment on the image.
-    Only valid when using uv as the --python-manager.""",
+    help="""Override the default Python project installation method with a custom command or shell script,
+    e.g. '--install "python setup.py install"' or '--install "my-custom-install-script.sh"'.""",
+)
+@optgroup.option(
+    "--no-python",
+    is_flag=True,
+    help="""If set, gantry will skip setting up a Python environment altogether.
+    This can be useful if your experiment doesn't need Python or if your image
+    already contains a complete Python environment.""",
+)
+@new_optgroup(
+    "Python uv settings",
+    "Settings specific to the uv Python manager (--python-manager=uv).",
+)
+@optgroup.option(
+    "--uv-venv",
+    type=str,
+    help="""A path to a Python virtual environment on the image.""",
 )
 @optgroup.option(
     "--uv-extra",
@@ -384,6 +400,10 @@ from .main import CLICK_COMMAND_DEFAULTS, main, new_optgroup
     Valid options are 'auto', 'cpu', 'cu128', etc.
     Only valid when using uv as the --python-manager.""",
 )
+@new_optgroup(
+    "Python conda settings",
+    "Settings specific to the conda Python manager (--python-manager=conda).",
+)
 @optgroup.option(
     "--conda-file",
     type=click.Path(exists=True, dir_okay=False),
@@ -396,19 +416,6 @@ from .main import CLICK_COMMAND_DEFAULTS, main, new_optgroup
     type=str,
     help="""The name or path to an existing conda environment on the image to use.
     Only valid when using conda as the --python-manager.""",
-)
-@optgroup.option(
-    "--install",
-    type=str,
-    help="""Override the default Python project installation method with a custom command or shell script,
-    e.g. '--install "python setup.py install"' or '--install "my-custom-install-script.sh"'.""",
-)
-@optgroup.option(
-    "--no-python",
-    is_flag=True,
-    help="""If set, gantry will skip setting up a Python environment altogether.
-    This can be useful if your experiment doesn't need Python or if your image
-    already contains a complete Python environment.""",
 )
 def run(*args, **kwargs):
     """

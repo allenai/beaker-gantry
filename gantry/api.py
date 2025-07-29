@@ -131,7 +131,7 @@ def launch_experiment(
     conda_env: Optional[str] = None,
     python_manager: Optional[Literal["uv", "conda"]] = None,
     system_python: bool = False,
-    python_venv: Optional[str] = None,
+    uv_venv: Optional[str] = None,
     uv_extras: Optional[Sequence[str]] = None,
     uv_all_extras: Optional[bool] = None,
     uv_torch_backend: Optional[str] = None,
@@ -376,7 +376,7 @@ def launch_experiment(
             conda_env=conda_env,
             python_manager=python_manager,
             system_python=system_python,
-            python_venv=python_venv,
+            uv_venv=uv_venv,
             uv_extras=uv_extras,
             uv_all_extras=uv_all_extras,
             uv_torch_backend=uv_torch_backend,
@@ -515,7 +515,7 @@ def _build_experiment_spec(
     conda_env: Optional[str] = None,
     python_manager: Optional[Literal["uv", "conda"]] = None,
     system_python: bool = False,
-    python_venv: Optional[str] = None,
+    uv_venv: Optional[str] = None,
     uv_extras: Optional[Sequence[str]] = None,
     uv_all_extras: Optional[bool] = None,
     uv_torch_backend: Optional[str] = None,
@@ -601,7 +601,7 @@ def _build_experiment_spec(
         if (
             python_manager is not None
             or system_python
-            or python_venv is not None
+            or uv_venv is not None
             or uv_all_extras is not None
             or uv_extras
             or uv_torch_backend is not None
@@ -653,15 +653,15 @@ def _build_experiment_spec(
                     "--conda-* options are only relevant when using the conda python manager (--python-manager=conda)."
                 )
 
-            if python_venv is not None:
+            if uv_venv is not None:
                 if system_python:
                     raise ConfigurationError(
-                        "--system-python flag is incompatible with --python-venv option."
+                        "--system-python flag is incompatible with --uv-venv option."
                     )
 
                 task_spec = task_spec.with_env_var(
-                    name="GANTRY_PYTHON_VENV",
-                    value=python_venv,
+                    name="GANTRY_UV_VENV",
+                    value=uv_venv,
                 )
 
             if uv_all_extras is None:
@@ -695,14 +695,14 @@ def _build_experiment_spec(
             if uv_torch_backend is not None:
                 task_spec = task_spec.with_env_var(name="UV_TORCH_BACKEND", value=uv_torch_backend)
         elif python_manager == "conda":
-            if python_venv is not None:
+            if (
+                uv_venv is not None
+                or uv_extras
+                or uv_all_extras is not None
+                or uv_torch_backend is not None
+            ):
                 raise ConfigurationError(
-                    "--python-venv option cannot be used with conda python manager. Did you mean --conda-env?"
-                )
-
-            if uv_torch_backend is not None:
-                raise ConfigurationError(
-                    "--uv-torch-backend option cannot be used with conda python manager."
+                    "--uv-* options are only relevant when using the uv python manager (--python-manager=uv)."
                 )
 
             if conda_env is not None:

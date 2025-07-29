@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Changed
+
+- Renamed `--python-venv` flag to `--uv-venv`.
+
 ## [v3.0.0rc2](https://github.com/allenai/beaker-gantry/releases/tag/v3.0.0rc2) - 2025-07-21
 
 **Changes since v3.0.0rc1...**
@@ -25,7 +29,7 @@ If you're using an image that comes with an existing system Python installation,
 
 - Added `--python-manager` option to `gantry run` command.
 - Added `--system-python` flag to `gantry run` command.
-- Added `--python-venv` flag to `gantry run` command.
+- Added `--uv-venv` flag to `gantry run` command.
 - Added `--runtime-dir` option to `gantry run` command.
 - Added `--uv-all-extras/--uv-no-extras` option to `gantry run` command.
 - Added `--uv-extra` option to `gantry run` command.
