@@ -335,7 +335,7 @@ from .main import CLICK_COMMAND_DEFAULTS, main, new_optgroup
     type=click.Choice(["uv", "conda"]),
     help="""The tool to use to manage Python installations and environments at runtime.
     If not specified this will default to 'uv' (recommended) in most cases, unless other '--conda-*' specific options
-    are given.""",
+    are given (see below).""",
 )
 @optgroup.option(
     "--default-python-version",
@@ -343,7 +343,7 @@ from .main import CLICK_COMMAND_DEFAULTS, main, new_optgroup
     default=get_local_python_version(),
     help="""The default Python version to use when constructing a new Python environment.
     This will be ignored if gantry is instructed to use an existing Python distribution/environment
-    on the image, such as with the --system-python flag, or the --uv-venv option.""",
+    on the image, such as with the --system-python flag, the --uv-venv option, or the --conda-env option.""",
     show_default=True,
 )
 @optgroup.option(
@@ -382,23 +382,20 @@ from .main import CLICK_COMMAND_DEFAULTS, main, new_optgroup
     multiple=True,
     help="""Include optional dependencies for your local project from the specified extra name.
     Can be specified multiple times.
-    If not provided, all extras will be installed unless --uv-no-extras is given.
-    Only valid when using uv as the --python-manager.""",
+    If not provided, all extras will be installed unless --uv-no-extras is given.""",
 )
 @optgroup.option(
     "--uv-all-extras/--uv-no-extras",
     is_flag=True,
     help="""Install your local project with all extra dependencies, or no extra dependencies.
-    This defaults to true unless --uv-extra is specified.
-    Only valid when using uv as the --python-manager.""",
+    This defaults to true unless --uv-extra is specified.""",
     default=None,
 )
 @optgroup.option(
     "--uv-torch-backend",
     type=str,
     help="""The backend to use when installing packages in the PyTorch ecosystem with uv.
-    Valid options are 'auto', 'cpu', 'cu128', etc.
-    Only valid when using uv as the --python-manager.""",
+    Valid options are 'auto', 'cpu', 'cu128', etc.""",
 )
 @new_optgroup(
     "Python conda settings",
@@ -408,14 +405,12 @@ from .main import CLICK_COMMAND_DEFAULTS, main, new_optgroup
     "--conda-file",
     type=click.Path(exists=True, dir_okay=False),
     help="""Path to a conda environment file for reconstructing your Python environment.
-    If not specified, an 'environment.yml'/'environment.yaml' file will be used if it exists.
-    Only valid when using conda as the --python-manager.""",
+    If not specified, an 'environment.yml'/'environment.yaml' file will be used if it exists.""",
 )
 @optgroup.option(
     "--conda-env",
     type=str,
-    help="""The name or path to an existing conda environment on the image to use.
-    Only valid when using conda as the --python-manager.""",
+    help="""The name or path to an existing conda environment on the image to use.""",
 )
 def run(*args, **kwargs):
     """
