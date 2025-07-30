@@ -19,9 +19,10 @@ TAG=$(python -c 'from gantry.version import VERSION; print("v" + VERSION)')
 export TAG
 
 confirm "❯ Creating new release $TAG. Do you want to continue?"
+
 python scripts/prepare_changelog.py
 git add -A > /dev/null 2>&1
-git commit -m "(chore) bump version to $TAG for release" > /dev/null 2>&1 || true && git push > /dev/null
+git commit -m "(chore) bump version to $TAG for release" > /dev/null 2>&1 || true
 git tag "$TAG" -m "$TAG" > /dev/null
 
 echo "❯ Release notes preview:"
@@ -29,7 +30,9 @@ echo "------------------------"
 python scripts/release_notes.py
 echo "------------------------"
 confirm "❯ Does this look right?"
-git push --tags > /dev/null
+
+git push > /dev/null 2>&1
+git push --tags > /dev/null 2>&1
 
 echo "❯ All changes/tags pushed. GitHub Actions will handle the rest."
 echo '❯ See: https://github.com/allenai/beaker-gantry/actions/workflows/main.yml'
