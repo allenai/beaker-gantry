@@ -20,18 +20,15 @@ export TAG
 
 confirm "❯ Creating new release $TAG. Do you want to continue?"
 python scripts/prepare_changelog.py
+git add -A > /dev/null 2>&1
+git commit -m "(chore) bump version to $TAG for release" > /dev/null 2>&1 || true && git push > /dev/null
+git tag "$TAG" -m "$TAG" > /dev/null
 
 echo "❯ Release notes preview:"
 echo "------------------------"
 python scripts/release_notes.py
 echo "------------------------"
 confirm "❯ Does this look right?"
-
-git add -A > /dev/null 2>&1
-git commit -m "(chore) bump version to $TAG for release" > /dev/null 2>&1 || true && git push > /dev/null
-
-echo "❯ Creating new git tag $TAG..."
-git tag "$TAG" -m "$TAG" > /dev/null
 git push --tags > /dev/null
 
 echo "❯ All changes/tags pushed. GitHub Actions will handle the rest."

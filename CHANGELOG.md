@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [v3.0.0rc3](https://github.com/allenai/beaker-gantry/releases/tag/v3.0.0rc3) - 2025-07-30
+
 **Changes since v3.0.0rc2...**
 
 - Renamed `--python-venv` flag to `--uv-venv`.
