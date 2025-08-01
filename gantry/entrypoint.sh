@@ -485,6 +485,12 @@ for tool in "git" "curl"; do
 done
 log_info "Done."
 
+if [[ -n "$GITHUB_TOKEN" ]]; then
+    ensure_gh
+    # Configure git to use the GitHub CLI as a credential helper so that we can clone private repos.
+    gh auth setup-git
+fi
+
 if [[ -d "/var/lib/tcpxo/lib64" ]] && [[ -n "$BEAKER_REPLICA_COUNT" ]] && [[ -z "$GANTRY_SKIP_TCPXO_SETUP" ]]; then
     log_info "Configuring NCCL for GPUDirect-TCPXO..."
     log_info "Note: you can skip this step if needed by adding the flag '--skip_tcpxo_setup' to your 'gantry run ...' command."
@@ -496,15 +502,6 @@ if [[ -d "/var/lib/tcpxo/lib64" ]] && [[ -n "$BEAKER_REPLICA_COUNT" ]] && [[ -z 
     export NCCL_TUNER_CONFIG_PATH=/var/lib/tcpxo/lib64/a3plus_tuner_config_ll128.textproto
     export NCCL_SHIMNET_GUEST_CONFIG_CHECKER_CONFIG_FILE=/var/lib/tcpxo/lib64/a3plus_guest_config_ll128.textproto
     log_info "Done."
-fi
-
-if [[ -n "$GITHUB_TOKEN" ]]; then
-    ########################################
-    log_header "Installing prerequisites..."
-    ########################################
-    ensure_gh
-    # Configure git to use the GitHub CLI as a credential helper so that we can clone private repos.
-    gh auth setup-git
 fi
 
 ###################################
