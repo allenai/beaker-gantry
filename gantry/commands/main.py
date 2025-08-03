@@ -93,7 +93,8 @@ def main(quiet: bool = False, log_level: str = "warning"):
     # Handle SIGTERM just like KeyboardInterrupt
     signal.signal(signal.SIGTERM, handle_sigterm)
 
-    if not quiet:
+    hide_logo = os.environ.get("GANTRY_HIDE_LOGO", "").lower() in ("1", "true", "yes")
+    if not quiet and not hide_logo:
         print_stderr(
             r'''
 [cyan b]                                             o=======[]   [/]
