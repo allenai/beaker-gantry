@@ -36,6 +36,7 @@ If you're using an image that comes with an existing system Python installation,
 - Added `--uv-torch-backend` option to `gantry run` command.
 - Added `--pre-setup` and `--post-setup` options to `gantry run` command for customizing setup steps.
 - Added `--exec-method` option to `gantry run` command for changing how gantry evaluates/executes your command.
+- Added `GANTRY_QUIET` env var, which can be used to hide the gantry logo if desired.
 
 ### Changed
 
