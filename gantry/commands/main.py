@@ -64,6 +64,7 @@ def handle_sigterm(sig, frame):
     "--quiet",
     is_flag=True,
     help="Don't display the gantry logo.",
+    envvar="GANTRY_QUIET",
 )
 @click.option(
     "--log-level",
@@ -93,8 +94,7 @@ def main(quiet: bool = False, log_level: str = "warning"):
     # Handle SIGTERM just like KeyboardInterrupt
     signal.signal(signal.SIGTERM, handle_sigterm)
 
-    hide_logo = os.environ.get("GANTRY_HIDE_LOGO", "").lower() in ("1", "true", "yes")
-    if not quiet and not hide_logo:
+    if not quiet:
         print_stderr(
             r'''
 [cyan b]                                             o=======[]   [/]
