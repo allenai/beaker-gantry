@@ -64,6 +64,7 @@ def handle_sigterm(sig, frame):
     "--quiet",
     is_flag=True,
     help="Don't display the gantry logo.",
+    envvar="GANTRY_QUIET",
 )
 @click.option(
     "--log-level",
