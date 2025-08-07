@@ -2,8 +2,6 @@
 Gantry's public API.
 """
 
-import random
-import string
 import sys
 import time
 from pathlib import Path
@@ -446,20 +444,21 @@ def launch_experiment(
             )
             return
 
+        # Beaker experiment names have to be unique, so we add a random suffix if needed.
         name_prefix = name
+        attempts = 0
         while True:
             try:
                 workload = beaker.experiment.create(name=name, spec=spec)
                 break
             except BeakerExperimentConflict:
-                name = (
-                    name_prefix
-                    + "-"
-                    + random.choice(string.ascii_lowercase)
-                    + random.choice(string.ascii_lowercase)
-                    + random.choice(string.digits)
-                    + random.choice(string.digits)
-                )
+                attempts += 1
+                if attempts == 5:
+                    print_stderr(
+                        f"[yellow]Many experiments with the name '{name_prefix}' already exist. Consider using a different name.[/]"
+                    )
+                name_suffix = util.unique_suffix(max_chars=4 if attempts < 5 else 7)
+                name = f"{name_prefix}-{name_suffix}"
 
         print(
             f"Experiment '{beaker.user_name}/{workload.experiment.name}' ({workload.experiment.id}) submitted.\n"

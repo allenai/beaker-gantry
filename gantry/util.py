@@ -78,12 +78,16 @@ class InternalConfig:
                 json.dump(asdict(self), f)
 
 
-def unique_name() -> str:
+def unique_suffix(max_chars: int = 7) -> str:
     import uuid
 
+    return str(uuid.uuid4())[:max_chars]
+
+
+def unique_name() -> str:
     import petname
 
-    return cast(str, petname.generate()) + "-" + str(uuid.uuid4())[:7]
+    return cast(str, petname.generate()) + "-" + unique_suffix()
 
 
 def get_local_python_version() -> str:
