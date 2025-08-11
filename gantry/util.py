@@ -160,15 +160,29 @@ def get_job_status_str(job: BeakerJob):
         return str(BeakerWorkloadStatus(status).name)
 
 
-def display_results(beaker: Beaker, workload: BeakerWorkload, job: BeakerJob):
+def display_results(
+    beaker: Beaker,
+    workload: BeakerWorkload,
+    job: BeakerJob,
+    info_header: Optional[str] = None,
+):
     status = job.status.status
     if status == BeakerWorkloadStatus.succeeded:
         runtime = job.status.exited - job.status.started  # type: ignore
         results_ds = beaker.dataset.get(job.assignment_details.result_dataset_id)
 
         print(
-            f"[b green]\N{check mark}[/] [b cyan]{beaker.user_name}/{workload.experiment.name}[/] ({workload.experiment.id}) completed successfully\n"
-            f"[b]Experiment:[/] {beaker.workload.url(workload)}\n"
+            f"[b green]\N{check mark}[/] [b cyan]{beaker.user_name}/{workload.experiment.name}[/] ({workload.experiment.id}) completed successfully.\n"
+        )
+
+        if info_header:
+            print(info_header)
+        else:
+            print(
+                f"[b]Experiment:[/] [cyan]{beaker.user_name}/{workload.experiment.name}[/] → {beaker.workload.url(workload)}"
+            )
+
+        print(
             f"[b]Results:[/] {beaker.dataset.url(results_ds)}\n"
             f"[b]Runtime:[/] {format_timedelta(runtime)}"
         )
@@ -182,7 +196,7 @@ def display_results(beaker: Beaker, workload: BeakerWorkload, job: BeakerJob):
             show_all_jobs(beaker, workload)
             print()
         raise ExperimentFailedError(
-            f"Job {get_job_status_str(job)}, {beaker.workload.url(workload)} for details"
+            f"Job {get_job_status_str(job)}, see {beaker.workload.url(workload)} for details"
         )
     else:
         raise ValueError(f"unexpected workload status '{status}'")

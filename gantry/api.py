@@ -433,13 +433,28 @@ def launch_experiment(
 
         if dry_run:
             rich.get_console().rule("[b]Dry run[/]")
+
+        if groups:
+            groups_str = "\n❯ ".join(
+                [
+                    f"[cyan]{group.full_name}[/] → {util.group_url(beaker, group)}"
+                    for group in groups
+                ]
+            )
+        else:
+            groups_str = ""
+
+        info_header = (
+            f"[b]Workspace:[/] {beaker.workspace.url()}\n"
+            "[b]Groups:[/]\n❯ " + groups_str + "\n"
+            f"[b]Commit:[/] {git_config.ref_url}\n"
+            f"[b]Branch:[/] {git_config.branch_url}"
+        )
+
+        if dry_run:
+            print(info_header)
             print(
-                f"[b]Workspace:[/] {beaker.workspace.url()}\n"
-                f"[b]Groups:[/] {', '.join([util.group_url(beaker, group) for group in groups])}\n"
-                f"[b]Commit:[/] {git_config.ref_url}\n"
-                f"[b]Branch:[/] {git_config.branch_url}\n"
-                f"[b]Name:[/] {name}\n"
-                f"[b]Experiment spec:[/]",
+                f"[b]Name:[/] [cyan]{name}[/]\n[b]Experiment spec:[/]",
                 spec.to_json(),
             )
             return
@@ -460,13 +475,11 @@ def launch_experiment(
                 name_suffix = util.unique_suffix(max_chars=4 if attempts < 5 else 7)
                 name = f"{name_prefix}-{name_suffix}"
 
-        print(
-            f"Experiment '{beaker.user_name}/{workload.experiment.name}' ({workload.experiment.id}) submitted.\n"
-            f"Experiment URL: {beaker.workload.url(workload)}"
+        info_header = (
+            f"[b]Experiment:[/] [cyan]{beaker.user_name}/{workload.experiment.name}[/] → {beaker.workload.url(workload)}\n"
+            + info_header
         )
-
-        for group in groups:
-            print(f"Group '{group.full_name}': {util.group_url(beaker, group)}")
+        print(info_header)
 
         # Can return right away if timeout is 0.
         if timeout == 0:
@@ -493,7 +506,7 @@ def launch_experiment(
                 )
                 sys.exit(1)
 
-        util.display_results(beaker, workload, job)
+        util.display_results(beaker, workload, job, info_header)
 
 
 def _build_experiment_spec(

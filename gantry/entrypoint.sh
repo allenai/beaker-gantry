@@ -510,7 +510,7 @@ log_header "Cloning source code..."
 
 git config --global advice.detachedHead false
 
-log_info "Cloning source code..."
+log_info "Cloning source code from '$GITHUB_REPO'..."
 with_retries 5 capture_logs "clone_repo" clone_repo
 log_info "Done."
 
