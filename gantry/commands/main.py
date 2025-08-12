@@ -13,6 +13,7 @@ from rich import pretty, traceback
 from rich.logging import RichHandler
 
 from .. import util
+from ..config import GantryConfig
 from ..exceptions import *
 from ..util import print_stderr
 from ..version import VERSION
@@ -30,6 +31,8 @@ CLICK_COMMAND_DEFAULTS = {
     "help_headers_color": "yellow",
     "context_settings": {"max_content_width": 115},
 }
+
+config = GantryConfig.load()
 
 
 def new_optgroup(name: str, help: Optional[str] = None):

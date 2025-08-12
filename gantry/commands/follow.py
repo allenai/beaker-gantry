@@ -7,7 +7,7 @@ from rich import print
 from .. import util
 from ..api import follow_workload
 from ..exceptions import ConfigurationError, NotFoundError
-from .main import CLICK_COMMAND_DEFAULTS, main
+from .main import CLICK_COMMAND_DEFAULTS, config, main
 
 
 @main.command(**CLICK_COMMAND_DEFAULTS)
@@ -25,8 +25,7 @@ from .main import CLICK_COMMAND_DEFAULTS, main
     "-w",
     "--workspace",
     type=str,
-    help="""The Beaker workspace to pull experiments from.
-    If not specified, your default workspace will be used.""",
+    help=f"""The Beaker workspace to pull experiments from. {config.get_help_string_for_default('workspace')}""",
 )
 @click.option(
     "-a",
@@ -59,7 +58,10 @@ def follow(
                 )
 
             wl = util.get_latest_workload(
-                beaker, author_name=author, workspace_name=workspace, running=True
+                beaker,
+                author_name=author,
+                workspace_name=workspace or config.workspace,
+                running=True,
             )
             if wl is None:
                 raise NotFoundError("Failed to find an experiment workload to follow")

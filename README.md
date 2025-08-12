@@ -130,6 +130,20 @@ pip install -e .
     find and use the existing configuration file (usually located at `$HOME/.beaker/config.yml`).
     Otherwise just set the environment variable `BEAKER_TOKEN` to your Beaker [user token](https://beaker.org/user).
 
+    Some gantry settings can also be specified in a `pyproject.toml` file under the section `[tool.gantry]`. For now those settings are:
+
+    1. `workspace` - The default Beaker workspace to use.
+    2. `budget` - The default Beaker budget to use.
+
+    For example:
+
+    ```toml
+    # pyproject.toml
+    [tool.gantry]
+    workspace = "ai2/my-default-workspace"
+    budget = "ai2/my-teams-budget"
+    ```
+
     The first time you call `gantry run ...` you'll also be prompted to provide a [GitHub personal access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token) with the `repo` scope if your repository is private. This allows Gantry to clone your private repository when it runs in Beaker. You don't have to do this just yet (Gantry will prompt you for it), but if you need to update this token later you can use the `gantry config set-gh-token` command.
 
 3. (Optional) **Specify your Python environment.**
