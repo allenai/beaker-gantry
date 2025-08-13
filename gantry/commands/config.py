@@ -23,6 +23,7 @@ def config():
     "--workspace",
     type=str,
     help=f"""The Beaker workspace to pull experiments from. {_config.get_help_string_for_default('workspace')}""",
+    default=_config.workspace,
 )
 @click.option(
     "-s",
@@ -55,7 +56,7 @@ def set_gh_token(
     $ gantry config set-gh-token "$GITHUB_TOKEN"
     """
     # Initialize Beaker client and validate workspace.
-    with util.init_client(workspace=workspace or _config.workspace, yes=yes) as beaker:
+    with util.init_client(workspace=workspace, yes=yes) as beaker:
         # Write token to secret.
         beaker.secret.write(secret, token)
 
