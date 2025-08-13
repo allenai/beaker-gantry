@@ -3,7 +3,7 @@
 <img src="https://raw.githubusercontent.com/allenai/beaker-py/main/docs/source/_static/beaker-500px-transparent.png" width="200"/>
 <br>
 <h1>Beaker Gantry</h1>
-<p>Gantry streamlines running Python experiments in <a href="https://beaker.org">Beaker</a> by managing containers and boilerplate for you</p>
+<p>Gantry is a CLI that streamlines running experiments in <a href="https://beaker.org">Beaker</a>.</p>
 <hr/>
 <!-- TODO: Add badges once this is open source -->
 <a href="https://github.com/allenai/beaker-gantry/actions">
@@ -25,13 +25,13 @@
 ⚡️*Easy to use*
 
 - **No Docker required!** 🚫 🐳
-- No writing YAML experiment specs.
+- No writing Beaker YAML experiment specs.
 - Easy setup.
 - Simple CLI.
 
 🏎  *Fast*
 
-- Fire off Beaker experiments from your local computer instantly!
+- Fire off Beaker experiments from your laptop instantly!
 - No local image build or upload.
 
 🪶 *Lightweight*
@@ -41,8 +41,9 @@
 
 ### Who is this for?
 
-Gantry is for both new and seasoned Beaker users who need to run Python batch jobs (as opposed to interactive sessions) from a rapidly changing repository.
-Without Gantry, this workflow usually looks like this:
+Gantry is for both new and seasoned Beaker users who need to run batch jobs (as opposed to interactive sessions) from a rapidly changing repository, especially Python-based jobs.
+
+*Without* Gantry, this workflow usually looks like this:
 
 1. Add a Dockerfile to your repository.
 2. Build the Docker image locally.
@@ -51,11 +52,11 @@ Without Gantry, this workflow usually looks like this:
 5. Submit the experiment spec.
 6. Make changes and repeat from step 2.
 
-This requires experience with Docker, experience writing Beaker experiment specs, and a fast and reliable internet connection (a luxury that some of us don't have, especially in the WFH era 🙃).
+This requires experience with Docker, experience writing Beaker experiment specs, and a fast and reliable internet connection.
 
-With Gantry, on the other hand, that same workflow simplifies down to this:
+*With* Gantry, on the other hand, that same workflow simplifies down to this:
 
-1. Write a `pyproject.toml`/`setup.py` file, a PIP `requirements.txt` file, a or conda `environment.yml` file.
+1. (Optional) Write a `pyproject.toml`/`setup.py` file, a PIP `requirements.txt` file, a or conda `environment.yml` file to specify your Python environment.
 2. Commit and push your changes.
 3. Submit and track a Beaker experiment with the `gantry run` command.
 4. Make changes and repeat from step 2.
