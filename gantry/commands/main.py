@@ -32,8 +32,6 @@ CLICK_COMMAND_DEFAULTS = {
     "context_settings": {"max_content_width": 115},
 }
 
-config = GantryConfig.load()
-
 
 def new_optgroup(name: str, help: Optional[str] = None):
     return optgroup.group(f"\n ❯❯❯ {name}", help=help)
@@ -61,21 +59,28 @@ def handle_sigterm(sig, frame):
     raise TermInterrupt
 
 
+config = GantryConfig.load()
+
+
 @click.group(**CLICK_GROUP_DEFAULTS)  # type: ignore[call-overload]
 @click.version_option(version=VERSION)
 @click.option(
-    "--quiet",
-    is_flag=True,
-    help="Don't display the gantry logo.",
+    "--quiet/--not-quiet",
+    help=f"""Don't display the gantry logo.
+    Can also be set through the environment variable 'GANTRY_QUIET'.
+    {config.get_help_string_for_default('quiet', False)}""",
     envvar="GANTRY_QUIET",
+    default=config.quiet if config.quiet is not None else False,
 )
 @click.option(
     "--log-level",
     type=click.Choice(["debug", "info", "warning", "error"]),
     show_choices=True,
-    show_default=True,
-    default="warning",
-    help="The Python log level.",
+    envvar="GANTRY_LOG_LEVEL",
+    help=f"""The Python log level.
+    Can also be set through the environment variable 'GANTRY_LOG_LEVEL'.
+    {config.get_help_string_for_default('log_level', 'warning')}""",
+    default=config.log_level or "warning",
 )
 def main(quiet: bool = False, log_level: str = "warning"):
     # Configure rich.

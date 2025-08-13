@@ -127,3 +127,4 @@ filterwarnings = []
 [tool.gantry]
 workspace = "ai2/gantry-testing"
 budget = "ai2/oe-base"
+log_level = "warning"
