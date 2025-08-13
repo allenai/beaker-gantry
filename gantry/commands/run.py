@@ -6,7 +6,7 @@ from .. import constants
 from ..api import launch_experiment
 from ..exceptions import *
 from ..util import get_local_python_version
-from .main import CLICK_COMMAND_DEFAULTS, main, new_optgroup
+from .main import CLICK_COMMAND_DEFAULTS, config, main, new_optgroup
 
 
 @main.command(**CLICK_COMMAND_DEFAULTS)
@@ -24,11 +24,15 @@ from .main import CLICK_COMMAND_DEFAULTS, main, new_optgroup
     "-w",
     "--workspace",
     type=str,
-    help="""The Beaker workspace to use.
-    If not specified, your default workspace will be used.""",
+    help=f"""The Beaker workspace to pull experiments from. {config.get_help_string_for_default('workspace')}""",
+    default=config.workspace,
 )
 @optgroup.option(
-    "-b", "--budget", type=str, help="""The budget account to associate with the experiment."""
+    "-b",
+    "--budget",
+    type=str,
+    help=f"""The budget account to associate with the experiment. {config.get_help_string_for_default('budget')}""",
+    default=config.budget,
 )
 @optgroup.option(
     "--group",

@@ -4,7 +4,9 @@ import click
 from rich import print
 
 from .. import constants, util
-from .main import CLICK_COMMAND_DEFAULTS, CLICK_GROUP_DEFAULTS, main
+from .main import CLICK_COMMAND_DEFAULTS, CLICK_GROUP_DEFAULTS
+from .main import config as _config
+from .main import main
 
 
 @main.group(**CLICK_GROUP_DEFAULTS)
@@ -20,8 +22,8 @@ def config():
     "-w",
     "--workspace",
     type=str,
-    help="""The Beaker workspace to use.
-    If not specified, your default workspace will be used.""",
+    help=f"""The Beaker workspace to pull experiments from. {_config.get_help_string_for_default('workspace')}""",
+    default=_config.workspace,
 )
 @click.option(
     "-s",

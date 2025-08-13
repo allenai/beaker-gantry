@@ -7,7 +7,7 @@ from rich import print, prompt
 
 from .. import util
 from ..exceptions import ConfigurationError, NotFoundError
-from .main import CLICK_COMMAND_DEFAULTS, main
+from .main import CLICK_COMMAND_DEFAULTS, config, main
 
 
 @main.command(**CLICK_COMMAND_DEFAULTS)
@@ -19,8 +19,7 @@ from .main import CLICK_COMMAND_DEFAULTS, main
     "-w",
     "--workspace",
     type=str,
-    help="""The Beaker workspace to pull experiments from.
-    If not specified, your default workspace will be used.""",
+    help=f"""The Beaker workspace to pull experiments from. {config.get_help_string_for_default('workspace')}""",
 )
 @click.option("--dry-run", is_flag=True, help="Do a dry-run without stopping any experiments.")
 @click.option(
@@ -39,20 +38,27 @@ def stop(
     """
     Stop a running workload.
     """
-    if workload and latest:
-        raise ConfigurationError("-l/--latest is mutually exclusive with [WORKLOAD] args")
-
     beaker = util.init_client(ensure_workspace=False)
-
     workloads: List[BeakerWorkload] = []
     if workload:
+        if latest or workspace is not None:
+            raise ConfigurationError(
+                "[WORKLOAD] args are mutually exclusive with -w/--workspace and -l/--latest"
+            )
         for workload_name in workload:
             try:
                 workloads.append(beaker.workload.get(workload_name))
             except BeakerWorkloadNotFound:
                 raise NotFoundError(f"Workload '{workload_name}' not found")
-    elif latest:
-        wl = util.get_latest_workload(beaker, workspace_name=workspace, running=True)
+    else:
+        if not latest:
+            raise ConfigurationError(
+                "A filter such as -l/--latest is required when no [WORKLOAD] is specified"
+            )
+
+        wl = util.get_latest_workload(
+            beaker, workspace_name=workspace or config.workspace, running=True
+        )
         if wl is None:
             print("[yellow]No running workloads to stop[/]")
         else:

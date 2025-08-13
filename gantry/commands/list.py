@@ -20,7 +20,7 @@ from rich.table import Table
 
 from .. import util
 from ..exceptions import ConfigurationError
-from .main import CLICK_COMMAND_DEFAULTS, main
+from .main import CLICK_COMMAND_DEFAULTS, config, main
 
 
 class Defaults:
@@ -33,8 +33,7 @@ class Defaults:
     "-w",
     "--workspace",
     type=str,
-    help="""The Beaker workspace to pull experiments from.
-    If not specified, your default workspace will be used.""",
+    help=f"""The Beaker workspace to pull experiments from. {config.get_help_string_for_default('workspace')}""",
 )
 @click.option("-g", "--group", type=str, help="""The Beaker group to pull experiments from.""")
 @click.option(
@@ -206,6 +205,9 @@ def iter_workloads(
         for wl in workloads:
             yield wl, wl.experiment.tasks
     else:
+        if workspace is None:
+            workspace = config.workspace
+
         for wl in beaker.workload.list(
             workspace=None if workspace is None else beaker.workspace.get(workspace),
             author=author_id,
