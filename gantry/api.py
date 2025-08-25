@@ -447,9 +447,9 @@ def launch_experiment(
         beaker.workspace.get().name
         info_header = (
             f"[b]Workspace:[/] [cyan]{beaker.workspace.get().name}[/] → {beaker.workspace.url()}\n"
-            "[b]Groups:[/]\n ❯ " + groups_str + "\n"
-            f"[b]Commit:[/] [cyan]{git_config.ref}[/] → {git_config.ref_url}\n"
-            f"[b]Branch:[/] [cyan]{git_config.branch}[/] → {git_config.branch_url}"
+            + (("[b]Groups:[/]\n ❯ " + groups_str + "\n") if groups else "")
+            + f"[b]Commit:[/] [cyan]{git_config.ref}[/] → {git_config.ref_url}\n"
+            + f"[b]Branch:[/] [cyan]{git_config.branch}[/] → {git_config.branch_url}"
         )
 
         if dry_run:
