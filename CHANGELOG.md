@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added support for setting certain gantry defaults in a `pyproject.toml` file under the `[tool.gantry]` section.
   For now the only options are `workspace`, `budget`, `log_level`, and `quiet`.
 
+### Fixed
+
+- Fixed parsing git remote URLs in the username+password format (e.g. "https://USERNAME:PASSWORD@github.com/allenai/beaker-gantry.git").
+
 ## [v3.0.0](https://github.com/allenai/beaker-gantry/releases/tag/v3.0.0) - 2025-08-06
 
 This release includes a shift to using [`uv`](https://docs.astral.sh/uv) as the default Python management tool instead of `conda`.
