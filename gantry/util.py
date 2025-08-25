@@ -177,10 +177,6 @@ def display_results(
 
         if info_header:
             print(info_header)
-        else:
-            print(
-                f"[b]Experiment:[/] [cyan]{beaker.user_name}/{workload.experiment.name}[/] → {beaker.workload.url(workload)}"
-            )
 
         print(
             f"[b]Results:[/] {beaker.dataset.url(results_ds)}\n"
