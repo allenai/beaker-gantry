@@ -435,7 +435,7 @@ def launch_experiment(
             rich.get_console().rule("[b]Dry run[/]")
 
         if groups:
-            groups_str = "\n❯ ".join(
+            groups_str = "\n ❯ ".join(
                 [
                     f"[cyan]{group.full_name}[/] → {util.group_url(beaker, group)}"
                     for group in groups
@@ -444,11 +444,12 @@ def launch_experiment(
         else:
             groups_str = ""
 
+        beaker.workspace.get().name
         info_header = (
-            f"[b]Workspace:[/] {beaker.workspace.url()}\n"
-            "[b]Groups:[/]\n❯ " + groups_str + "\n"
-            f"[b]Commit:[/] {git_config.ref_url}\n"
-            f"[b]Branch:[/] {git_config.branch_url}"
+            f"[b]Workspace:[/] [cyan]{beaker.workspace.get().name}[/] → {beaker.workspace.url()}\n"
+            "[b]Groups:[/]\n ❯ " + groups_str + "\n"
+            f"[b]Commit:[/] [cyan]{git_config.ref}[/] → {git_config.ref_url}\n"
+            f"[b]Branch:[/] [cyan]{git_config.branch}[/] → {git_config.branch_url}"
         )
 
         if dry_run:
@@ -506,7 +507,7 @@ def launch_experiment(
                 )
                 sys.exit(1)
 
-        util.display_results(beaker, workload, job, info_header)
+        util.display_results(beaker, workload, job, info_header if show_logs else None)
 
 
 def _build_experiment_spec(
@@ -865,12 +866,13 @@ def follow_workload(
 
             print()
             rich.get_console().rule("End logs")
-            print()
 
         # Wait for job to finalize...
         while not job.status.HasField("finalized"):
             time.sleep(0.5)
             job = beaker.job.get(job.id)
+
+        print()
 
         # If job was preempted, we start over...
         if _job_preempted(job):

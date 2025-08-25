@@ -27,15 +27,14 @@ def _parse_git_remote_url(url: str) -> tuple[str, str]:
 
     :raises InvalidRemoteError: If the URL can't be parsed correctly.
     """
+    if "github.com" not in url:
+        raise InvalidRemoteError(f"Remote ('{url}') must point to a GitHub repo")
+
     try:
-        account, repo = (
-            url.split("https://github.com/")[-1]
-            .split("git@github.com:")[-1]
-            .split(".git")[0]
-            .split("/")
-        )
+        account, repo = url.split("github.com", 1)[-1].strip("/:").split(".git")[0].split("/")
     except ValueError:
         raise InvalidRemoteError(f"Failed to parse GitHub repo path from remote '{url}'")
+
     return account, repo
 
 
