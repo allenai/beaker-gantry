@@ -2,8 +2,10 @@
 Gantry's public API.
 """
 
+import os
 import sys
 import time
+from contextlib import ExitStack
 from pathlib import Path
 from typing import List, Literal, Optional, Sequence, Tuple, Union
 
@@ -47,8 +49,8 @@ def _wait_for_job_to_start(
     *,
     beaker: Beaker,
     job: BeakerJob,
-    status: Status,
     start_time: float,
+    status: Status | None = None,
     timeout: int = 0,
     show_logs: bool = True,
 ) -> BeakerJob:
@@ -63,8 +65,12 @@ def _wait_for_job_to_start(
         ):
             event_hashable = (event.latest_occurrence.ToSeconds(), event.latest_message)
             if event_hashable not in events:
-                status.update(f"[i]{event.latest_message}[/]")
                 events.add(event_hashable)
+                msg = f"[i]{event.latest_message}[/]"
+                if status is not None:
+                    status.update(msg)
+                else:
+                    print(f"✓ {msg}")
                 time.sleep(0.5)
 
         time.sleep(0.5)
@@ -831,9 +837,17 @@ def follow_workload(
     preempted_job_ids = set()
 
     while True:
-        with console.status("[i]waiting...[/]", spinner="point", speed=0.8) as status:
+        job: BeakerJob | None = None
+        with ExitStack() as stack:
+            status: Status | None = None
+            if not os.environ.get("GANTRY_GITHUB_TESTING"):
+                status = stack.enter_context(
+                    console.status("[i]waiting...[/]", spinner="point", speed=0.8)
+                )
+            else:
+                print("[i]waiting...[/]")
+
             # Wait for job to be created...
-            job: BeakerJob | None = None
             while job is None:
                 if (
                     j := beaker.workload.get_latest_job(workload, task=task)
@@ -851,6 +865,8 @@ def follow_workload(
                 timeout=timeout,
                 show_logs=show_logs,
             )
+
+        assert job is not None
 
         # Stream logs...
         if show_logs and job.status.HasField("started"):
