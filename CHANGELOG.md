@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- Added `update_workload_description()` and `write_metrics()` functions to `gantry.api` module.
+
 ## [v3.1.0](https://github.com/allenai/beaker-gantry/releases/tag/v3.1.0) - 2025-08-25
 
 ### Added

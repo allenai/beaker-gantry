@@ -7,7 +7,7 @@ import sys
 import time
 from contextlib import ExitStack
 from pathlib import Path
-from typing import List, Literal, Optional, Sequence, Tuple, Union
+from typing import Any, Dict, List, Literal, Optional, Sequence, Tuple, Union
 
 import rich
 from beaker import (
@@ -906,3 +906,60 @@ def follow_workload(
             continue
 
         return job
+
+
+_original_workload: Optional[BeakerWorkload] = None
+
+
+def update_workload_description(
+    description: str,
+    strategy: Literal["append", "prepend", "replace"] = "replace",
+    beaker_token: Optional[str] = None,
+):
+    """
+    Update the description of the Gantry workload that this process is running in.
+
+    :param strategy: One of "append", "prepend", or "replace" to indicate how the new description
+        should be combined with the original description. Defaults to "replace".
+    :param beaker_token: An optional Beaker API token to use. If not provided, the
+        ``BEAKER_TOKEN`` environment variable will be used if set, or a Beaker config file.
+    """
+    global _original_workload
+
+    if (workload_id := os.environ.get("BEAKER_WORKLOAD_ID")) is None:
+        raise RuntimeError(
+            "'update_workload_description' can only be called from within a running workload"
+        )
+
+    with util.init_client(ensure_workspace=False, beaker_token=beaker_token) as beaker:
+        if _original_workload is None:
+            _original_workload = beaker.workload.get(workload_id)
+
+        if strategy == "append":
+            description = (_original_workload.experiment.description or "") + " " + description
+        elif strategy == "prepend":
+            description = description + " " + (_original_workload.experiment.description or "")
+        elif strategy != "replace":
+            raise ValueError(
+                f"'strategy' must be one of 'append', 'prepend', or 'replace', but got '{strategy}'."
+            )
+
+        beaker.workload.update(_original_workload, description=description.strip())
+
+
+def write_metrics(metrics: Dict[str, Any]):
+    """
+    Write result metrics for the Gantry workload that this process is running in.
+
+    :param metrics: A JSON-serializable dictionary of metrics to write.
+    """
+    import json
+
+    if os.environ.get("BEAKER_WORKLOAD_ID") is None:
+        raise RuntimeError("'write_metrics' can only be called from within a running workload")
+    if (results_dir := os.environ.get("RESULTS_DIR")) is None:
+        raise RuntimeError("Results directory not set! Can't write metrics.")
+    metrics_path = Path(results_dir) / "metrics.json"
+    metrics_path.parent.mkdir(exist_ok=True, parents=True)
+    with metrics_path.open("w") as f:
+        json.dump(metrics, f)
