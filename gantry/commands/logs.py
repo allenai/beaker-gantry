@@ -2,10 +2,10 @@ from typing import Optional
 
 import click
 from beaker import Beaker, BeakerJob, BeakerTask, BeakerWorkload
-from rich import print
 
 from .. import util
 from ..exceptions import ConfigurationError
+from ..util import print_stdout as print
 from .main import CLICK_COMMAND_DEFAULTS, main
 
 

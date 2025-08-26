@@ -15,11 +15,11 @@ from beaker import (
     BeakerWorkloadType,
 )
 from beaker.exceptions import BeakerGroupNotFound
-from rich import print
 from rich.table import Table
 
 from .. import util
 from ..exceptions import ConfigurationError
+from ..util import print_stdout as print
 from .main import CLICK_COMMAND_DEFAULTS, config, main
 
 
@@ -130,7 +130,7 @@ def list_cmd(
                         status_.update(f"{status_msg} [cyan]{wl.experiment.name} ❯ [/]{task.name}")
 
                     table.add_row(
-                        f"[b cyan]{wl.experiment.name}[/]\n[u i blue]{beaker.workload.url(wl)}[/]",
+                        f"[b cyan]{wl.experiment.name}[/]\n[blue u]{beaker.workload.url(wl)}[/]",
                         beaker.user.get(wl.experiment.author_id).name,
                         wl.experiment.created.ToDatetime(timezone.utc)
                         .astimezone(tz=None)

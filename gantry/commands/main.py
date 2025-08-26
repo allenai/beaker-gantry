@@ -113,7 +113,6 @@ def main(quiet: bool = False, log_level: str = "warning"):
 [blue b]_|"""""|_|"""""|_|"""""|_|"""""|_|"""""|_| """"| [/]
 [blue b] `---------------------------------------------' [/]
 ''',  # noqa: W605
-            highlight=False,
         )
 
     util.check_for_upgrades()

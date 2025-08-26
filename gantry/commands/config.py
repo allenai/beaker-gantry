@@ -1,9 +1,9 @@
 from typing import Optional
 
 import click
-from rich import print
 
 from .. import constants, util
+from ..util import print_stdout as print
 from .main import CLICK_COMMAND_DEFAULTS, CLICK_GROUP_DEFAULTS
 from .main import config as _config
 from .main import main

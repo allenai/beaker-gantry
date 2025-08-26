@@ -32,7 +32,7 @@ from beaker.exceptions import (
     BeakerImageNotFound,
     BeakerSecretNotFound,
 )
-from rich import print, prompt
+from rich import prompt
 from rich.status import Status
 
 from . import constants, util
@@ -40,6 +40,7 @@ from .aliases import PathOrStr
 from .exceptions import *
 from .git_utils import GitRepoState
 from .util import get_local_python_version, print_stderr
+from .util import print_stdout as print
 from .version import VERSION
 
 __all__ = ["GitRepoState", "launch_experiment", "follow_workload"]
@@ -237,7 +238,7 @@ def launch_experiment(
                     ):
                         group_name = group_name.split("/", 1)[-1]
                         group = beaker.group.create(group_name)
-                        print(f"Group created: {util.group_url(beaker, group)}")
+                        print(f"Group created: [blue u]{util.group_url(beaker, group)}[/]")
                     else:
                         print_stderr("[yellow]canceled[/]")
                         sys.exit(1)
@@ -448,7 +449,7 @@ def launch_experiment(
         if groups:
             groups_str = "\n ❯ ".join(
                 [
-                    f"[cyan]{group.full_name}[/] → {util.group_url(beaker, group)}"
+                    f"[cyan]{group.full_name}[/] → [blue u]{util.group_url(beaker, group)}[/]"
                     for group in groups
                 ]
             )
@@ -457,10 +458,10 @@ def launch_experiment(
 
         beaker.workspace.get().name
         info_header = (
-            f"[b]Workspace:[/] [cyan]{beaker.workspace.get().name}[/] → {beaker.workspace.url()}\n"
+            f"[b]Workspace:[/] [cyan]{beaker.workspace.get().name}[/] → [blue u]{beaker.workspace.url()}[/]\n"
             + (("[b]Groups:[/]\n ❯ " + groups_str + "\n") if groups else "")
-            + f"[b]Commit:[/] [cyan]{git_config.ref}[/] → {git_config.ref_url}\n"
-            + f"[b]Branch:[/] [cyan]{git_config.branch}[/] → {git_config.branch_url}"
+            + f"[b]Commit:[/] [cyan]{git_config.ref}[/] → [blue u]{git_config.ref_url}[/]\n"
+            + f"[b]Branch:[/] [cyan]{git_config.branch}[/] → [blue u]{git_config.branch_url}[/]"
         )
 
         if dry_run:
@@ -468,6 +469,7 @@ def launch_experiment(
             print(
                 f"[b]Name:[/] [cyan]{name}[/]\n[b]Experiment spec:[/]",
                 spec.to_json(),
+                highlight=True,
             )
             return
 
@@ -488,7 +490,7 @@ def launch_experiment(
                 name = f"{name_prefix}-{name_suffix}"
 
         info_header = (
-            f"[b]Experiment:[/] [cyan]{beaker.user_name}/{workload.experiment.name}[/] → {beaker.workload.url(workload)}\n"
+            f"[b]Experiment:[/] [cyan]{beaker.user_name}/{workload.experiment.name}[/] → [blue u]{beaker.workload.url(workload)}[/]\n"
             + info_header
         )
         print(info_header)
@@ -509,10 +511,12 @@ def launch_experiment(
             print_stderr("[yellow]Caught keyboard interrupt...[/]")
             if prompt.Confirm.ask("Would you like to cancel the experiment?"):
                 beaker.workload.cancel(workload)
-                print_stderr(f"[red]Experiment stopped:[/] {beaker.workload.url(workload)}")
+                print_stderr(
+                    f"[red]Experiment stopped:[/] [blue u]{beaker.workload.url(workload)}[/]"
+                )
                 return
             else:
-                print(f"See the experiment at {beaker.workload.url(workload)}")
+                print(f"See the experiment at [blue u]{beaker.workload.url(workload)}[/]")
                 print_stderr(
                     f"[yellow]To cancel the experiment manually, run:\n[i]$ gantry stop {workload.experiment.id}[/][/]"
                 )
@@ -879,7 +883,7 @@ def follow_workload(
             rich.get_console().rule("Logs")
 
             for job_log in beaker.job.logs(job, tail_lines=10 if tail else None, follow=True):
-                console.print(job_log.message.decode(), highlight=False, markup=False)
+                print(job_log.message.decode(), markup=False)
                 if timeout > 0 and (time.monotonic() - start_time) > timeout:
                     raise BeakerJobTimeoutError(
                         f"Timed out while waiting for job '{job.id}' to finish"

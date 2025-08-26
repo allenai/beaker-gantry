@@ -2,11 +2,11 @@ from typing import Optional
 
 import click
 from beaker import BeakerWorkload
-from rich import print
 
 from .. import util
 from ..api import follow_workload
 from ..exceptions import ConfigurationError, NotFoundError
+from ..util import print_stdout as print
 from .main import CLICK_COMMAND_DEFAULTS, config, main
 
 
@@ -67,7 +67,7 @@ def follow(
                 raise NotFoundError("Failed to find an experiment workload to follow")
 
             print(
-                f"Following experiment [b cyan]{wl.experiment.name}[/] ({wl.experiment.id}) at {beaker.workload.url(wl)}"
+                f"Following experiment [b cyan]{wl.experiment.name}[/] ({wl.experiment.id}) at [blue u]{beaker.workload.url(wl)}[/]"
             )
 
         assert wl is not None

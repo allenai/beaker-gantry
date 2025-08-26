@@ -1,10 +1,10 @@
 import click
 import rich
 from beaker import BeakerSortOrder
-from rich import print
 from rich.table import Table
 
 from .. import util
+from ..util import print_stdout as print
 from .main import CLICK_COMMAND_DEFAULTS, main
 
 
@@ -73,7 +73,7 @@ def find_gpus_cmd(show_all: bool = False, gpu_types: tuple[str, ...] = tuple()):
                     gpus_available_style = "green"
 
                 table.add_row(
-                    f"[b cyan]{beaker.org_name}/{cluster.name}[/]\n[u i blue]{beaker.cluster.url(cluster)}[/]",
+                    f"[b cyan]{beaker.org_name}/{cluster.name}[/]\n[blue u]{beaker.cluster.url(cluster)}[/]",
                     f"[{gpus_available_style}]{gpus_available}[/]",
                     f"{gpu_type or 'UNKNOWN'}",
                     f"{cluster.cluster_occupancy.slot_counts.assigned}/{cluster.cluster_occupancy.slot_counts.total}",

@@ -8,6 +8,7 @@ from dataclasses import asdict, dataclass
 from datetime import timedelta
 from enum import Enum
 from fnmatch import fnmatch
+from functools import cache
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Sequence, cast
 
@@ -32,7 +33,7 @@ from beaker.exceptions import (
     BeakerSecretNotFound,
     BeakerWorkspaceNotSet,
 )
-from rich import print, prompt
+from rich import prompt
 from rich.console import Console
 
 from . import constants
@@ -94,12 +95,17 @@ def get_local_python_version() -> str:
     return ".".join(platform.python_version_tuple()[:-1])
 
 
+@cache
 def stderr_console() -> Console:
     return Console(stderr=True)
 
 
 def print_stderr(*args, **kwargs):
-    stderr_console().print(*args, **kwargs)
+    stderr_console().print(*args, **kwargs, highlight=False)
+
+
+def print_stdout(*args, highlight: bool = False, markup: bool = True, **kwargs):
+    rich.get_console().print(*args, **kwargs, highlight=highlight, markup=markup)
 
 
 def print_exception(*args, **kwargs):
@@ -136,12 +142,11 @@ def get_latest_workload(
 def display_logs(
     beaker: Beaker, job: BeakerJob, tail_lines: Optional[int] = None, follow: bool = True
 ) -> BeakerJob:
-    console = rich.get_console()
-    print()
+    print_stdout()
     rich.get_console().rule("Logs")
     for job_log in beaker.job.logs(job, follow=follow, tail_lines=tail_lines):
-        console.print(job_log.message.decode(), highlight=False, markup=False)
-    print()
+        print_stdout(job_log.message.decode(), markup=False)
+    print_stdout()
     rich.get_console().rule("End logs")
     return beaker.job.get(job.id)
 
@@ -171,26 +176,26 @@ def display_results(
         runtime = job.status.exited - job.status.started  # type: ignore
         results_ds = beaker.dataset.get(job.assignment_details.result_dataset_id)
 
-        print(
+        print_stdout(
             f"[b green]\N{check mark}[/] [b cyan]{beaker.user_name}/{workload.experiment.name}[/] ({workload.experiment.id}) completed successfully.\n"
         )
 
         if info_header:
-            print(info_header)
+            print_stdout(info_header)
 
-        print(
-            f"[b]Results:[/] {beaker.dataset.url(results_ds)}\n"
+        print_stdout(
+            f"[b]Results:[/] [cyan u]{beaker.dataset.url(results_ds)}[/]\n"
             f"[b]Runtime:[/] {format_timedelta(runtime)}"
         )
 
         if job.metrics:
             from google.protobuf.json_format import MessageToDict
 
-            print("[b]Metrics:[/]", MessageToDict(job.metrics))
+            print_stdout("[b]Metrics:[/]", MessageToDict(job.metrics))
     elif status in (BeakerWorkloadStatus.canceled, BeakerWorkloadStatus.failed):
         if len(list(workload.experiment.tasks)) > 1:
             show_all_jobs(beaker, workload)
-            print()
+            print_stdout()
         raise ExperimentFailedError(
             f"Job {get_job_status_str(job)}, see {beaker.workload.url(workload)} for details"
         )
@@ -199,7 +204,7 @@ def display_results(
 
 
 def show_all_jobs(beaker: Beaker, workload: BeakerWorkload):
-    print("Tasks:")
+    print_stdout("Tasks:")
     task_name: Optional[str] = None
     for task in workload.experiment.tasks:
         task_name = task.name
@@ -211,10 +216,12 @@ def show_all_jobs(beaker: Beaker, workload: BeakerWorkload):
             style = "[red]"
         elif job.status.status == BeakerWorkloadStatus.canceled:
             style = "[yellow]"
-        print(f"❯ {style}'{task_name}'[/] {status_str} - see {beaker.job.url(job)}")
+        print_stdout(
+            f"❯ {style}'{task_name}'[/] {status_str} - see [cyan u]{beaker.job.url(job)}[/]"
+        )
 
     assert task_name is not None
-    print(
+    print_stdout(
         f"\nYou can show the logs for a particular task by running:\n"
         f"[i][blue]gantry[/] [cyan]logs {workload.experiment.id} --tail=1000 --task={task_name}[/][/]"
     )
@@ -359,7 +366,7 @@ def ensure_entrypoint_dataset(beaker: Beaker) -> BeakerDataset:
     gantry_entrypoint_dataset = get_dataset()
     if gantry_entrypoint_dataset is None:
         # Create it.
-        print(f"Creating entrypoint dataset '{entrypoint_dataset_name}'")
+        print_stdout(f"Creating entrypoint dataset [cyan]{entrypoint_dataset_name}[/]")
         try:
             with tempfile.TemporaryDirectory() as tmpdirname:
                 tmpdir = Path(tmpdirname)

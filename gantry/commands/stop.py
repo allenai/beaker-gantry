@@ -3,10 +3,11 @@ from typing import List, Optional, Sequence
 import click
 from beaker import BeakerWorkload
 from beaker.exceptions import BeakerWorkloadNotFound
-from rich import print, prompt
+from rich import prompt
 
 from .. import util
 from ..exceptions import ConfigurationError, NotFoundError
+from ..util import print_stdout as print
 from .main import CLICK_COMMAND_DEFAULTS, config, main
 
 
@@ -79,5 +80,5 @@ def stop(
             except (BeakerWorkloadNotFound,):
                 pass
             print(
-                f"[b green]\N{check mark}[/] [b cyan]{wl.experiment.name}[/] at {beaker.workload.url(wl)} stopped"
+                f"[b green]\N{check mark}[/] [b cyan]{wl.experiment.name}[/] at [blue u]{beaker.workload.url(wl)}[/] stopped"
             )
