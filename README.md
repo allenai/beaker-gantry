@@ -194,6 +194,8 @@ Try `gantry run --help` to see all of the available options.
 ## FAQ
 
 ### Can I use my own Docker/Beaker image?
+<details>
+<summary>Click to expand 💬</summary>
 
 You sure can! Just set the `--beaker-image TEXT` or `--docker-image TEXT` option.
 Gantry can use any image that has bash, curl, and git installed.
@@ -205,42 +207,64 @@ For example:
 gantry run --show-logs --docker-image='python:3.10' --system-python -- python --version
 ```
 
+</details>
+
 ### Will Gantry work for GPU experiments?
+<details>
+<summary>Click to expand 💬</summary>
 
 Absolutely! This was the main use-case Gantry was developed for. Just set the `--gpus INT` option for `gantry run` to the number of GPUs you need, and optionally `--gpu-type TEXT` (e.g. `--gpu-type=h100`).
+</details>
 
 ### How can I save results or metrics from an experiment?
+<details>
+<summary>Click to expand 💬</summary>
 
 By default Gantry uses the `/results` directory on the image as the location of the results dataset, which will also be set as the environment variable `RESULTS_DIR`.
 That means that everything your experiment writes to this directory will be persisted as a Beaker dataset when the experiment finalizes.
 And you can also attach metrics in Beaker for your experiment by writing a JSON file called `metrics.json` to the results directory, or by calling the function `gantry.api.write_metrics()` from within your experiment.
+</details>
 
 ### How can I see the Beaker experiment spec that Gantry uses?
+<details>
+<summary>Click to expand 💬</summary>
 
 You can use the `--dry-run` option with `gantry run` to see what Gantry will submit without actually submitting an experiment.
 You can also use `--save-spec PATH` in combination with `--dry-run` to save the actual experiment spec to a YAML file.
+</details>
 
 ### How can I update Gantry's GitHub token?
+<details>
+<summary>Click to expand 💬</summary>
 
 Use the command `gantry config set-gh-token`.
+</details>
 
 ### How can I attach Beaker datasets to an experiment?
+<details>
+<summary>Click to expand 💬</summary>
 
 Use the `--dataset` option for `gantry run`. For example:
 
 ```bash
 gantry run --show-logs --dataset='petew/squad-train:/input-data' -- ls /input-data
 ```
+</details>
 
 ### How can I attach a WEKA bucket to an experiment?
+<details>
+<summary>Click to expand 💬</summary>
 
 Use the `--weka` option for `gantry run`. For example:
 
 ```bash
 gantry run --show-logs --weka='oe-training-default:/mount/weka' -- ls -l /mount/weka
 ```
+</details>
 
 ### How can I run distributed batch jobs with Gantry?
+<details>
+<summary>Click to expand 💬</summary>
 
 The three options `--replicas INT`, `--leader-selection`, `--host-networking` used together give you the ability to run distributed batch jobs. See the [Beaker docs](https://beaker-docs.apps.allenai.org/experiments/distributed-training.html#batch-jobs) for more information.
 Consider also setting `--propagate-failure`, `--propagate-preemption`, and `--synchronized-start-timeout TEXT` depending on your workload.
@@ -305,8 +329,11 @@ Then change your `gantry run` command like this:
 -    -m gantry.all_reduce_bench
 +  -- ./launch-torchrun.sh
 ```
+</details>
 
 ### How can I customize the Python setup steps?
+<details>
+<summary>Click to expand 💬</summary>
 
 If gantry's default Python setup steps don't work for you, you can override them through the `--install TEXT` option with a custom command or shell script.
 For example:
@@ -314,8 +341,11 @@ For example:
 ```bash
 gantry run --show-logs --install='pip install -r custom_requirements.txt' -- echo "Hello, World!"
 ```
+</details>
 
 ### Can I use conda like with older versions of gantry?
+<details>
+<summary>Click to expand 💬</summary>
 
 Yes, you can still use conda if you wish by committing a conda `environment.yml` file to your repo or by simply specifying `--python-manager=conda`.
 For example:
@@ -325,10 +355,15 @@ gantry run --show-logs --python-manager=conda -- which python
 ```
 
 ### Can I use gantry with non-Python workloads?
+<details>
+<summary>Click to expand 💬</summary>
 
 Absolutely, just add the flag `--no-python` and optionally set `--install` or `--post-setup` to a custom command or shell script if you need custom setup steps.
+</details>
 
 ### Can I use gantry to launch Beaker jobs from GitHub Actions?
+<details>
+<summary>Click to expand 💬</summary>
 
 Yes, in fact this is a great way to utilize otherwise idle on-premise hardware, especially with short-running, preemptible jobs such as those you might launch to run unit tests that require accelerators.
 To do this you should set up a Beaker API token as a GitHub Actions Secret, named `BEAKER_TOKEN`, in your repository.
@@ -401,6 +436,9 @@ jobs:
 ```
 
 ### Why "Gantry"?
+<details>
+<summary>Click to expand 💬</summary>
 
 A gantry is a structure that's used, among other things, to lift containers off of ships. Analogously Beaker Gantry's purpose is to lift Docker containers (or at least the *management* of Docker containers) away from users.
+</details>
 <!-- end faq -->
