@@ -62,6 +62,13 @@ class Defaults:
     multiple=True,
 )
 @click.option(
+    "-t",
+    "--text",
+    "name_or_description",
+    type=str,
+    help="Filter by text in the experiment name or description.",
+)
+@click.option(
     "--max-age",
     type=int,
     default=Defaults.max_age,
@@ -80,6 +87,7 @@ def list_cmd(
     author: Optional[str] = None,
     me: bool = False,
     status: Optional[List[str]] = None,
+    name_or_description: Optional[str] = None,
     max_age: int = Defaults.max_age,
     show_all: bool = False,
 ):
@@ -89,7 +97,7 @@ def list_cmd(
     """
     with util.init_client(ensure_workspace=False) as beaker:
         table = Table(title="Experiments", show_lines=True)
-        table.add_column("Name", justify="left", no_wrap=True)
+        table.add_column("Workload", justify="left", no_wrap=True)
         table.add_column("Author", justify="left", style="blue", no_wrap=True)
         table.add_column("Created", justify="left", no_wrap=True)
         table.add_column("Tasks")
@@ -111,6 +119,7 @@ def list_cmd(
                         group=group,
                         author=author,
                         statuses=status,
+                        name_or_description=name_or_description,
                         max_age=max_age,
                         show_all=show_all,
                         limit=None if not show_all else limit,
@@ -130,7 +139,7 @@ def list_cmd(
                         status_.update(f"{status_msg} [cyan]{wl.experiment.name} ❯ [/]{task.name}")
 
                     table.add_row(
-                        f"[b cyan]{wl.experiment.name}[/]\n[blue u]{beaker.workload.url(wl)}[/]",
+                        f"[b cyan]{wl.experiment.name}[/]\n[blue u]{beaker.workload.url(wl)}[/]\n{wl.experiment.description[:48]}".strip(),
                         beaker.user.get(wl.experiment.author_id).name,
                         wl.experiment.created.ToDatetime(timezone.utc)
                         .astimezone(tz=None)
@@ -158,6 +167,7 @@ def iter_workloads(
     group: Optional[str],
     author: Optional[str],
     statuses: Optional[List[str]],
+    name_or_description: Optional[str],
     max_age: int,
     show_all: bool,
     limit: Optional[int] = None,
@@ -199,6 +209,13 @@ def iter_workloads(
             if wl.experiment.created.ToDatetime(timezone.utc) < created_after:
                 continue
 
+            if (
+                name_or_description is not None
+                and name_or_description not in wl.experiment.name
+                and name_or_description not in wl.experiment.description
+            ):
+                continue
+
             workloads.append(wl)
 
         workloads.sort(key=lambda wl: wl.experiment.created.ToMilliseconds(), reverse=True)
@@ -214,6 +231,7 @@ def iter_workloads(
             created_after=created_after,
             workload_type=BeakerWorkloadType.experiment,
             statuses=workload_statuses,
+            name_or_description=name_or_description,
             sort_order=BeakerSortOrder.descending,
             sort_field="created",
             limit=limit,
