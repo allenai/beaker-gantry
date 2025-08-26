@@ -1,12 +1,9 @@
-import json
-
-from gantry import METRICS_FILE
+from gantry.api import write_metrics
 
 
 def main():
-    with open(METRICS_FILE, "w") as f:
-        json.dump({"loss": 0.1, "accuracy": 0.95}, f)
-    print(f"\N{check mark} Done! Metrics written to {METRICS_FILE}")
+    write_metrics({"loss": 0.1, "accuracy": 0.95})
+    print("\N{check mark} Done! Metrics written to results dataset")
 
 
 if __name__ == "__main__":
