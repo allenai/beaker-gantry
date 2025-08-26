@@ -506,7 +506,7 @@ def init_client(
         kwargs["default_workspace"] = workspace
     if beaker_token is not None:
         kwargs["user_token"] = beaker_token
-    beaker = Beaker.from_env(**kwargs)
+    beaker = Beaker.from_env(**kwargs)  # type: ignore[arg-type]
 
     if ensure_workspace and workspace is None:
         try:
