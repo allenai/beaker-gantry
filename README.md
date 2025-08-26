@@ -353,6 +353,7 @@ For example:
 ```bash
 gantry run --show-logs --python-manager=conda -- which python
 ```
+</details>
 
 ### Can I use gantry with non-Python workloads?
 <details>
@@ -434,6 +435,7 @@ jobs:
             --gpu-type a100 \
             -- pytest -v tests/cuda_tests/  # TODO: change to your own command
 ```
+</details>
 
 ### Why "Gantry"?
 <details>
