@@ -43,7 +43,13 @@ from .util import get_local_python_version, print_stderr
 from .util import print_stdout as print
 from .version import VERSION
 
-__all__ = ["GitRepoState", "launch_experiment", "follow_workload"]
+__all__ = [
+    "GitRepoState",
+    "launch_experiment",
+    "follow_workload",
+    "update_workload_description",
+    "write_metrics",
+]
 
 
 def _wait_for_job_to_start(
