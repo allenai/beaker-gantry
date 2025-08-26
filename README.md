@@ -211,9 +211,9 @@ Absolutely! This was the main use-case Gantry was developed for. Just set the `-
 
 ### How can I save results or metrics from an experiment?
 
-By default Gantry uses the `/results` directory on the image as the location of the results dataset.
+By default Gantry uses the `/results` directory on the image as the location of the results dataset, which will also be set as the environment variable `RESULTS_DIR`.
 That means that everything your experiment writes to this directory will be persisted as a Beaker dataset when the experiment finalizes.
-And you can also create Beaker metrics for your experiment by writing a JSON file called `metrics.json` in the `/results` directory.
+And you can also attach metrics in Beaker for your experiment by writing a JSON file called `metrics.json` to the results directory, or by calling the function `gantry.api.write_metrics()` from within your experiment.
 
 ### How can I see the Beaker experiment spec that Gantry uses?
 
