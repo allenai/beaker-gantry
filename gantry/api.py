@@ -7,7 +7,7 @@ import sys
 import time
 from contextlib import ExitStack
 from pathlib import Path
-from typing import List, Literal, Optional, Sequence, Tuple, Union
+from typing import Any, Dict, List, Literal, Optional, Sequence, Tuple, Union
 
 import rich
 from beaker import (
@@ -945,3 +945,21 @@ def update_workload_description(
             )
 
         beaker.workload.update(_original_workload, description=description.strip())
+
+
+def write_metrics(metrics: Dict[str, Any]):
+    """
+    Write result metrics for the Gantry workload that this process is running in.
+
+    :param metrics: A JSON-serializable dictionary of metrics to write.
+    """
+    import json
+
+    if os.environ.get("BEAKER_WORKLOAD_ID") is None:
+        raise RuntimeError("'write_metrics' can only be called from within a running workload")
+    if (results_dir := os.environ.get("RESULTS_DIR")) is None:
+        raise RuntimeError("Results directory not set! Can't write metrics.")
+    metrics_path = Path(results_dir) / "metrics.json"
+    metrics_path.parent.mkdir(exist_ok=True, parents=True)
+    with metrics_path.open("w") as f:
+        json.dump(metrics, f)
