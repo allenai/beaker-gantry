@@ -331,7 +331,7 @@ Absolutely, just add the flag `--no-python` and optionally set `--install` or `-
 ### Can I use gantry to launch Beaker jobs from GitHub Actions?
 
 Yes, in fact this is a great way to utilize otherwise idle on-premise hardware, especially with short-running, preemptible jobs such as those you might launch to run unit tests that require accelerators.
-To do this you should setup a Beaker API token as a GitHub Actions Secret, named `BEAKER_TOKEN`, in your repository.
+To do this you should set up a Beaker API token as a GitHub Actions Secret, named `BEAKER_TOKEN`, in your repository.
 Then copy and modify this workflow for your needs:
 
 ```yaml
