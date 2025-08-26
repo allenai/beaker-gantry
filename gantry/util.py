@@ -191,7 +191,7 @@ def display_results(
         if job.metrics:
             from google.protobuf.json_format import MessageToDict
 
-            print_stdout("[b]Metrics:[/]", MessageToDict(job.metrics))
+            print_stdout("[b]Metrics:[/]", MessageToDict(job.metrics), highlight=True)
     elif status in (BeakerWorkloadStatus.canceled, BeakerWorkloadStatus.failed):
         if len(list(workload.experiment.tasks)) > 1:
             show_all_jobs(beaker, workload)
