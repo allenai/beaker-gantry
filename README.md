@@ -328,6 +328,78 @@ gantry run --show-logs --python-manager=conda -- which python
 
 Absolutely, just add the flag `--no-python` and optionally set `--install` or `--post-setup` to a custom command or shell script if you need custom setup steps.
 
+### Can I use gantry to launch Beaker jobs from GitHub Actions?
+
+Yes, in fact this is a great way to utilize otherwise idle on-premise hardware, especially with short-running, preemptible jobs such as those you might launch to run unit tests that require accelerators.
+To do this you should setup a Beaker API token as a GitHub Actions Secret, named `BEAKER_TOKEN`, in your repository.
+Then copy and modify this workflow for your needs:
+
+```yaml
+name: Beaker
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+jobs:
+  gpu_tests:
+    name: GPU Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      BEAKER_TOKEN: ${{ secrets.BEAKER_TOKEN }}
+      GANTRY_GITHUB_TESTING: 'true'  # force better logging for CI
+      BEAKER_WORKSPACE: 'ai2/your-workspace'  # TODO: change this to your Beaker workspace
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}  # check out PR head commit instead of merge commit
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: '3.12'
+
+      - name: install gantry
+        run:
+          uv tool install 'beaker-gantry>=3.1,<4.0'
+
+      - name: Determine current commit SHA (pull request)
+        if: github.event_name == 'pull_request'
+        run: |
+          echo "COMMIT_SHA=${{ github.event.pull_request.head.sha }}" >> $GITHUB_ENV
+          echo "BRANCH_NAME=${{ github.head_ref }}" >> $GITHUB_ENV
+
+      - name: Determine current commit SHA (push)
+        if: github.event_name != 'pull_request'
+        run: |
+          echo "COMMIT_SHA=$GITHUB_SHA" >> $GITHUB_ENV
+          echo "BRANCH_NAME=${{ github.ref_name }}" >> $GITHUB_ENV
+
+      - name: launch job
+        run: |
+          gantry run \
+            --show-logs \
+            --yes \
+            --workspace ${{ env.BEAKER_WORKSPACE }} \
+            --description 'GitHub Actions GPU tests' \
+            --ref ${{ env.COMMIT_SHA }} \
+            --branch ${{ env.BRANCH_NAME }} \
+            --priority normal \
+            --preemptible \
+            --gpus 1 \
+            --gpu-type h100 \
+            --gpu-type a100 \
+            -- pytest -v tests/cuda_tests/  # TODO: change to your own command
+```
+
 ### Why "Gantry"?
 
 A gantry is a structure that's used, among other things, to lift containers off of ships. Analogously Beaker Gantry's purpose is to lift Docker containers (or at least the *management* of Docker containers) away from users.
