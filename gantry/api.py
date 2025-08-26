@@ -147,7 +147,7 @@ def launch_experiment(
     show_logs: Optional[bool] = None,
     allow_dirty: bool = False,
     dry_run: bool = False,
-    yes: bool = False,
+    yes: Optional[bool] = None,
     save_spec: Optional[PathOrStr] = None,
     priority: Optional[str] = None,
     install: Optional[str] = None,
@@ -177,6 +177,11 @@ def launch_experiment(
 
     _validate_args(args)
 
+    if yes is None:
+        if os.environ.get("GANTRY_GITHUB_TESTING"):
+            yes = True
+        else:
+            yes = False
     if timeout is None:
         timeout = -1 if show_logs else 0
     if show_logs is None:

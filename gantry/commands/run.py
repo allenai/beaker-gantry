@@ -68,6 +68,7 @@ from .main import CLICK_COMMAND_DEFAULTS, config, main, new_optgroup
     "--yes",
     is_flag=True,
     help="""Skip all confirmation prompts.""",
+    default=None,
 )
 @optgroup.option("--dry-run", is_flag=True, help="""Do a dry run only.""")
 @optgroup.option(
