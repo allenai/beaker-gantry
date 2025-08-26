@@ -906,3 +906,42 @@ def follow_workload(
             continue
 
         return job
+
+
+_original_workload: Optional[BeakerWorkload] = None
+
+
+def update_workload_description(
+    description: str,
+    strategy: Literal["append", "prepend", "replace"] = "replace",
+    beaker_token: Optional[str] = None,
+):
+    """
+    Update the description of the Gantry workload that this process is running in.
+
+    :param strategy: One of "append", "prepend", or "replace" to indicate how the new description
+        should be combined with the original description. Defaults to "replace".
+    :param beaker_token: An optional Beaker API token to use. If not provided, the
+        ``BEAKER_TOKEN`` environment variable will be used if set, or a Beaker config file.
+    """
+    global _original_workload
+
+    if (workload_id := os.environ.get("BEAKER_WORKLOAD_ID")) is None:
+        raise RuntimeError(
+            "'update_workload_description' can only be called from within a running workload"
+        )
+
+    with util.init_client(beaker_token=beaker_token) as beaker:
+        if _original_workload is None:
+            _original_workload = beaker.workload.get(workload_id)
+
+        if strategy == "append":
+            description = (_original_workload.experiment.description or "") + " " + description
+        elif strategy == "prepend":
+            description = description + " " + (_original_workload.experiment.description or "")
+        elif strategy != "replace":
+            raise ValueError(
+                f"'strategy' must be one of 'append', 'prepend', or 'replace', but got '{strategy}'."
+            )
+
+        beaker.workload.update(_original_workload, description=description.strip())
