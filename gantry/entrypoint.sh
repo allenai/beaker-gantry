@@ -488,7 +488,9 @@ log_info "Done."
 if [[ -n "$GITHUB_TOKEN" ]]; then
     ensure_gh
     # Configure git to use the GitHub CLI as a credential helper so that we can clone private repos.
-    gh auth setup-git
+    # NOTE: this could fail due to race conditions if the user has mounted a host path to the container's '$HOME' directory
+    # (it's happened before).
+    with_retries 3 capture_logs "setup_gh_auth" gh auth setup-git
 fi
 
 if [[ -d "/var/lib/tcpxo/lib64" ]] && [[ -n "$BEAKER_REPLICA_COUNT" ]] && [[ -z "$GANTRY_SKIP_TCPXO_SETUP" ]]; then
