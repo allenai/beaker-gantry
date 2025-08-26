@@ -65,14 +65,14 @@ function with_retries {
         "$@" && return 0
 
         if ((++attempts >= max_retries)); then
-            log_error "Retries exceeded for command '$*'. Check results dataset for additional logs: $RESULTS_DATASET_URL"
+            log_error "Retries exceeded. Check results dataset for additional logs: $RESULTS_DATASET_URL"
             return 1
         else
             local pause_seconds=$((2**(attempts-1)))
             if ((pause_seconds > 30)); then
                 pause_seconds=30
             fi
-            log_warning "Command '$*' failed on attempt ${attempts}, retrying in ${pause_seconds} seconds..."
+            log_warning "Attempt ${attempts}/${max_retries} failed. Retrying in ${pause_seconds} second(s)..."
             sleep "$pause_seconds"
         fi
     done
