@@ -139,7 +139,9 @@ def list_cmd(
                         status_.update(f"{status_msg} [cyan]{wl.experiment.name} ❯ [/]{task.name}")
 
                     table.add_row(
-                        f"[b cyan]{wl.experiment.name}[/]\n[blue u]{beaker.workload.url(wl)}[/]\n{wl.experiment.description[:48]}".strip(),
+                        f"[b cyan]{wl.experiment.name}[/]\n"
+                        f"[blue u]{beaker.workload.url(wl)}[/]\n"
+                        f"{util.maybe_truncate_text(wl.experiment.description, max(len(beaker.workload.url(wl)), len(wl.experiment.name)))}".strip(),
                         beaker.user.get(wl.experiment.author_id).name,
                         wl.experiment.created.ToDatetime(timezone.utc)
                         .astimezone(tz=None)

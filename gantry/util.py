@@ -454,6 +454,13 @@ def format_timedelta(td: "timedelta") -> str:
     return ", ".join(parts)
 
 
+def maybe_truncate_text(s: str, n: int) -> str:
+    if len(s) <= n:
+        return s
+    else:
+        return s[: n - 1] + "…"
+
+
 def check_for_upgrades(force: bool = False):
     config = InternalConfig.load()
     if (
