@@ -931,7 +931,7 @@ def update_workload_description(
             "'update_workload_description' can only be called from within a running workload"
         )
 
-    with util.init_client(beaker_token=beaker_token) as beaker:
+    with util.init_client(ensure_workspace=False, beaker_token=beaker_token) as beaker:
         if _original_workload is None:
             _original_workload = beaker.workload.get(workload_id)
 
