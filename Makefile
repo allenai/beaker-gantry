@@ -1,5 +1,6 @@
 IMAGE_NAME=gantry
 BEAKER_WORKSPACE=ai2/gantry-testing
+GANTRY_VERSION := $(shell cat gantry/version.py | cut -d'"' -f2-2)
 
 .PHONY : run-checks
 run-checks :
@@ -26,3 +27,27 @@ dev-tools-image :
 .PHONY : test-dev-tools-image
 test-dev-tools-image :
 	gantry run --timeout -1 --workspace ai2/gantry-testing --beaker-image petew/gantry-dev-tools --allow-dirty --yes -- python -c 'print("Hello, World!")'
+
+.PHONY : check-version
+check-version :
+	@echo "❯ Latest published version is: $(shell python scripts/get_latest_version.py)"
+	@echo "❯ Local version to build is:   v$(GANTRY_VERSION)"
+	@read -rp "Press ENTER to continue, or CTRL-C to cancel."
+
+.PHONY : build
+build : check-version
+	@rm -rf *.egg-info/ dist/
+	@echo "❯ Building distribution files..."
+	@python -m build
+	@echo "❯ Done."
+
+.PHONY : publish
+publish : build
+	@echo "❯ Preparing to upload the following distribution files:"
+	@echo
+	@ls -1 dist/
+	@echo
+	@read -rp "Press ENTER to continue, or CTRL-C to cancel."
+	@echo "❯ Uploading distribution files..."
+	@twine upload dist/*
+	@echo "❯ Done."
