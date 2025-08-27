@@ -2,6 +2,7 @@
 Gantry's public API.
 """
 
+import hashlib
 import os
 import sys
 import time
@@ -287,7 +288,10 @@ def launch_experiment(
             try:
                 env_name, val = e.split("=", 1)
             except ValueError:
-                raise ValueError("Invalid --env option: {e}")
+                if e in os.environ:
+                    env_name, val = e, os.environ[e]
+                else:
+                    raise ConfigurationError(f"Invalid --env option '{e}'")
             env_vars_to_use.append((env_name, val))
 
         env_secrets_to_use = []
@@ -295,7 +299,32 @@ def launch_experiment(
             try:
                 env_secret_name, secret = e.split("=", 1)
             except ValueError:
-                raise ValueError(f"Invalid --env-secret option: '{e}'")
+                if e not in os.environ:
+                    raise ConfigurationError(f"Invalid --env-secret option '{e}'")
+
+                env_secret_name = e
+                env_secret_value = os.environ[e]
+
+                # Create a unique name for this secret based on the env var name and a hash
+                # of the value.
+                sha256_hash = hashlib.sha256()
+                sha256_hash.update(env_secret_value.encode(errors="ignore"))
+                secret = f"{env_secret_name}_{sha256_hash.hexdigest()[:8]}"
+                attempts = 1
+                while True:
+                    try:
+                        s = beaker.secret.get(secret)
+                    except BeakerSecretNotFound:
+                        beaker.secret.write(secret, env_secret_value)
+                        break
+
+                    if beaker.secret.read(s) == env_secret_value:
+                        break
+
+                    # It's highly unlikely to get a naming conflict here but we handle it anyway.
+                    secret = f"{env_secret_name}_{sha256_hash.hexdigest()[:8]}_{attempts}"
+                    attempts += 1
+
             env_secrets_to_use.append((env_secret_name, secret))
 
         dataset_secrets_to_use = []

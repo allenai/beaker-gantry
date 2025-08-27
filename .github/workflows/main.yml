@@ -65,7 +65,7 @@ jobs:
             run: |
               gantry run \
                 --show-logs \
-                --env-secret 'BEAKER_TOKEN=PETEW_BEAKER_TOKEN' \
+                --env-secret 'BEAKER_TOKEN' \
                 --yes \
                 -- python examples/metrics/run.py
 
