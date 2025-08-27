@@ -183,7 +183,9 @@ from .main import CLICK_COMMAND_DEFAULTS, config, main, new_optgroup
     "--env",
     "env_vars",
     type=str,
-    help="""Environment variables to add the Beaker experiment. Should be in the form '{NAME}={VALUE}'.""",
+    help="""Environment variables to add the Beaker experiment.
+    Should be in the form '{NAME}={VALUE}', or just '{NAME}' to take the value from a local environment
+    variable of that name.""",
     multiple=True,
 )
 @optgroup.option(
@@ -191,8 +193,9 @@ from .main import CLICK_COMMAND_DEFAULTS, config, main, new_optgroup
     "--secret-env",
     "env_secrets",
     type=str,
-    help="""Environment variables to add the Beaker experiment from Beaker secrets.
-    Should be in the form '{NAME}={SECRET_NAME}'.""",
+    help="""Environment variables to add to the Beaker experiment from Beaker secrets.
+    Should be in the form '{NAME}={SECRET_NAME}', or just '{NAME}' to take the value from a local
+    environment variable of that name and create a new secret.""",
     multiple=True,
 )
 @optgroup.option(
@@ -216,9 +219,9 @@ from .main import CLICK_COMMAND_DEFAULTS, config, main, new_optgroup
 @optgroup.option(
     "--gh-token-secret",
     type=str,
-    help="""The name of the Beaker secret that contains your GitHub token.""",
-    default=constants.GITHUB_TOKEN_SECRET,
-    show_default=True,
+    help=f"""The name of the Beaker secret that contains your GitHub token.
+    {config.get_help_string_for_default('gh_token_secret', constants.GITHUB_TOKEN_SECRET)}""",
+    default=config.gh_token_secret or constants.GITHUB_TOKEN_SECRET,
 )
 @new_optgroup("Outputs")
 @optgroup.option(

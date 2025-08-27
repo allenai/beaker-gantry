@@ -2,7 +2,9 @@ import gantry
 
 
 def main():
-    gantry.api.write_metrics({"loss": 0.1, "accuracy": 0.95})
+    loss, accuracy = 0.13, 0.95
+    gantry.api.update_workload_description(f"loss={loss:.2f}, accuracy={accuracy:.2f}")
+    gantry.api.write_metrics({"loss": loss, "accuracy": accuracy})
     print("\N{check mark} Done! Metrics written to results dataset")
 
 

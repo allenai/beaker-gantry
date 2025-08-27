@@ -2,12 +2,13 @@
 Gantry's public API.
 """
 
+import hashlib
 import os
 import sys
 import time
 from contextlib import ExitStack
 from pathlib import Path
-from typing import Any, Dict, List, Literal, Optional, Sequence, Tuple, Union
+from typing import Any, Dict, List, Literal, Optional, Sequence, Set, Tuple, Union
 
 import rich
 from beaker import (
@@ -254,31 +255,6 @@ def launch_experiment(
         # Get the entrypoint dataset.
         entrypoint_dataset = util.ensure_entrypoint_dataset(beaker)
 
-        # Get / set the GitHub token secret.
-        if not git_config.is_public:
-            try:
-                beaker.secret.get(gh_token_secret)
-            except BeakerSecretNotFound:
-                print_stderr(
-                    f"[yellow]GitHub token secret '{gh_token_secret}' not found in workspace.[/]\n"
-                    f"You can create a suitable GitHub token by going to https://github.com/settings/tokens/new "
-                    f"and generating a token with the '\N{ballot box with check} repo' scope."
-                )
-                gh_token = prompt.Prompt.ask(
-                    "[i]Please paste your GitHub token here[/]",
-                    password=True,
-                )
-                if not gh_token:
-                    raise ConfigurationError("token cannot be empty!")
-                beaker.secret.write(gh_token_secret, gh_token)
-                print(
-                    f"GitHub token secret uploaded to workspace as '{gh_token_secret}'.\n"
-                    f"If you need to update this secret in the future, use the command:\n"
-                    f"[i]$ gantry config set-gh-token[/]"
-                )
-
-            gh_token_secret = util.ensure_github_token_secret(beaker, gh_token_secret)
-
         # Validate the input datasets.
         datasets_to_use = ensure_datasets(beaker, *datasets) if datasets else []
 
@@ -287,15 +263,45 @@ def launch_experiment(
             try:
                 env_name, val = e.split("=", 1)
             except ValueError:
-                raise ValueError("Invalid --env option: {e}")
+                if e in os.environ:
+                    env_name, val = e, os.environ[e]
+                else:
+                    raise ConfigurationError(f"Invalid --env option '{e}'")
             env_vars_to_use.append((env_name, val))
 
+        secret_names: Set[str] = set()
         env_secrets_to_use = []
         for e in env_secrets or []:
             try:
                 env_secret_name, secret = e.split("=", 1)
             except ValueError:
-                raise ValueError(f"Invalid --env-secret option: '{e}'")
+                if e not in os.environ:
+                    raise ConfigurationError(f"Invalid --env-secret option '{e}'")
+
+                env_secret_name = e
+                env_secret_value = os.environ[e]
+
+                # Create a unique name for this secret based on the env var name and a hash
+                # of the value.
+                sha256_hash = hashlib.sha256()
+                sha256_hash.update(env_secret_value.encode(errors="ignore"))
+                secret = f"{env_secret_name}_{sha256_hash.hexdigest()[:8]}"
+                attempts = 1
+                while True:
+                    try:
+                        s = beaker.secret.get(secret)
+                    except BeakerSecretNotFound:
+                        beaker.secret.write(secret, env_secret_value)
+                        break
+
+                    if beaker.secret.read(s) == env_secret_value:
+                        break
+
+                    # It's highly unlikely to get a naming conflict here but we handle it anyway.
+                    secret = f"{env_secret_name}_{sha256_hash.hexdigest()[:8]}_{attempts}"
+                    attempts += 1
+
+            secret_names.add(env_secret_name)
             env_secrets_to_use.append((env_secret_name, secret))
 
         dataset_secrets_to_use = []
@@ -374,6 +380,43 @@ def launch_experiment(
         if not clusters and preemptible is None:
             preemptible = True
 
+        # Get / set the GitHub token secret.
+        gh_token_secret_to_use: Optional[str] = None
+        if not git_config.is_public and "GITHUB_TOKEN" not in secret_names:
+            try:
+                beaker.secret.get(gh_token_secret)
+            except BeakerSecretNotFound:
+                print_stderr(
+                    f"[yellow]GitHub token secret '{gh_token_secret}' not found in workspace.[/]\n"
+                    f"You can create a suitable GitHub token by going to https://github.com/settings/tokens/new "
+                    f"and generating a token with the '\N{ballot box with check} repo' scope."
+                )
+
+                if "GITHUB_TOKEN" in os.environ:
+                    gh_token = prompt.Prompt.ask(
+                        "[i]Please paste your GitHub token here or press [/]ENTER[i] to use your local [/]GITHUB_TOKEN",
+                        password=True,
+                        default=os.environ["GITHUB_TOKEN"],
+                        show_default=False,
+                    )
+                else:
+                    gh_token = prompt.Prompt.ask(
+                        "[i]Please paste your GitHub token here[/]",
+                        password=True,
+                    )
+
+                if not gh_token:
+                    raise ConfigurationError("token cannot be empty!")
+
+                beaker.secret.write(gh_token_secret, gh_token)
+                print(
+                    f"GitHub token secret uploaded to workspace as '{gh_token_secret}'.\n"
+                    f"If you need to update this secret in the future, use the command:\n"
+                    f"[i]$ gantry config set-gh-token[/]"
+                )
+
+            gh_token_secret_to_use = gh_token_secret
+
         # Initialize experiment and task spec.
         spec = _build_experiment_spec(
             task_name=task_name,
@@ -387,7 +430,7 @@ def launch_experiment(
             description=description,
             beaker_image=beaker_image,
             docker_image=docker_image,
-            gh_token_secret=gh_token_secret if not git_config.is_public else None,
+            gh_token_secret=gh_token_secret_to_use,
             conda_file=conda_file,
             conda_env=conda_env,
             python_manager=python_manager,
@@ -921,14 +964,20 @@ def update_workload_description(
     description: str,
     strategy: Literal["append", "prepend", "replace"] = "replace",
     beaker_token: Optional[str] = None,
+    client: Optional[Beaker] = None,
 ):
     """
     Update the description of the Gantry workload that this process is running in.
 
+    :param description: The description to set or add, depending on the ``strategy``.
     :param strategy: One of "append", "prepend", or "replace" to indicate how the new description
         should be combined with the original description. Defaults to "replace".
     :param beaker_token: An optional Beaker API token to use. If not provided, the
         ``BEAKER_TOKEN`` environment variable will be used if set, or a Beaker config file.
+        Alternatively you can provide an existing :class:`~beaker.Beaker` client via the
+        ``client`` parameter.
+    :param client: An optional existing :class:`~beaker.Beaker` client to use. If not provided,
+        a new client will be created using the provided ``beaker_token`` or environment/config.
     """
     global _original_workload
 
@@ -937,7 +986,16 @@ def update_workload_description(
             "'update_workload_description' can only be called from within a running workload"
         )
 
-    with util.init_client(ensure_workspace=False, beaker_token=beaker_token) as beaker:
+    with ExitStack() as stack:
+        if client is None:
+            beaker: Beaker = stack.enter_context(
+                util.init_client(
+                    ensure_workspace=False, beaker_token=beaker_token, check_for_upgrades=False
+                )
+            )
+        else:
+            beaker = client
+
         if _original_workload is None:
             _original_workload = beaker.workload.get(workload_id)
 

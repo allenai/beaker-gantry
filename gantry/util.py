@@ -1,4 +1,5 @@
 import binascii
+import hashlib
 import json
 import platform
 import tempfile
@@ -28,11 +29,7 @@ from beaker import (
     BeakerWorkloadType,
     BeakerWorkspace,
 )
-from beaker.exceptions import (
-    BeakerDatasetConflict,
-    BeakerSecretNotFound,
-    BeakerWorkspaceNotSet,
-)
+from beaker.exceptions import BeakerDatasetConflict, BeakerWorkspaceNotSet
 from rich import prompt
 from rich.console import Console
 
@@ -337,7 +334,6 @@ def filter_clusters_by_gpu_type(
 
 
 def ensure_entrypoint_dataset(beaker: Beaker) -> BeakerDataset:
-    import hashlib
     from importlib.resources import read_binary
 
     import gantry
@@ -416,21 +412,6 @@ def ensure_entrypoint_dataset(beaker: Beaker) -> BeakerDataset:
     return gantry_entrypoint_dataset
 
 
-def ensure_github_token_secret(
-    beaker: Beaker, secret_name: str = constants.GITHUB_TOKEN_SECRET
-) -> str:
-    try:
-        beaker.secret.get(secret_name)
-    except BeakerSecretNotFound:
-        raise GitHubTokenSecretNotFound(
-            f"GitHub token secret '{secret_name}' not found in Beaker workspace!\n"
-            f"You can create a suitable GitHub token by going to https://github.com/settings/tokens/new "
-            f"and generating a token with '\N{ballot box with check} repo' scope.\n"
-            f"Then upload your token as a Beaker secret using the Beaker CLI or Python client."
-        )
-    return secret_name
-
-
 def format_timedelta(td: "timedelta") -> str:
     def format_value_and_unit(value: int, unit: str) -> str:
         if value == 1:
@@ -504,6 +485,7 @@ def init_client(
     yes: bool = False,
     ensure_workspace: bool = True,
     beaker_token: Optional[str] = None,
+    check_for_upgrades: bool = True,
 ) -> Beaker:
     Beaker.MAX_RETRIES = 10_000  # effectively retry forever
     Beaker.BACKOFF_MAX = 32
@@ -513,7 +495,7 @@ def init_client(
         kwargs["default_workspace"] = workspace
     if beaker_token is not None:
         kwargs["user_token"] = beaker_token
-    beaker = Beaker.from_env(**kwargs)  # type: ignore[arg-type]
+    beaker = Beaker.from_env(check_for_upgrades=check_for_upgrades, **kwargs)  # type: ignore[arg-type]
 
     if ensure_workspace and workspace is None:
         try:

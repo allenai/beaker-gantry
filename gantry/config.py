@@ -11,6 +11,7 @@ from .exceptions import ConfigurationError
 @dataclass
 class GantryConfig:
     workspace: Optional[str] = None
+    gh_token_secret: Optional[str] = None
     budget: Optional[str] = None
     log_level: Optional[Literal["debug", "info", "warning", "error"]] = None
     quiet: Optional[bool] = None
@@ -46,7 +47,9 @@ class GantryConfig:
             return f"'{value}'"
 
     def get_help_string_for_default(
-        self, field: Literal["workspace", "budget", "log_level", "quiet"], default: Any = None
+        self,
+        field: Literal["workspace", "gh_token_secret", "budget", "log_level", "quiet"],
+        default: Any = None,
     ) -> str:
         value = getattr(self, field)
         if value is None and default is None:

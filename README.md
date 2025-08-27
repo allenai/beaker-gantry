@@ -134,9 +134,10 @@ pip install -e .
     Some gantry settings can also be specified in a `pyproject.toml` file under the section `[tool.gantry]`. For now those settings are:
 
     1. `workspace` - The default Beaker workspace to use.
-    2. `budget` - The default Beaker budget to use.
-    3. `log_level` - The (local) Python log level. Defaults to "warning".
-    4. `quiet` - A boolean. If true the gantry logo won't be displayed on the command line.
+    2. `gh_token_secret` - The name of the Beaker secret with your GitHub API token.
+    3. `budget` - The default Beaker budget to use.
+    4. `log_level` - The (local) Python log level. Defaults to "warning".
+    5. `quiet` - A boolean. If true the gantry logo won't be displayed on the command line.
 
     For example:
 
@@ -144,6 +145,7 @@ pip install -e .
     # pyproject.toml
     [tool.gantry]
     workspace = "ai2/my-default-workspace"
+    gh_token_secret = "GITHUB_TOKEN"
     budget = "ai2/my-teams-budget"
     log_level = "warning"
     quiet = false
