@@ -10,6 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Added `--text` option to `gantry list` command for filtering by name or description.
+- Added `client` parameter to `api.update_workload_description()` for providing an existing Beaker client,
+  which avoids creating one each time the function is called.
+
+### Fixed
+
+- Made `api.update_workload_description()` more efficient.
 
 ## [v3.2.0](https://github.com/allenai/beaker-gantry/releases/tag/v3.2.0) - 2025-08-26
 

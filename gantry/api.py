@@ -921,14 +921,20 @@ def update_workload_description(
     description: str,
     strategy: Literal["append", "prepend", "replace"] = "replace",
     beaker_token: Optional[str] = None,
+    client: Optional[Beaker] = None,
 ):
     """
     Update the description of the Gantry workload that this process is running in.
 
+    :param description: The description to set or add, depending on the ``strategy``.
     :param strategy: One of "append", "prepend", or "replace" to indicate how the new description
         should be combined with the original description. Defaults to "replace".
     :param beaker_token: An optional Beaker API token to use. If not provided, the
         ``BEAKER_TOKEN`` environment variable will be used if set, or a Beaker config file.
+        Alternatively you can provide an existing :class:`~beaker.Beaker` client via the
+        ``client`` parameter.
+    :param client: An optional existing :class:`~beaker.Beaker` client to use. If not provided,
+        a new client will be created using the provided ``beaker_token`` or environment/config.
     """
     global _original_workload
 
@@ -937,7 +943,16 @@ def update_workload_description(
             "'update_workload_description' can only be called from within a running workload"
         )
 
-    with util.init_client(ensure_workspace=False, beaker_token=beaker_token) as beaker:
+    with ExitStack() as stack:
+        if client is None:
+            beaker: Beaker = stack.enter_context(
+                util.init_client(
+                    ensure_workspace=False, beaker_token=beaker_token, check_for_upgrades=False
+                )
+            )
+        else:
+            beaker = client
+
         if _original_workload is None:
             _original_workload = beaker.workload.get(workload_id)
 

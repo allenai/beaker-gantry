@@ -504,6 +504,7 @@ def init_client(
     yes: bool = False,
     ensure_workspace: bool = True,
     beaker_token: Optional[str] = None,
+    check_for_upgrades: bool = True,
 ) -> Beaker:
     Beaker.MAX_RETRIES = 10_000  # effectively retry forever
     Beaker.BACKOFF_MAX = 32
@@ -513,7 +514,7 @@ def init_client(
         kwargs["default_workspace"] = workspace
     if beaker_token is not None:
         kwargs["user_token"] = beaker_token
-    beaker = Beaker.from_env(**kwargs)  # type: ignore[arg-type]
+    beaker = Beaker.from_env(check_for_upgrades=check_for_upgrades, **kwargs)  # type: ignore[arg-type]
 
     if ensure_workspace and workspace is None:
         try:
