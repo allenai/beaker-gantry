@@ -1,4 +1,5 @@
 import binascii
+import hashlib
 import json
 import platform
 import tempfile
@@ -28,11 +29,7 @@ from beaker import (
     BeakerWorkloadType,
     BeakerWorkspace,
 )
-from beaker.exceptions import (
-    BeakerDatasetConflict,
-    BeakerSecretNotFound,
-    BeakerWorkspaceNotSet,
-)
+from beaker.exceptions import BeakerDatasetConflict, BeakerWorkspaceNotSet
 from rich import prompt
 from rich.console import Console
 
@@ -337,7 +334,6 @@ def filter_clusters_by_gpu_type(
 
 
 def ensure_entrypoint_dataset(beaker: Beaker) -> BeakerDataset:
-    import hashlib
     from importlib.resources import read_binary
 
     import gantry
@@ -414,21 +410,6 @@ def ensure_entrypoint_dataset(beaker: Beaker) -> BeakerDataset:
             )
 
     return gantry_entrypoint_dataset
-
-
-def ensure_github_token_secret(
-    beaker: Beaker, secret_name: str = constants.GITHUB_TOKEN_SECRET
-) -> str:
-    try:
-        beaker.secret.get(secret_name)
-    except BeakerSecretNotFound:
-        raise GitHubTokenSecretNotFound(
-            f"GitHub token secret '{secret_name}' not found in Beaker workspace!\n"
-            f"You can create a suitable GitHub token by going to https://github.com/settings/tokens/new "
-            f"and generating a token with '\N{ballot box with check} repo' scope.\n"
-            f"Then upload your token as a Beaker secret using the Beaker CLI or Python client."
-        )
-    return secret_name
 
 
 def format_timedelta(td: "timedelta") -> str:
