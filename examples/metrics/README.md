@@ -5,4 +5,5 @@ This example demonstrates how you can save results or metrics from an experiment
 To run this example:
 1. Copy the contents of this directory to a new GitHub repository.
 2. Commit and push all changes.
-3. Run `gantry run -- python run.py`
+3. Set the environment variable `BEAKER_TOKEN` to your Beaker API token.
+4. Run `gantry run --env-secret 'BEAKER_TOKEN' -- python run.py`
