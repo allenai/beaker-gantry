@@ -29,9 +29,9 @@ def config():
     "-s",
     "--secret",
     type=str,
-    help="""The name of the Beaker secret to write to.""",
-    default=constants.GITHUB_TOKEN_SECRET,
-    show_default=True,
+    help=f"""The name of the Beaker secret to write to.
+    {_config.get_help_string_for_default('gh_token_secret', constants.GITHUB_TOKEN_SECRET)}""",
+    default=_config.gh_token_secret or constants.GITHUB_TOKEN_SECRET,
 )
 @click.option(
     "-y",
