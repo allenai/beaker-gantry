@@ -292,7 +292,7 @@ function uv_setup_python {
 
     if [[ -n "$GANTRY_UV_VENV" ]]; then
         if [[ ! -d "$GANTRY_UV_VENV" ]] || [[ ! -f "$GANTRY_UV_VENV/bin/activate" ]]; then
-            log_error "--uv-venv '$GANTRY_UV_VENV' should be a path to virtual env directory"
+            log_error "--uv-venv '$GANTRY_UV_VENV' should be a path to a virtual env directory"
             return 1
         fi
 
