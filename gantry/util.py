@@ -181,7 +181,7 @@ def display_results(
             print_stdout(info_header)
 
         print_stdout(
-            f"[b]Results:[/] [cyan u]{beaker.dataset.url(results_ds)}[/]\n"
+            f"[b]Results:[/] [blue u]{beaker.dataset.url(results_ds)}[/]\n"
             f"[b]Runtime:[/] {format_timedelta(runtime)}"
         )
 
