@@ -155,25 +155,6 @@ function ensure_gh {
     fi
 }
 
-function clone_repo {
-    if [[ -z "$GIT_BRANCH" ]]; then
-        if [[ -n "$GITHUB_TOKEN" ]]; then
-            gh repo clone "$GITHUB_REPO" . && return 0
-        else
-            git clone "https://github.com/$GITHUB_REPO" . && return 0
-        fi
-    else
-        log_info "Cloning from single branch '$GIT_BRANCH'..."
-        if [[ -n "$GITHUB_TOKEN" ]]; then
-            gh repo clone "$GITHUB_REPO" . -- -b "$GIT_BRANCH" --single-branch && return 0
-        else
-            git clone -b "$GIT_BRANCH" --single-branch "https://github.com/$GITHUB_REPO" . && return 0
-        fi
-    fi
-
-    return 1
-}
-
 function ensure_conda {
     if ! command -v conda &> /dev/null; then
         log_info "Installing conda..."
@@ -510,13 +491,16 @@ fi
 log_header "Cloning source code..."
 ###################################
 
+# Silence detached head warnings.
 git config --global advice.detachedHead false
 
-log_info "Cloning source code from '$GITHUB_REPO'..."
-with_retries 5 capture_logs "clone_repo" clone_repo
-log_info "Done."
+# Initialize empty repo.
+capture_logs "git_init" git init
+capture_logs "git_remote" git remote add origin "https://github.com/$GITHUB_REPO"
 
-log_info "Checking out '$GIT_REF'..."
+log_info "Cloning source from '$GITHUB_REPO' @ '$GIT_REF'..."
+# Shallow clone a single commit. See https://stackoverflow.com/a/43136160
+with_retries 5 capture_logs "fetch_repo" git fetch --depth 1 origin "$GIT_REF"
 capture_logs "git_checkout" git checkout "$GIT_REF"
 log_info "Done."
 
