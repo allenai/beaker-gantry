@@ -58,7 +58,6 @@ def _wait_for_job_to_start(
     beaker: Beaker,
     job: BeakerJob,
     start_time: float,
-    status: Status | None = None,
     timeout: int = 0,
     show_logs: bool = True,
 ) -> BeakerJob:
@@ -74,11 +73,7 @@ def _wait_for_job_to_start(
             event_hashable = (event.latest_occurrence.ToSeconds(), event.latest_message)
             if event_hashable not in events:
                 events.add(event_hashable)
-                msg = f"[i]{event.latest_message}[/]"
-                if status is not None:
-                    status.update(msg)
-                else:
-                    print(f"✓ {msg}")
+                print(f"✓ [i]{event.latest_message}[/]")
                 time.sleep(0.5)
 
         time.sleep(0.5)
@@ -897,13 +892,12 @@ def follow_workload(
     while True:
         job: BeakerJob | None = None
         with ExitStack() as stack:
+            msg = "[i]waiting on job...[/]"
             status: Status | None = None
             if not os.environ.get("GANTRY_GITHUB_TESTING"):
-                status = stack.enter_context(
-                    console.status("[i]waiting...[/]", spinner="point", speed=0.8)
-                )
+                status = stack.enter_context(console.status(msg, spinner="point", speed=0.8))
             else:
-                print("[i]waiting...[/]")
+                print(msg)
 
             # Wait for job to be created...
             while job is None:
@@ -914,11 +908,13 @@ def follow_workload(
                 else:
                     time.sleep(1.0)
 
+            if status is not None:
+                status.update("[i]waiting for job to launch...[/]")
+
             # Wait for job to start...
             job = _wait_for_job_to_start(
                 beaker=beaker,
                 job=job,
-                status=status,
                 start_time=start_time,
                 timeout=timeout,
                 show_logs=show_logs,
