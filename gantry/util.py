@@ -169,34 +169,36 @@ def display_results(
     info_header: Optional[str] = None,
 ):
     status = job.status.status
-    if status == BeakerWorkloadStatus.succeeded:
-        runtime = job.status.exited - job.status.started  # type: ignore
-        results_ds = beaker.dataset.get(job.assignment_details.result_dataset_id)
+    runtime = job.status.exited - job.status.started  # type: ignore
+    results_ds = beaker.dataset.get(job.assignment_details.result_dataset_id)
 
+    if status == BeakerWorkloadStatus.succeeded:
         print_stdout(
             f"[b green]\N{check mark}[/] [b cyan]{beaker.user_name}/{workload.experiment.name}[/] ({workload.experiment.id}) completed successfully.\n"
         )
 
-        if info_header:
-            print_stdout(info_header)
+    if info_header:
+        print_stdout(info_header)
 
-        print_stdout(
-            f"[b]Results:[/] [blue u]{beaker.dataset.url(results_ds)}[/]\n"
-            f"[b]Runtime:[/] {format_timedelta(runtime)}"
-        )
+    print_stdout(
+        f"[b]Results:[/] [blue u]{beaker.dataset.url(results_ds)}[/]\n"
+        f"[b]Runtime:[/] {format_timedelta(runtime)}"
+    )
 
-        if job.metrics:
-            from google.protobuf.json_format import MessageToDict
+    if job.metrics:
+        from google.protobuf.json_format import MessageToDict
 
-            print_stdout("[b]Metrics:[/]", MessageToDict(job.metrics), highlight=True)
-    elif status in (BeakerWorkloadStatus.canceled, BeakerWorkloadStatus.failed):
+        print_stdout("[b]Metrics:[/]", MessageToDict(job.metrics), highlight=True)
+
+    if status in (BeakerWorkloadStatus.canceled, BeakerWorkloadStatus.failed):
+        print()
         if len(list(workload.experiment.tasks)) > 1:
             show_all_jobs(beaker, workload)
             print_stdout()
         raise ExperimentFailedError(
             f"Job {get_job_status_str(job)}, see {beaker.workload.url(workload)} for details"
         )
-    else:
+    elif status != BeakerWorkloadStatus.succeeded:
         raise ValueError(f"unexpected workload status '{status}'")
 
 
