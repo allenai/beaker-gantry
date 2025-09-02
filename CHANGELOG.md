@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Made `api.update_workload_description()` more efficient.
 - Shallow clone only a single commit at runtime for much faster clones, especially with large repos.
+- Made checking for upgrades more robust.
 
 ## [v3.2.0](https://github.com/allenai/beaker-gantry/releases/tag/v3.2.0) - 2025-08-26
 

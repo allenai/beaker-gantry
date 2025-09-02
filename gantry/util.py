@@ -1,6 +1,7 @@
 import binascii
 import hashlib
 import json
+import logging
 import platform
 import tempfile
 import time
@@ -37,6 +38,9 @@ from . import constants
 from .exceptions import *
 from .version import VERSION
 
+log = logging.getLogger()
+
+
 VERSION_CHECK_INTERVAL = 12 * 3600  # 12 hours
 DEFAULT_INTERNAL_CONFIG_LOCATION: Optional[Path] = None
 try:
@@ -61,8 +65,12 @@ class InternalConfig:
         if path is None:
             return None
         elif path.is_file():
-            with open(path, "r") as f:
-                return cls(**json.load(f))
+            try:
+                with open(path, "r") as f:
+                    return cls(**json.load(f))
+            except Exception as e:
+                log.exception(f"Loading internal config failed with: {type(e).__name__}: {e}")
+                return None
         else:
             return cls()
 
