@@ -170,7 +170,10 @@ def get_job_status_str(job: BeakerJob):
         else:
             return "canceled"
     elif status == BeakerWorkloadStatus.failed:
-        return f"failed with exit code {job.status.exit_code}"
+        if job.status.HasField("exit_code") and job.status.exit_code != 0:
+            return f"failed with exit code {job.status.exit_code}"
+        else:
+            return "failed"
     else:
         return str(BeakerWorkloadStatus(status).name)
 
