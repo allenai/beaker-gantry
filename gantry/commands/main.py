@@ -73,6 +73,13 @@ config = GantryConfig.load()
     default=config.quiet if config.quiet is not None else False,
 )
 @click.option(
+    "--check-for-upgrades/--no-check-for-upgrades",
+    help="""For check for upgrades or skip checking for upgrades.
+    Can also be set through the environment variable 'GANTRY_CHECK_FOR_UPGRADES'.""",
+    envvar="GANTRY_CHECK_FOR_UPGRADES",
+    default=None,
+)
+@click.option(
     "--log-level",
     type=click.Choice(["debug", "info", "warning", "error"]),
     show_choices=True,
@@ -82,7 +89,9 @@ config = GantryConfig.load()
     {config.get_help_string_for_default('log_level', 'warning')}""",
     default=config.log_level or "warning",
 )
-def main(quiet: bool = False, log_level: str = "warning"):
+def main(
+    quiet: bool = False, check_for_upgrades: Optional[bool] = None, log_level: str = "warning"
+):
     # Configure rich.
     if os.environ.get("GANTRY_GITHUB_TESTING"):
         # Force a broader terminal when running tests in GitHub Actions.
@@ -115,4 +124,5 @@ def main(quiet: bool = False, log_level: str = "warning"):
 ''',  # noqa: W605
         )
 
-    util.check_for_upgrades()
+    if check_for_upgrades is not False:
+        util.check_for_upgrades(force=check_for_upgrades is True)

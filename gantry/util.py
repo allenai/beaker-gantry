@@ -69,7 +69,12 @@ class InternalConfig:
                 with open(path, "r") as f:
                     return cls(**json.load(f))
             except Exception as e:
-                log.exception(f"Loading internal config failed with: {type(e).__name__}: {e}")
+                log.exception(
+                    f"Loading internal config failed with: {type(e).__name__}: {e}\n"
+                    f"If this happens consistently then the config file at '{path}' is probably corrupted and should be deleted.\n"
+                    "You can also skip this check by adding the CLI flag '--no-check-for-upgrades' or "
+                    "by setting the environment variable 'GANTRY_CHECK_FOR_UPGRADES=0'."
+                )
                 return None
         else:
             return cls()

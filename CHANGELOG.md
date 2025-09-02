@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `client` parameter to `api.update_workload_description()` for providing an existing Beaker client,
   which avoids creating one each time the function is called.
 - Added support for configuring the GitHub token secret name in a `pyproject.toml` as the field `[tool.gantry.gh_token_secret]`.
+- Added the top-level flag `--check-for-upgrades/--no-check-for-upgrades` with corresponding env var `GANTRY_CHECK_FOR_UPGRADES`.
 
 ### Changed
 
