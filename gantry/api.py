@@ -306,7 +306,6 @@ def launch_experiment(
             for pat in clusters or ["*"]:
                 org = beaker.org_name
 
-                og_pat = pat
                 if "/" in pat:
                     org, pat = pat.split("/", 1)
 
@@ -349,22 +348,24 @@ def launch_experiment(
 
                 if matching_clusters:
                     final_clusters.extend(matching_clusters)
-                elif clusters:
-                    raise ConfigurationError(
-                        f"cluster '{og_pat}' did not match any Beaker clusters"
+
+            if not final_clusters:
+                constraints = []
+                if clusters:
+                    constraints.append(f''' - name matches any of: "{'", "'.join(clusters)}"''')
+                if gpu_types:
+                    constraints.append(
+                        f''' - GPU type matches any of: "{'", "'.join(gpu_types)}"'''
                     )
-                elif gpu_types and gpu_type_matches == 0:
+                if tags:
+                    constraints.append(f''' - has the tag(s): "{'", "'.join(tags)}"''')
+                if constraints:
                     raise ConfigurationError(
-                        f"""GPU type spec(s) "{'", "'.join(gpu_types)}" didn't match allowed clusters."""
-                    )
-                elif tags and tag_matches == 0:
-                    raise ConfigurationError(
-                        f"""Cluster tag(s) "{'", "'.join(tags)}" didn't match allowed clusters."""
+                        "Failed to find clusters satisfying the given constraints:\n"
+                        + "\n".join(constraints)
                     )
                 else:
-                    raise ConfigurationError(
-                        """Cluster constraints are too narrow, gantry could not find any suitable Beaker clusters."""
-                    )
+                    raise ConfigurationError("Failed to find any suitable Beaker clusters")
 
             clusters = list(set(final_clusters))  # type: ignore
 
