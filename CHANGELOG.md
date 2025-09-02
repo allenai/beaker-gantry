@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [v2.8.6](https://github.com/allenai/beaker-gantry/releases/tag/v2.8.6) - 2025-09-02
+
 ### Fixed
 
 - Fixed the error message when cluster constraints can't be satisfied.
