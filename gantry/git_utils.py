@@ -107,6 +107,14 @@ class GitRepoState:
         else:
             return f"{self.repo_url}/tree/{self.branch}"
 
+    @cached_property
+    def commit_message(self) -> str | None:
+        repo = _resolve_repo()
+        try:
+            return str(repo.commit(self.ref).message)
+        except Exception:
+            return None
+
     def is_in_tree(self, path: PathOrStr) -> bool:
         """
         Check if a file is in the tree.
