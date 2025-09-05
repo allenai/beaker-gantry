@@ -65,7 +65,7 @@ class GitRepoState:
     """
     ref: str
     """
-    The current ref.
+    The current commit ref/SHA.
     """
     branch: str | None = None
     """
@@ -91,11 +91,18 @@ class GitRepoState:
         return response.status_code == 200
 
     @property
+    def short_ref(self) -> str:
+        if len(self.ref) == 40 and self.ref.isalnum():
+            return self.ref[:7]
+        else:
+            return self.ref
+
+    @property
     def ref_url(self) -> str:
         """
         The URL to the current :data:`ref`.
         """
-        return f"{self.repo_url}/commit/{self.ref}"
+        return f"{self.repo_url}/commit/{self.short_ref}"
 
     @property
     def branch_url(self) -> str | None:
@@ -114,6 +121,18 @@ class GitRepoState:
             return str(repo.commit(self.ref).message)
         except Exception:
             return None
+
+    def short_commit_message(self, max_length: int = 50) -> str | None:
+        """
+        The commit message, truncated to `max_length` characters.
+        """
+        if self.commit_message is None:
+            return None
+        msg = self.commit_message.split("\n")[0].strip()
+        if len(msg) <= max_length:
+            return msg
+        else:
+            return msg[: max_length - 1] + "…"
 
     def is_in_tree(self, path: PathOrStr) -> bool:
         """

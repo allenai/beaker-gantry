@@ -504,7 +504,7 @@ def launch_experiment(
         info_header = (
             f"[b]Workspace:[/] [cyan]{beaker.workspace.get().name}[/] → [blue u]{beaker.workspace.url()}[/]\n"
             + (("[b]Groups:[/]\n ❯ " + groups_str + "\n") if groups else "")
-            + f"[b]Commit:[/] [cyan]{git_config.ref}[/] → [blue u]{git_config.ref_url}[/]\n"
+            + f"[b]Commit:[/] [cyan]{git_config.short_ref}[/] {git_config.short_commit_message() or ''} → [blue u]{git_config.ref_url}[/]\n"
             + f"[b]Branch:[/] [cyan]{git_config.branch}[/] → [blue u]{git_config.branch_url}[/]"
         )
 
