@@ -92,6 +92,9 @@ class GitRepoState:
 
     @property
     def short_ref(self) -> str:
+        """
+        Short, 7-character version of the current :data:`ref`.
+        """
         if len(self.ref) == 40 and self.ref.isalnum():
             return self.ref[:7]
         else:
@@ -116,6 +119,9 @@ class GitRepoState:
 
     @cached_property
     def commit_message(self) -> str | None:
+        """
+        Full commit message.
+        """
         repo = _resolve_repo()
         try:
             return str(repo.commit(self.ref).message)
@@ -124,7 +130,7 @@ class GitRepoState:
 
     def short_commit_message(self, max_length: int = 50) -> str | None:
         """
-        The commit message, truncated to `max_length` characters.
+        The commit message, truncated to ``max_length`` characters.
         """
         if self.commit_message is None:
             return None
