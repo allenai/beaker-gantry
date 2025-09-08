@@ -173,6 +173,7 @@ def launch_experiment(
     default_python_version: str = get_local_python_version(),
     pre_setup: Optional[str] = None,
     post_setup: Optional[str] = None,
+    slack_webhook_url: Optional[str] = None,
 ):
     """
     Launch an experiment on Beaker. Same as the ``gantry run`` command.
@@ -545,7 +546,13 @@ def launch_experiment(
 
         job: Optional[BeakerJob] = None
         try:
-            job = follow_workload(beaker, workload, timeout=timeout, show_logs=show_logs)
+            job = follow_workload(
+                beaker,
+                workload,
+                timeout=timeout,
+                show_logs=show_logs,
+                slack_webhook_url=slack_webhook_url,
+            )
         except (TermInterrupt, BeakerJobTimeoutError) as exc:
             print_stderr(f"[red][bold]{exc.__class__.__name__}:[/] [i]{exc}[/][/]")
             beaker.workload.cancel(workload)
@@ -566,7 +573,13 @@ def launch_experiment(
                 )
                 sys.exit(1)
 
-        util.display_results(beaker, workload, job, info_header if show_logs else None)
+        util.display_results(
+            beaker,
+            workload,
+            job,
+            info_header if show_logs else None,
+            slack_webhook_url=slack_webhook_url,
+        )
 
 
 def _build_experiment_spec(
@@ -870,6 +883,7 @@ def follow_workload(
     timeout: int = 0,
     tail: bool = False,
     show_logs: bool = True,
+    slack_webhook_url: Optional[str] = None,
 ) -> BeakerJob:
     """
     Follow a workload until completion while streaming logs to stdout.
@@ -922,6 +936,15 @@ def follow_workload(
 
         assert job is not None
 
+        if slack_webhook_url is not None:
+            util.send_slack_message_for_event(
+                beaker=beaker,
+                webhook_url=slack_webhook_url,
+                workload=workload,
+                job=job,
+                event="started",
+            )
+
         # Stream logs...
         if show_logs and job.status.HasField("started"):
             print()
@@ -948,6 +971,14 @@ def follow_workload(
         if _job_preempted(job):
             print(f"[yellow]Job '{job.id}' preempted.[/] ")
             preempted_job_ids.add(job.id)
+            if slack_webhook_url is not None:
+                util.send_slack_message_for_event(
+                    beaker=beaker,
+                    webhook_url=slack_webhook_url,
+                    workload=workload,
+                    job=job,
+                    event="preempted",
+                )
             continue
 
         return job

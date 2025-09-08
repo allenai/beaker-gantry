@@ -12,8 +12,9 @@ from enum import Enum
 from fnmatch import fnmatch
 from functools import cache
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional, Sequence, cast
+from typing import Dict, Iterable, List, Literal, Optional, Sequence, cast
 
+import requests
 import rich
 from beaker import (
     Beaker,
@@ -183,6 +184,7 @@ def display_results(
     workload: BeakerWorkload,
     job: BeakerJob,
     info_header: Optional[str] = None,
+    slack_webhook_url: Optional[str] = None,
 ):
     status = job.status.status
     runtime = job.status.exited - job.status.started  # type: ignore
@@ -216,6 +218,44 @@ def display_results(
         )
     elif status != BeakerWorkloadStatus.succeeded:
         raise ValueError(f"unexpected workload status '{status}'")
+
+    if slack_webhook_url is not None:
+        send_slack_message_for_event(
+            beaker=beaker,
+            webhook_url=slack_webhook_url,
+            workload=workload,
+            job=job,
+            event="failed"
+            if status in (BeakerWorkloadStatus.canceled, BeakerWorkloadStatus.failed)
+            else "succeeded",
+        )
+
+
+def send_slack_message_for_event(
+    *,
+    beaker: Beaker,
+    webhook_url: str,
+    workload: BeakerWorkload,
+    job: BeakerJob,
+    event: Literal["started", "failed", "preempted", "succeeded"],
+):
+    del job  # unused for now
+
+    workload_name = f"{beaker.user_name}/{workload.experiment.name}"
+    workload_url = beaker.workload.url(workload)
+
+    if event == "started":
+        text = f":check: Workload *{workload_name}* has started! {workload_url}"
+    elif event == "preempted":
+        text = f":warning: Workload *{workload_name}* was preempted! {workload_url}"
+    elif event == "failed":
+        text = f":warning: Workload *{workload_name}* failed! {workload_url}"
+    elif event == "succeeded":
+        text = f":check: Workload *{workload_name}* succeeded! {workload_url}"
+    else:
+        raise ValueError(f"Unknown event: {event}")
+
+    requests.post(webhook_url, json={"text": text})
 
 
 def show_all_jobs(beaker: Beaker, workload: BeakerWorkload):

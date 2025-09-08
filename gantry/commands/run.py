@@ -76,6 +76,12 @@ from .main import CLICK_COMMAND_DEFAULTS, config, main, new_optgroup
     type=click.Path(dir_okay=False, file_okay=True),
     help="""A path to save the generated YAML Beaker experiment spec to.""",
 )
+@optgroup.option(
+    "--slack-webhook-url",
+    type=str,
+    help="""A Slack webhook URL to send updates to.
+    This is only used when following the experiment locally (e.g. with --show-logs or --timeout=-1).""",
+)
 @new_optgroup("Constraints")
 @optgroup.option(
     "-c",
