@@ -2,7 +2,6 @@
 Gantry's public API.
 """
 
-import hashlib
 import os
 import sys
 import time
@@ -276,26 +275,7 @@ def launch_experiment(
 
                 env_secret_name = e
                 env_secret_value = os.environ[e]
-
-                # Create a unique name for this secret based on the env var name and a hash
-                # of the value.
-                sha256_hash = hashlib.sha256()
-                sha256_hash.update(env_secret_value.encode(errors="ignore"))
-                secret = f"{env_secret_name}_{sha256_hash.hexdigest()[:8]}"
-                attempts = 1
-                while True:
-                    try:
-                        s = beaker.secret.get(secret)
-                    except BeakerSecretNotFound:
-                        beaker.secret.write(secret, env_secret_value)
-                        break
-
-                    if beaker.secret.read(s) == env_secret_value:
-                        break
-
-                    # It's highly unlikely to get a naming conflict here but we handle it anyway.
-                    secret = f"{env_secret_name}_{sha256_hash.hexdigest()[:8]}_{attempts}"
-                    attempts += 1
+                secret = util.ensure_secret(beaker, env_secret_name, env_secret_value)
 
             secret_names.add(env_secret_name)
             env_secrets_to_use.append((env_secret_name, secret))
@@ -412,6 +392,12 @@ def launch_experiment(
                 )
 
             gh_token_secret_to_use = gh_token_secret
+
+        if slack_webhook_url is not None and "GANTRY_SLACK_WEBHOOK_URL" not in secret_names:
+            slack_webhook_url_secret = util.ensure_secret(
+                beaker, "GANTRY_SLACK_WEBHOOK_URL", slack_webhook_url
+            )
+            env_secrets_to_use.append(("GANTRY_SLACK_WEBHOOK_URL", slack_webhook_url_secret))
 
         # Initialize experiment and task spec.
         spec = _build_experiment_spec(
@@ -984,7 +970,7 @@ def follow_workload(
         return job
 
 
-_original_workload: Optional[BeakerWorkload] = None
+_ORIGINAL_WORKLOAD_DESCRIPTIONS: Dict[str, str] = {}
 
 
 def update_workload_description(
@@ -992,7 +978,7 @@ def update_workload_description(
     strategy: Literal["append", "prepend", "replace"] = "replace",
     beaker_token: Optional[str] = None,
     client: Optional[Beaker] = None,
-):
+) -> str:
     """
     Update the description of the Gantry workload that this process is running in.
 
@@ -1006,7 +992,7 @@ def update_workload_description(
     :param client: An optional existing :class:`~beaker.Beaker` client to use. If not provided,
         a new client will be created using the provided ``beaker_token`` or environment/config.
     """
-    global _original_workload
+    global _ORIGINAL_WORKLOAD_DESCRIPTIONS
 
     if (workload_id := os.environ.get("BEAKER_WORKLOAD_ID")) is None:
         raise RuntimeError(
@@ -1023,19 +1009,27 @@ def update_workload_description(
         else:
             beaker = client
 
-        if _original_workload is None:
-            _original_workload = beaker.workload.get(workload_id)
+        workload = beaker.workload.get(workload_id)
+        if workload_id not in _ORIGINAL_WORKLOAD_DESCRIPTIONS:
+            _ORIGINAL_WORKLOAD_DESCRIPTIONS[workload_id] = (
+                workload.experiment.description or ""
+            ).strip()
+
+        og_description = _ORIGINAL_WORKLOAD_DESCRIPTIONS[workload_id]
 
         if strategy == "append":
-            description = (_original_workload.experiment.description or "") + " " + description
+            description = og_description + " " + description
         elif strategy == "prepend":
-            description = description + " " + (_original_workload.experiment.description or "")
+            description = description + " " + og_description
         elif strategy != "replace":
             raise ValueError(
                 f"'strategy' must be one of 'append', 'prepend', or 'replace', but got '{strategy}'."
             )
 
-        beaker.workload.update(_original_workload, description=description.strip())
+        description = description.strip()
+        beaker.workload.update(workload, description=description)
+
+    return description
 
 
 def write_metrics(metrics: Dict[str, Any]):

@@ -31,7 +31,11 @@ from beaker import (
     BeakerWorkloadType,
     BeakerWorkspace,
 )
-from beaker.exceptions import BeakerDatasetConflict, BeakerWorkspaceNotSet
+from beaker.exceptions import (
+    BeakerDatasetConflict,
+    BeakerSecretNotFound,
+    BeakerWorkspaceNotSet,
+)
 from rich import prompt
 from rich.console import Console
 
@@ -253,17 +257,41 @@ def send_slack_message_for_event(
     workload_url = beaker.workload.url(workload)
 
     if event == "started":
-        text = f":check: Workload *{workload_name}* has started! {workload_url}"
+        text = f":check: Workload <{workload_url}|*{workload_name}*> has started! :runner:"
     elif event == "preempted":
-        text = f":warning: Workload *{workload_name}* was preempted! {workload_url}"
+        text = f":warning: Workload <{workload_url}|*{workload_name}*> was preempted!"
     elif event == "failed":
-        text = f":check-failed: Workload *{workload_name}* failed! {workload_url}"
+        text = f":check-failed: Workload <{workload_url}|*{workload_name}*> failed!"
     elif event == "succeeded":
-        text = f":check: Workload *{workload_name}* succeeded! {workload_url}"
+        text = f":check: Workload <{workload_url}|*{workload_name}*> succeeded!"
     else:
         raise ValueError(f"Unknown event: {event}")
 
     requests.post(webhook_url, json={"text": text})
+
+
+def ensure_secret(beaker: Beaker, name: str, value: str) -> str:
+    # Create a unique name for this secret based on the env var name and a hash
+    # of the value.
+    sha256_hash = hashlib.sha256()
+    sha256_hash.update(value.encode(errors="ignore"))
+    secret = f"{name}_{sha256_hash.hexdigest()[:8]}"
+    attempts = 1
+    while True:
+        try:
+            s = beaker.secret.get(secret)
+        except BeakerSecretNotFound:
+            beaker.secret.write(secret, value)
+            break
+
+        if beaker.secret.read(s) == value:
+            break
+
+        # It's highly unlikely to get a naming conflict here but we handle it anyway.
+        secret = f"{name}_{sha256_hash.hexdigest()[:8]}_{attempts}"
+        attempts += 1
+
+    return secret
 
 
 def show_all_jobs(beaker: Beaker, workload: BeakerWorkload):
