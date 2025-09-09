@@ -213,22 +213,30 @@ def display_results(
         if len(list(workload.experiment.tasks)) > 1:
             show_all_jobs(beaker, workload)
             print_stdout()
+
+        if slack_webhook_url is not None:
+            send_slack_message_for_event(
+                beaker=beaker,
+                webhook_url=slack_webhook_url,
+                workload=workload,
+                job=job,
+                event="failed",
+            )
+
         raise ExperimentFailedError(
             f"Job {get_job_status_str(job)}, see {beaker.workload.url(workload)} for details"
         )
-    elif status != BeakerWorkloadStatus.succeeded:
+    elif status == BeakerWorkloadStatus.succeeded:
+        if slack_webhook_url is not None:
+            send_slack_message_for_event(
+                beaker=beaker,
+                webhook_url=slack_webhook_url,
+                workload=workload,
+                job=job,
+                event="succeeded",
+            )
+    else:
         raise ValueError(f"unexpected workload status '{status}'")
-
-    if slack_webhook_url is not None:
-        send_slack_message_for_event(
-            beaker=beaker,
-            webhook_url=slack_webhook_url,
-            workload=workload,
-            job=job,
-            event="failed"
-            if status in (BeakerWorkloadStatus.canceled, BeakerWorkloadStatus.failed)
-            else "succeeded",
-        )
 
 
 def send_slack_message_for_event(
@@ -249,7 +257,7 @@ def send_slack_message_for_event(
     elif event == "preempted":
         text = f":warning: Workload *{workload_name}* was preempted! {workload_url}"
     elif event == "failed":
-        text = f":warning: Workload *{workload_name}* failed! {workload_url}"
+        text = f":check-failed: Workload *{workload_name}* failed! {workload_url}"
     elif event == "succeeded":
         text = f":check: Workload *{workload_name}* succeeded! {workload_url}"
     else:
