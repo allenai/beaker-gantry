@@ -16,6 +16,7 @@ from . import constants, utils
 from .aliases import PathOrStr
 from .exceptions import *
 from .git_utils import GitRepoState
+from .notifiers import *
 from .version import VERSION
 
 
@@ -418,7 +419,7 @@ def display_results(
     workload: BeakerWorkload,
     job: BeakerJob,
     info_header: str | None = None,
-    slack_webhook_url: str | None = None,
+    notifiers: list[Notifier] | None = None,
 ):
     status = job.status.status
     runtime = job.status.exited - job.status.started  # type: ignore
@@ -448,27 +449,15 @@ def display_results(
             show_all_jobs(beaker, workload)
             utils.print_stdout()
 
-        if slack_webhook_url is not None:
-            utils.send_slack_message_for_event(
-                beaker=beaker,
-                webhook_url=slack_webhook_url,
-                workload=workload,
-                job=job,
-                event="failed",
-            )
+        for notifier in notifiers or []:
+            notifier.notify(workload, "failed", job=job)
 
         raise ExperimentFailedError(
             f"Job {get_job_status_str(job)}, see {beaker.workload.url(workload)} for details"
         )
     elif status == BeakerWorkloadStatus.succeeded:
-        if slack_webhook_url is not None:
-            utils.send_slack_message_for_event(
-                beaker=beaker,
-                webhook_url=slack_webhook_url,
-                workload=workload,
-                job=job,
-                event="succeeded",
-            )
+        for notifier in notifiers or []:
+            notifier.notify(workload, "succeeded", job=job)
     else:
         raise ValueError(f"unexpected workload status '{status}'")
 

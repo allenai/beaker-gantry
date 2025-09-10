@@ -6,11 +6,9 @@ from dataclasses import asdict, dataclass
 from datetime import timedelta
 from functools import cache
 from pathlib import Path
-from typing import Literal, Optional, cast
+from typing import Optional, cast
 
-import requests
 import rich
-from beaker import Beaker, BeakerJob, BeakerWorkload
 from rich.console import Console
 
 from . import constants
@@ -94,33 +92,6 @@ def print_stdout(*args, highlight: bool = False, markup: bool = True, **kwargs):
 
 def print_exception(*args, **kwargs):
     stderr_console().print_exception(*args, **kwargs)
-
-
-def send_slack_message_for_event(
-    *,
-    beaker: Beaker,
-    webhook_url: str,
-    workload: BeakerWorkload,
-    job: BeakerJob,
-    event: Literal["started", "failed", "preempted", "succeeded"],
-):
-    del job  # unused for now
-
-    workload_name = f"{beaker.user_name}/{workload.experiment.name}"
-    workload_url = beaker.workload.url(workload)
-
-    if event == "started":
-        text = f":check: Workload <{workload_url}|*{workload_name}*> has started! :runner:"
-    elif event == "preempted":
-        text = f":warning: Workload <{workload_url}|*{workload_name}*> was preempted!"
-    elif event == "failed":
-        text = f":check-failed: Workload <{workload_url}|*{workload_name}*> failed!"
-    elif event == "succeeded":
-        text = f":check: Workload <{workload_url}|*{workload_name}*> succeeded!"
-    else:
-        raise ValueError(f"Unknown event: {event}")
-
-    requests.post(webhook_url, json={"text": text})
 
 
 def format_timedelta(td: "timedelta") -> str:
