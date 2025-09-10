@@ -2,7 +2,7 @@ import concurrent.futures
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from itertools import islice
-from typing import Generator, Iterable, List, Optional, Tuple
+from typing import Generator, Iterable
 
 import click
 import rich
@@ -17,9 +17,8 @@ from beaker import (
 from beaker.exceptions import BeakerGroupNotFound
 from rich.table import Table
 
-from .. import util
+from .. import beaker_utils, utils
 from ..exceptions import ConfigurationError
-from ..util import print_stdout as print
 from .main import CLICK_COMMAND_DEFAULTS, config, main
 
 
@@ -81,13 +80,13 @@ class Defaults:
     help="Show all experiments, not just onces submitted through Gantry.",
 )
 def list_cmd(
-    workspace: Optional[str] = None,
-    group: Optional[str] = None,
+    workspace: str | None = None,
+    group: str | None = None,
     limit: int = Defaults.limit,
-    author: Optional[str] = None,
+    author: str | None = None,
     me: bool = False,
-    status: Optional[List[str]] = None,
-    name_or_description: Optional[str] = None,
+    status: list[str] | None = None,
+    name_or_description: str | None = None,
     max_age: int = Defaults.max_age,
     show_all: bool = False,
 ):
@@ -95,7 +94,7 @@ def list_cmd(
     List recent experiments within a workspace or group.
     This will only show experiments launched with Gantry by default, unless '--all' is specified.
     """
-    with util.init_client(ensure_workspace=False) as beaker:
+    with beaker_utils.init_client(ensure_workspace=False) as beaker:
         table = Table(title="Experiments", show_lines=True)
         table.add_column("Workload", justify="left", no_wrap=True)
         table.add_column("Author", justify="left", style="blue", no_wrap=True)
@@ -141,7 +140,7 @@ def list_cmd(
                     table.add_row(
                         f"[b cyan]{wl.experiment.name}[/]\n"
                         f"[blue u]{beaker.workload.url(wl)}[/]\n"
-                        f"{util.maybe_truncate_text(wl.experiment.description, max(len(beaker.workload.url(wl)), len(wl.experiment.name)))}".strip(),
+                        f"{utils.maybe_truncate_text(wl.experiment.description, max(len(beaker.workload.url(wl)), len(wl.experiment.name)))}".strip(),
                         beaker.user.get(wl.experiment.author_id).name,
                         wl.experiment.created.ToDatetime(timezone.utc)
                         .astimezone(tz=None)
@@ -149,7 +148,7 @@ def list_cmd(
                         "\n".join(task_statuses[task.id] for task in tasks),
                     )
 
-        print(table)
+        utils.print_stdout(table)
 
 
 def is_gantry_workload(beaker: Beaker, wl: BeakerWorkload) -> bool:
@@ -165,15 +164,15 @@ def iter_workloads(
     beaker: Beaker,
     *,
     executor: ThreadPoolExecutor,
-    workspace: Optional[str],
-    group: Optional[str],
-    author: Optional[str],
-    statuses: Optional[List[str]],
-    name_or_description: Optional[str],
+    workspace: str | None,
+    group: str | None,
+    author: str | None,
+    statuses: list[str] | None,
+    name_or_description: str | None,
     max_age: int,
     show_all: bool,
-    limit: Optional[int] = None,
-) -> Generator[Tuple[BeakerWorkload, Iterable[BeakerTask]], None, None]:
+    limit: int | None = None,
+) -> Generator[tuple[BeakerWorkload, Iterable[BeakerTask]], None, None]:
     created_after = datetime.now(tz=timezone.utc).astimezone() - timedelta(days=max_age)
     author_id = None if author is None else beaker.user.get(author)
     workload_statuses = (
@@ -181,7 +180,7 @@ def iter_workloads(
     )
 
     if group is not None:
-        beaker_group = util.resolve_group(
+        beaker_group = beaker_utils.resolve_group(
             beaker, group, workspace, fall_back_to_default_workspace=False
         )
         if beaker_group is None:
@@ -245,9 +244,7 @@ def iter_workloads(
             yield wl, wl.experiment.tasks
 
 
-def get_status(
-    beaker: Beaker, wl: BeakerWorkload, task: BeakerTask
-) -> Optional[BeakerWorkloadStatus]:
+def get_status(beaker: Beaker, wl: BeakerWorkload, task: BeakerTask) -> BeakerWorkloadStatus | None:
     job = beaker.workload.get_latest_job(wl, task=task)
     if job is not None:
         return BeakerWorkloadStatus.from_any(job.status.status)

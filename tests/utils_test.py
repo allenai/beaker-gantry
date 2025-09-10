@@ -1,6 +1,6 @@
 import pytest
 
-from gantry.util import highlight_pattern
+from gantry.utils import highlight_pattern
 
 
 @pytest.mark.parametrize(

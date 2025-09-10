@@ -1,11 +1,12 @@
+import sys
+
 import click
 from beaker import BeakerJobPriority
 from click_option_group import optgroup
 
-from .. import constants
+from .. import constants, utils
 from ..api import launch_experiment
 from ..exceptions import *
-from ..util import get_local_python_version
 from .main import CLICK_COMMAND_DEFAULTS, config, main, new_optgroup
 
 
@@ -354,7 +355,7 @@ from .main import CLICK_COMMAND_DEFAULTS, config, main, new_optgroup
 @optgroup.option(
     "--default-python-version",
     type=str,
-    default=get_local_python_version(),
+    default=utils.get_local_python_version(),
     help="""The default Python version to use when constructing a new Python environment.
     This will be ignored if gantry is instructed to use an existing Python distribution/environment
     on the image, such as with the --system-python flag, the --uv-venv option, or the --conda-env option.""",
@@ -426,7 +427,7 @@ from .main import CLICK_COMMAND_DEFAULTS, config, main, new_optgroup
     type=str,
     help="""The name or path to an existing conda environment on the image to use.""",
 )
-def run(*args, **kwargs):
+def run(args, **kwargs):
     """
     Run an experiment on Beaker.
 
@@ -434,4 +435,26 @@ def run(*args, **kwargs):
 
     $ gantry run --yes --show-logs -- python -c 'print("Hello, World!")'
     """
-    launch_experiment(*args, **kwargs)
+    if not args:
+        raise ConfigurationError(
+            "[ARGS]... are required! For example:\n$ gantry run -- python -c 'print(\"Hello, World!\")'"
+        )
+
+    try:
+        arg_index = sys.argv.index("--")
+    except ValueError:
+        raise ConfigurationError("[ARGS]... are required and must all come after '--'")
+
+    # NOTE: if a value was accidentally provided to a flag, like '--preemptible false', click will
+    # surprisingly add that value to the args. So we do a check here for that situation.
+    given_args = sys.argv[arg_index + 1 :]
+    invalid_args = args[: -len(given_args)]
+    if invalid_args:
+        raise ConfigurationError(
+            f"Invalid options, found extra arguments before the '--': "
+            f"{', '.join([repr(s) for s in invalid_args])}.\n"
+            "Hint: you might be trying to pass a value to a FLAG option.\n"
+            "Try 'gantry run --help' for help."
+        )
+
+    launch_experiment(args=args, **kwargs)

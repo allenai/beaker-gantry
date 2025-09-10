@@ -1,13 +1,12 @@
-from typing import List, Optional, Sequence
+from typing import Sequence
 
 import click
 from beaker import BeakerWorkload
 from beaker.exceptions import BeakerWorkloadNotFound
 from rich import prompt
 
-from .. import util
+from .. import beaker_utils, utils
 from ..exceptions import ConfigurationError, NotFoundError
-from ..util import print_stdout as print
 from .main import CLICK_COMMAND_DEFAULTS, config, main
 
 
@@ -32,15 +31,15 @@ from .main import CLICK_COMMAND_DEFAULTS, config, main
 def stop(
     workload: Sequence[str],
     latest: bool = False,
-    workspace: Optional[str] = None,
+    workspace: str | None = None,
     dry_run: bool = False,
     yes: bool = False,
 ):
     """
     Stop a running workload.
     """
-    beaker = util.init_client(ensure_workspace=False)
-    workloads: List[BeakerWorkload] = []
+    beaker = beaker_utils.init_client(ensure_workspace=False)
+    workloads: list[BeakerWorkload] = []
     if workload:
         if latest or workspace is not None:
             raise ConfigurationError(
@@ -57,28 +56,28 @@ def stop(
                 "A filter such as -l/--latest is required when no [WORKLOAD] is specified"
             )
 
-        wl = util.get_latest_workload(
+        wl = beaker_utils.get_latest_workload(
             beaker, workspace_name=workspace or config.workspace, running=True
         )
         if wl is None:
-            print("[yellow]No running workloads to stop[/]")
+            utils.print_stderr("[yellow]No running workloads to stop[/]")
         else:
             workloads.append(wl)
 
     for wl in workloads:
         if dry_run:
-            print(f"[b yellow]Dry run:[/] would stop [b cyan]{wl.experiment.name}[/]")
+            utils.print_stdout(f"[b yellow]Dry run:[/] would stop [b cyan]{wl.experiment.name}[/]")
         else:
             if not yes and not prompt.Confirm.ask(
                 f"Stop experiment [b cyan]{wl.experiment.name}[/] at [blue u]{beaker.workload.url(wl)}[/]?"
             ):
-                print("[yellow]Skipping experiment...[/]")
+                utils.print_stdout("[yellow]Skipping experiment...[/]")
                 continue
 
             try:
                 beaker.workload.cancel(wl)
             except (BeakerWorkloadNotFound,):
                 pass
-            print(
+            utils.print_stdout(
                 f"[b green]\N{check mark}[/] [b cyan]{wl.experiment.name}[/] at [blue u]{beaker.workload.url(wl)}[/] stopped"
             )

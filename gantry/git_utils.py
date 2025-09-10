@@ -12,9 +12,9 @@ from git.cmd import Git
 from git.refs import Head, RemoteReference
 from git.repo import Repo
 
+from . import utils
 from .aliases import PathOrStr
 from .exceptions import *
-from .util import print_stderr
 
 __all__ = ["GitRepoState"]
 
@@ -176,7 +176,7 @@ class GitRepoState:
             try:
                 active_branch = repo.active_branch
             except TypeError:
-                print_stderr(
+                utils.print_stderr(
                     "[yellow]Repo is in 'detached HEAD' state which will result in cloning the entire repo at runtime.\n"
                     "It's recommended to run gantry from a branch instead.[/]"
                 )

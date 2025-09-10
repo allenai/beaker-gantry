@@ -1,12 +1,9 @@
-from typing import Optional
-
 import click
 from beaker import BeakerWorkload
 
-from .. import util
+from .. import beaker_utils, utils
 from ..api import follow_workload
 from ..exceptions import ConfigurationError, NotFoundError
-from ..util import print_stdout as print
 from .main import CLICK_COMMAND_DEFAULTS, config, main
 
 
@@ -34,17 +31,17 @@ from .main import CLICK_COMMAND_DEFAULTS, config, main
     help="Pull the latest experiment workload for a particular author. Defaults to your own account.",
 )
 def follow(
-    workload: Optional[str] = None,
+    workload: str | None = None,
     tail: bool = False,
     latest: bool = False,
-    workspace: Optional[str] = None,
-    author: Optional[str] = None,
+    workspace: str | None = None,
+    author: str | None = None,
 ):
     """
     Follow the logs for a running experiment.
     """
-    with util.init_client(ensure_workspace=False) as beaker:
-        wl: Optional[BeakerWorkload] = None
+    with beaker_utils.init_client(ensure_workspace=False) as beaker:
+        wl: BeakerWorkload | None = None
         if workload is not None:
             if latest or workspace is not None or author is not None:
                 raise ConfigurationError(
@@ -57,7 +54,7 @@ def follow(
                     "A filter such as -l/--latest is required when no [WORKLOAD] is specified"
                 )
 
-            wl = util.get_latest_workload(
+            wl = beaker_utils.get_latest_workload(
                 beaker,
                 author_name=author,
                 workspace_name=workspace or config.workspace,
@@ -66,10 +63,10 @@ def follow(
             if wl is None:
                 raise NotFoundError("Failed to find an experiment workload to follow")
 
-            print(
+            utils.print_stdout(
                 f"Following experiment [b cyan]{wl.experiment.name}[/] ({wl.experiment.id}) at [blue u]{beaker.workload.url(wl)}[/]"
             )
 
         assert wl is not None
         job = follow_workload(beaker, wl, tail=tail)
-        util.display_results(beaker, wl, job)
+        beaker_utils.display_results(beaker, wl, job)

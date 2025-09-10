@@ -2,7 +2,6 @@ import logging
 import os
 import signal
 import sys
-from typing import Optional
 
 import click
 import rich
@@ -12,10 +11,9 @@ from click_option_group import optgroup
 from rich import pretty, traceback
 from rich.logging import RichHandler
 
-from .. import util
+from .. import utils
 from ..config import GantryConfig
 from ..exceptions import *
-from ..util import print_stderr
 from ..version import VERSION
 
 CLICK_GROUP_DEFAULTS = {
@@ -33,7 +31,7 @@ CLICK_COMMAND_DEFAULTS = {
 }
 
 
-def new_optgroup(name: str, help: Optional[str] = None):
+def new_optgroup(name: str, help: str | None = None):
     return optgroup.group(f"\n ❯❯❯ {name}", help=help)
 
 
@@ -43,12 +41,12 @@ def excepthook(exctype, value, tb):
     """
     # Ignore in-house error types because we don't need a traceback for those.
     if issubclass(exctype, (GantryError, BeakerError)):
-        print_stderr(f"[red][bold]{exctype.__name__}:[/] [i]{value}[/][/]")
+        utils.print_stderr(f"[red][bold]{exctype.__name__}:[/] [i]{value}[/][/]")
     # For interruptions, call the original exception handler.
     elif issubclass(exctype, (KeyboardInterrupt, TermInterrupt)):
         sys.__excepthook__(exctype, value, tb)
     else:
-        print_stderr(traceback.Traceback.from_exception(exctype, value, tb, suppress=[click]))
+        utils.print_stderr(traceback.Traceback.from_exception(exctype, value, tb, suppress=[click]))
 
 
 sys.excepthook = excepthook
@@ -89,9 +87,7 @@ config = GantryConfig.load()
     {config.get_help_string_for_default('log_level', 'warning')}""",
     default=config.log_level or "warning",
 )
-def main(
-    quiet: bool = False, check_for_upgrades: Optional[bool] = None, log_level: str = "warning"
-):
+def main(quiet: bool = False, check_for_upgrades: bool | None = None, log_level: str = "warning"):
     # Configure rich.
     if os.environ.get("GANTRY_GITHUB_TESTING"):
         # Force a broader terminal when running tests in GitHub Actions.
@@ -112,7 +108,7 @@ def main(
     signal.signal(signal.SIGTERM, handle_sigterm)
 
     if not quiet:
-        print_stderr(
+        utils.print_stderr(
             r'''
 [cyan b]                                             o=======[]   [/]
 [cyan b]   __ _                    _               _ |_      []   [/]
@@ -125,4 +121,4 @@ def main(
         )
 
     if check_for_upgrades is not False:
-        util.check_for_upgrades(force=check_for_upgrades is True)
+        utils.check_for_upgrades(force=check_for_upgrades is True)

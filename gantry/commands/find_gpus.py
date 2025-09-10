@@ -3,8 +3,7 @@ import rich
 from beaker import BeakerSortOrder
 from rich.table import Table
 
-from .. import util
-from ..util import print_stdout as print
+from .. import beaker_utils, utils
 from .main import CLICK_COMMAND_DEFAULTS, main
 
 
@@ -30,7 +29,7 @@ def find_gpus_cmd(show_all: bool = False, gpu_types: tuple[str, ...] = tuple()):
     """
     gpu_types = tuple(pattern.lower() for pattern in gpu_types)
 
-    with util.init_client(ensure_workspace=False) as beaker:
+    with beaker_utils.init_client(ensure_workspace=False) as beaker:
         table = Table(title="Clusters", show_lines=True)
         table.add_column("Name", justify="left", no_wrap=True)
         table.add_column("Free GPUs", justify="left", no_wrap=True)
@@ -50,7 +49,7 @@ def find_gpus_cmd(show_all: bool = False, gpu_types: tuple[str, ...] = tuple()):
                 if not show_all and cluster.cluster_occupancy.slot_counts.available == 0:
                     break
 
-                gpu_type = util.get_gpu_type(beaker, cluster)
+                gpu_type = beaker_utils.get_gpu_type(beaker, cluster)
                 if gpu_types:
                     if not gpu_type:
                         continue
@@ -58,7 +57,7 @@ def find_gpus_cmd(show_all: bool = False, gpu_types: tuple[str, ...] = tuple()):
                     match = gpu_type.lower()
                     for pattern in gpu_types:
                         if pattern in match:
-                            gpu_type = util.highlight_pattern(gpu_type, pattern)
+                            gpu_type = utils.highlight_pattern(gpu_type, pattern)
                             break
                     else:
                         continue
@@ -79,4 +78,4 @@ def find_gpus_cmd(show_all: bool = False, gpu_types: tuple[str, ...] = tuple()):
                     f"{cluster.cluster_occupancy.slot_counts.assigned}/{cluster.cluster_occupancy.slot_counts.total}",
                 )
 
-        print(table)
+        utils.print_stdout(table)

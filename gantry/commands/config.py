@@ -1,9 +1,6 @@
-from typing import Optional
-
 import click
 
-from .. import constants, util
-from ..util import print_stdout as print
+from .. import beaker_utils, constants, utils
 from .main import CLICK_COMMAND_DEFAULTS, CLICK_GROUP_DEFAULTS
 from .main import config as _config
 from .main import main
@@ -41,7 +38,7 @@ def config():
 )
 def set_gh_token(
     token: str,
-    workspace: Optional[str] = None,
+    workspace: str | None = None,
     secret: str = constants.GITHUB_TOKEN_SECRET,
     yes: bool = False,
 ):
@@ -56,11 +53,11 @@ def set_gh_token(
     $ gantry config set-gh-token "$GITHUB_TOKEN"
     """
     # Initialize Beaker client and validate workspace.
-    with util.init_client(workspace=workspace, yes=yes) as beaker:
+    with beaker_utils.init_client(workspace=workspace, yes=yes) as beaker:
         # Write token to secret.
         beaker.secret.write(secret, token)
 
-        print(
+        utils.print_stdout(
             f"[green]\N{check mark} GitHub token added to workspace "
             f"'{beaker.config.default_workspace}' as the secret '{secret}'"
         )

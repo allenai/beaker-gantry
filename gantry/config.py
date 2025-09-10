@@ -1,6 +1,6 @@
 import dataclasses
 from dataclasses import dataclass
-from typing import Any, Literal, Optional
+from typing import Any, Literal
 
 import tomli
 from dataclass_extensions import decode
@@ -10,12 +10,12 @@ from .exceptions import ConfigurationError
 
 @dataclass
 class GantryConfig:
-    workspace: Optional[str] = None
-    gh_token_secret: Optional[str] = None
-    budget: Optional[str] = None
-    log_level: Optional[Literal["debug", "info", "warning", "error"]] = None
-    quiet: Optional[bool] = None
-    path: Optional[str] = dataclasses.field(repr=False, default=None)
+    workspace: str | None = None
+    gh_token_secret: str | None = None
+    budget: str | None = None
+    log_level: Literal["debug", "info", "warning", "error"] | None = None
+    quiet: bool | None = None
+    path: str | None = dataclasses.field(repr=False, default=None)
 
     @classmethod
     def load(cls) -> "GantryConfig":
