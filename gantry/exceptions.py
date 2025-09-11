@@ -20,6 +20,10 @@ class InvalidRemoteError(GitError):
     pass
 
 
+class InvalidSecretError(GantryError):
+    pass
+
+
 class RemoteBranchNotFoundError(GitError):
     pass
 

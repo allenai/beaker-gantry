@@ -200,6 +200,9 @@ def ensure_entrypoint_dataset(beaker: Beaker) -> BeakerDataset:
 
 
 def ensure_secret(beaker: Beaker, name: str, value: str) -> str:
+    if not value:
+        raise InvalidSecretError(f"Value for secret '{name}' can't be empty")
+
     # Create a unique name for this secret based on the env var name and a hash
     # of the value.
     sha256_hash = hashlib.sha256()

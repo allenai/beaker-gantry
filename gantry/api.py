@@ -331,6 +331,9 @@ def launch_experiment(
             gh_token_secret_to_use = gh_token_secret
 
         if slack_webhook_url is not None and "GANTRY_SLACK_WEBHOOK_URL" not in secret_names:
+            if not slack_webhook_url:
+                raise ConfigurationError("--slack-webhook-url cannot be an empty string")
+
             slack_webhook_url_secret = beaker_utils.ensure_secret(
                 beaker, "GANTRY_SLACK_WEBHOOK_URL", slack_webhook_url
             )
