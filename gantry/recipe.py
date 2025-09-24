@@ -73,6 +73,13 @@ class Recipe:
     post_setup: str | None = None
     slack_webhook_url: str | None = None
 
+    def dry_run(self) -> None:
+        """
+        Do a dry-run to validate options.
+        """
+        kwargs = dataclasses.asdict(self)
+        launch_experiment(**kwargs, dry_run=True)
+
     def launch(self, show_logs: bool | None = None, timeout: int | None = None) -> BeakerWorkload:
         """
         Launch an experiment on Beaker. Same as the ``gantry run`` command.
@@ -83,10 +90,3 @@ class Recipe:
         workload = launch_experiment(**kwargs, show_logs=show_logs, timeout=timeout)
         assert workload is not None
         return workload
-
-    def dry_run(self) -> None:
-        """
-        Do a dry-run to validate options.
-        """
-        kwargs = dataclasses.asdict(self)
-        launch_experiment(**kwargs, dry_run=True)

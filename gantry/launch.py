@@ -1,17 +1,13 @@
 import os
 import sys
-import time
-from contextlib import ExitStack
 from pathlib import Path
 from typing import Literal, Sequence
 
 import rich
 from beaker import (
-    Beaker,
     BeakerCluster,
     BeakerGroup,
     BeakerJob,
-    BeakerTask,
     BeakerTaskResources,
     BeakerWorkload,
 )
@@ -22,7 +18,6 @@ from beaker.exceptions import (
     BeakerSecretNotFound,
 )
 from rich import prompt
-from rich.status import Status
 
 from . import beaker_utils, constants, utils
 from .aliases import PathOrStr
@@ -479,7 +474,7 @@ def launch_experiment(
 
         job: BeakerJob | None = None
         try:
-            job = follow_workload(
+            job = beaker_utils.follow_workload(
                 beaker,
                 workload,
                 timeout=timeout,
@@ -525,100 +520,3 @@ def launch_experiment(
             notifiers=notifiers,
         )
         return workload
-
-
-def follow_workload(
-    beaker: Beaker,
-    workload: BeakerWorkload,
-    *,
-    task: BeakerTask | None = None,
-    timeout: int = 0,
-    tail: bool = False,
-    show_logs: bool = True,
-    notifiers: list[Notifier] | None = None,
-) -> BeakerJob:
-    """
-    Follow a workload until completion while streaming logs to stdout.
-
-    :param task: A specific task in the workload to follow. Defaults to the first task.
-    :param timeout: The number of seconds to wait for the workload to complete. Raises a timeout
-        error if it doesn't complete in time. Set to 0 (the default) to wait indefinitely.
-    :param tail: Start tailing the logs if a job is already running. Otherwise shows all logs.
-    :param show_logs: Set to ``False`` to avoid streaming the logs.
-
-    :returns: The finalized :class:`~beaker.types.BeakerJob` from the task being followed.
-
-    :raises ~gantry.exceptions.BeakerJobTimeoutError: If ``timeout`` is set to a positive number
-        and the workload doesn't complete in time.
-    """
-    console = rich.get_console()
-    start_time = time.monotonic()
-    preempted_job_ids = set()
-
-    while True:
-        job: BeakerJob | None = None
-        with ExitStack() as stack:
-            msg = "[i]waiting on job...[/]"
-            status: Status | None = None
-            if not os.environ.get("GANTRY_GITHUB_TESTING"):
-                status = stack.enter_context(console.status(msg, spinner="point", speed=0.8))
-            else:
-                utils.print_stdout(msg)
-
-            # Wait for job to be created...
-            while job is None:
-                if (
-                    j := beaker.workload.get_latest_job(workload, task=task)
-                ) is not None and j.id not in preempted_job_ids:
-                    job = j
-                else:
-                    time.sleep(1.0)
-
-            if status is not None:
-                status.update("[i]waiting for job to launch...[/]")
-
-            # Wait for job to start...
-            job = beaker_utils.wait_for_job_to_start(
-                beaker=beaker,
-                job=job,
-                start_time=start_time,
-                timeout=timeout,
-                show_logs=show_logs,
-            )
-
-        assert job is not None
-
-        for notifier in notifiers or []:
-            notifier.notify(workload, "started", job=job)
-
-        # Stream logs...
-        if show_logs and job.status.HasField("started"):
-            utils.print_stdout()
-            rich.get_console().rule("Logs")
-
-            for job_log in beaker.job.logs(job, tail_lines=10 if tail else None, follow=True):
-                utils.print_stdout(job_log.message.decode(), markup=False)
-                if timeout > 0 and (time.monotonic() - start_time) > timeout:
-                    raise BeakerJobTimeoutError(
-                        f"Timed out while waiting for job '{job.id}' to finish"
-                    )
-
-            utils.print_stdout()
-            rich.get_console().rule("End logs")
-
-        # Wait for job to finalize...
-        while not job.status.HasField("finalized"):
-            time.sleep(0.5)
-            job = beaker.job.get(job.id)
-
-        utils.print_stdout()
-
-        # If job was preempted, we start over...
-        if beaker_utils.job_was_preempted(job):
-            utils.print_stdout(f"[yellow]Job '{job.id}' preempted.[/] ")
-            preempted_job_ids.add(job.id)
-            for notifier in notifiers or []:
-                notifier.notify(workload, "preempted", job=job)
-            continue
-
-        return job
