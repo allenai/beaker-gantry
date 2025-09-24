@@ -30,7 +30,7 @@ RUN apt-get update && \
     curl -sS https://webi.sh/gh | sh && \
     curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# Install MLNX OFED user-space drivers
+# Install MLNX OFED user-space drivers for InfiniBand.
 # See https://docs.nvidia.com/networking/pages/releaseview.action?pageId=15049785#Howto:DeployRDMAacceleratedDockercontaineroverInfiniBandfabric.-Dockerfile
 ARG UBUNTU_VERSION
 ARG TARGET_PLATFORM
