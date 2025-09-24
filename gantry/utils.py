@@ -77,6 +77,15 @@ def get_local_python_version() -> str:
     return ".".join(platform.python_version_tuple()[:-1])
 
 
+def format_option(option: str, cli_mode: bool) -> str:
+    if cli_mode:
+        option = option.strip("-").replace("_", "-")
+        return f"'--{option}'"
+    else:
+        option = option.split("/")[0].strip("- ").replace("-", "_")
+        return f"'{option}'"
+
+
 @cache
 def stderr_console() -> Console:
     return Console(stderr=True)

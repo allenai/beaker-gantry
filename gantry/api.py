@@ -2,6 +2,7 @@
 Gantry's public API.
 """
 
+import functools as ft
 import os
 import sys
 import time
@@ -104,14 +105,23 @@ def launch_experiment(
     pre_setup: str | None = None,
     post_setup: str | None = None,
     slack_webhook_url: str | None = None,
+    cli_mode: bool = False,
 ):
     """
     Launch an experiment on Beaker. Same as the ``gantry run`` command.
+
+    :param cli_mode: Set to ``True`` if this function is being called from a CLI command.
+        This mostly affects how certain prompts and messages are displayed.
     """
+    fmt_opt = ft.partial(utils.format_option, cli_mode=cli_mode)
+
     if not args:
-        raise ConfigurationError(
-            "[ARGS]... are required! For example:\n$ gantry run -- python -c 'print(\"Hello, World!\")'"
-        )
+        if cli_mode:
+            raise ConfigurationError(
+                "[ARGS]... are required! For example:\n$ gantry run -- python -c 'print(\"Hello, World!\")'"
+            )
+        else:
+            raise ConfigurationError("'args' are required!")
 
     if yes is None:
         if os.environ.get("GANTRY_GITHUB_TESTING"):
@@ -127,7 +137,7 @@ def launch_experiment(
         beaker_image = constants.DEFAULT_IMAGE
     elif (beaker_image is None) == (docker_image is None):
         raise ConfigurationError(
-            "Either --beaker-image or --docker-image must be specified, but not both."
+            f"Either {fmt_opt('--beaker-image')} or {fmt_opt('--docker-image')} must be specified, but not both."
         )
 
     task_resources = BeakerTaskResources(
@@ -139,7 +149,9 @@ def launch_experiment(
 
     # Validate repo state.
     if ref is None and not allow_dirty and git_config.is_dirty:
-        raise DirtyRepoError("You have uncommitted changes! Use --allow-dirty to force.")
+        raise DirtyRepoError(
+            f"You have uncommitted changes! Use {fmt_opt('--allow-dirty')} to force."
+        )
 
     # Initialize Beaker client and validate workspace.
     with beaker_utils.init_client(workspace=workspace, yes=yes) as beaker:
@@ -151,7 +163,7 @@ def launch_experiment(
 
         if budget is None and not beaker.workspace.get().budget_id:
             budget = prompt.Prompt.ask(
-                "[yellow]Missing '--budget' option, "
+                f"[yellow]Missing {fmt_opt('--budget')} option, "
                 "see https://beaker-docs.apps.allenai.org/concept/budgets.html for more information.[/]\n"
                 "[i]Please enter the budget account to associate with this experiment[/]",
             )
@@ -196,7 +208,7 @@ def launch_experiment(
                 if e in os.environ:
                     env_name, val = e, os.environ[e]
                 else:
-                    raise ConfigurationError(f"Invalid --env option '{e}'")
+                    raise ConfigurationError(f"Invalid env var: '{e}'")
             env_vars_to_use.append((env_name, val))
 
         secret_names: set[str] = set()
@@ -206,7 +218,7 @@ def launch_experiment(
                 env_secret_name, secret = e.split("=", 1)
             except ValueError:
                 if e not in os.environ:
-                    raise ConfigurationError(f"Invalid --env-secret option '{e}'")
+                    raise ConfigurationError(f"Invalid env secret: '{e}'")
 
                 env_secret_name = e
                 env_secret_value = os.environ[e]
@@ -220,7 +232,7 @@ def launch_experiment(
             try:
                 secret, mount_path = ds.split(":", 1)
             except ValueError:
-                raise ValueError(f"Invalid --dataset-secret option: '{ds}'")
+                raise ValueError(f"Invalid dataset secret: '{ds}'")
             dataset_secrets_to_use.append((secret, mount_path))
 
         mounts_to_use = []
@@ -228,7 +240,7 @@ def launch_experiment(
             try:
                 source, target = m.split(":", 1)
             except ValueError:
-                raise ValueError(f"Invalid --mount option: '{m}'")
+                raise ValueError(f"Invalid dataset mount: '{m}'")
             mounts_to_use.append((source, target))
 
         weka_buckets = []
@@ -236,7 +248,7 @@ def launch_experiment(
             try:
                 source, target = m.split(":", 1)
             except ValueError:
-                raise ValueError(f"Invalid --weka option: '{m}'")
+                raise ValueError(f"Invalid weka mount: '{m}'")
             weka_buckets.append((source, target))
 
         if weka_buckets and (not tags or "storage:weka" not in tags):
@@ -332,7 +344,9 @@ def launch_experiment(
 
         if slack_webhook_url is not None and "GANTRY_SLACK_WEBHOOK_URL" not in secret_names:
             if not slack_webhook_url:
-                raise ConfigurationError("--slack-webhook-url cannot be an empty string")
+                raise ConfigurationError(
+                    f"{fmt_opt('--slack-webhook-url')} cannot be an empty string"
+                )
 
             slack_webhook_url_secret = beaker_utils.ensure_secret(
                 beaker, "GANTRY_SLACK_WEBHOOK_URL", slack_webhook_url
@@ -387,6 +401,7 @@ def launch_experiment(
             default_python_version=default_python_version,
             pre_setup=pre_setup,
             post_setup=post_setup,
+            cli_mode=cli_mode,
         )
 
         if save_spec:

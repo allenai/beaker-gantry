@@ -459,4 +459,4 @@ def run(args, **kwargs):
             "Try 'gantry run --help' for help."
         )
 
-    launch_experiment(args=args, **kwargs)
+    launch_experiment(args=args, cli_mode=True, **kwargs)

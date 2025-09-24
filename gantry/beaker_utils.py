@@ -1,4 +1,5 @@
 import binascii
+import functools as ft
 import hashlib
 import tempfile
 import time
@@ -26,7 +27,10 @@ def init_client(
     ensure_workspace: bool = True,
     beaker_token: str | None = None,
     check_for_upgrades: bool = True,
+    cli_mode: bool = True,
 ) -> Beaker:
+    fmt_opt = ft.partial(utils.format_option, cli_mode=cli_mode)
+
     Beaker.MAX_RETRIES = 10_000  # effectively retry forever
     Beaker.BACKOFF_MAX = 32
 
@@ -46,7 +50,7 @@ def init_client(
                 raise KeyboardInterrupt
         except BeakerWorkspaceNotSet:
             raise ConfigurationError(
-                "'--workspace' option is required since you don't have a default workspace set"
+                f"{fmt_opt('--workspace')} option is required since you don't have a default workspace set"
             )
     return beaker
 
@@ -513,10 +517,13 @@ def build_experiment_spec(
     default_python_version: str = utils.get_local_python_version(),
     pre_setup: str | None = None,
     post_setup: str | None = None,
+    cli_mode: bool = True,
 ):
+    fmt_opt = ft.partial(utils.format_option, cli_mode=cli_mode)
+
     if exec_method not in ("exec", "bash"):
         raise ConfigurationError(
-            f"expected one of 'exec', 'bash' for --exec-method, but got '{exec_method}'."
+            f"expected one of 'exec' or 'bash' for {fmt_opt('--exec-method')}, but got '{exec_method}'."
         )
 
     task_spec = (
@@ -576,7 +583,9 @@ def build_experiment_spec(
             or conda_env is not None
             or conda_file is not None
         ):
-            raise ConfigurationError("other python options can't be used with --no-python")
+            raise ConfigurationError(
+                f"other python options can't be used with {fmt_opt('--no-python')}"
+            )
     else:
         has_project_file = (
             git_config.is_in_tree("pyproject.toml")
@@ -607,7 +616,7 @@ def build_experiment_spec(
                 python_manager = "uv"
         elif python_manager not in {"uv", "conda"}:
             raise ConfigurationError(
-                f"unknown option for --python-manager: '{python_manager}'. Should be either 'uv' or 'conda'."
+                f"unknown option for {fmt_opt('--python-manager')}: '{python_manager}'. Should be either 'uv' or 'conda'."
             )
 
         task_spec = task_spec.with_env_var(
@@ -618,13 +627,13 @@ def build_experiment_spec(
         if python_manager == "uv":
             if conda_env is not None or conda_file is not None:
                 raise ConfigurationError(
-                    "--conda-* options are only relevant when using the conda python manager (--python-manager=conda)."
+                    f"{fmt_opt('--conda-*')} options are only relevant when using the conda python manager ({fmt_opt('--python-manager')}=conda)."
                 )
 
             if uv_venv is not None:
                 if system_python:
                     raise ConfigurationError(
-                        "--system-python flag is incompatible with --uv-venv option."
+                        f"{fmt_opt('--system-python')} flag is incompatible with {fmt_opt('--uv-venv')} option."
                     )
 
                 task_spec = task_spec.with_env_var(
@@ -639,13 +648,13 @@ def build_experiment_spec(
                     uv_all_extras = False
             elif uv_extras:
                 raise ConfigurationError(
-                    "--uv-all-extras/--uv-no-extras is mutually exclusive with --uv-extra"
+                    f"{fmt_opt('--uv-all-extras/--uv-no-extras')} is mutually exclusive with {fmt_opt('--uv-extra')}."
                 )
 
             if uv_all_extras:
                 if not has_project_file:
                     raise ConfigurationError(
-                        "--uv-all-extras is only valid when you have a pyproject.toml, setup.py, or setup.cfg file."
+                        f"{fmt_opt('--uv-all-extras')} is only valid when you have a pyproject.toml, setup.py, or setup.cfg file."
                     )
 
                 task_spec = task_spec.with_env_var(name="GANTRY_UV_ALL_EXTRAS", value="1")
@@ -653,7 +662,7 @@ def build_experiment_spec(
             if uv_extras:
                 if not has_project_file:
                     raise ConfigurationError(
-                        "--uv-extra is only valid when you have a pyproject.toml, setup.py, or setup.cfg file."
+                        f"{fmt_opt('--uv-extra')} is only valid when you have a pyproject.toml, setup.py, or setup.cfg file."
                     )
 
                 task_spec = task_spec.with_env_var(
@@ -670,13 +679,13 @@ def build_experiment_spec(
                 or uv_torch_backend is not None
             ):
                 raise ConfigurationError(
-                    "--uv-* options are only relevant when using the uv python manager (--python-manager=uv)."
+                    f"{fmt_opt('--uv-*')} options are only relevant when using the uv python manager ({fmt_opt('--python-manager')}=uv)."
                 )
 
             if conda_env is not None:
                 if system_python:
                     raise ConfigurationError(
-                        "--system-python flag is incompatible with --conda-env option."
+                        f"{fmt_opt('--system-python')} flag is incompatible with {fmt_opt('--conda-env')} option."
                     )
 
                 task_spec = task_spec.with_env_var(
