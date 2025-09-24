@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added support for configuring the GitHub token secret name in a `pyproject.toml` as the field `[tool.gantry.gh_token_secret]`.
 - Added the top-level flag `--check-for-upgrades/--no-check-for-upgrades` with corresponding env var `GANTRY_CHECK_FOR_UPGRADES`.
 - Added `--slack-webhook-url` option to `gantry run` command for getting updates on Slack. For now these webhooks are only sent if following the job locally, e.g. via `--show-logs` or `--timeout=-1`.
+- Added `gantry.api.Recipe` class for programmatically configuring workloads.
 
 ### Changed
 

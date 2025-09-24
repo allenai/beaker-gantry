@@ -6,6 +6,7 @@ from beaker import BeakerWorkload
 
 from . import constants, utils
 from .aliases import PathOrStr
+from .exceptions import *
 from .launch import launch_experiment
 
 
@@ -90,3 +91,27 @@ class Recipe:
         workload = launch_experiment(**kwargs, show_logs=show_logs, timeout=timeout)
         assert workload is not None
         return workload
+
+    def with_replicas(
+        self,
+        replicas: int,
+        leader_selection: bool = True,
+        host_networking: bool = True,
+        propagate_failure: bool = True,
+        propagate_preemption: bool = True,
+        synchronized_start_timeout: str = "5m",
+    ) -> "Recipe":
+        """
+        Add replicas to the recipe.
+        """
+        if replicas < 2:
+            raise ConfigurationError("replicas must be at least 2")
+        return dataclasses.replace(
+            self,
+            replicas=replicas,
+            leader_selection=leader_selection,
+            host_networking=host_networking,
+            propagate_failure=propagate_failure,
+            propagate_preemption=propagate_preemption,
+            synchronized_start_timeout=synchronized_start_timeout,
+        )
