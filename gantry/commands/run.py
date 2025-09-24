@@ -110,6 +110,12 @@ from .main import CLICK_COMMAND_DEFAULTS, config, main, new_optgroup
     show_default=True,
 )
 @optgroup.option(
+    "--interconnect",
+    type=click.Choice(["ib", "tcpxo"]),
+    help="""Filter clusters by the type of interconnect they have, e.g. 'ib' for InfiniBand.""",
+    default=None,
+)
+@optgroup.option(
     "--tag",
     "tags",
     type=str,

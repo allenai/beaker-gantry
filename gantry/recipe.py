@@ -35,6 +35,7 @@ class Recipe:
     # Constraints.
     clusters: Sequence[str] | None = None
     gpu_types: Sequence[str] | None = None
+    interconnect: Literal["ib", "tcpxo"] | None = None
     tags: Sequence[str] | None = None
     hostnames: Sequence[str] | None = None
 

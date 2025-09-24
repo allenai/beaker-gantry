@@ -35,6 +35,7 @@ def launch_experiment(
     group_names: Sequence[str] | None = None,
     clusters: Sequence[str] | None = None,
     gpu_types: Sequence[str] | None = None,
+    interconnect: Literal["ib", "tcpxo"] | None = None,
     tags: Sequence[str] | None = None,
     hostnames: Sequence[str] | None = None,
     beaker_image: str | None = None,
@@ -271,6 +272,10 @@ def launch_experiment(
         if weka_buckets and (not tags or "storage:weka" not in tags):
             tags = list(tags or [])
             tags.append("storage:weka")
+
+        if interconnect is not None:
+            tags = list(tags or [])
+            tags.append(f"interconnect:{interconnect}")
 
         # Validate clusters.
         if clusters or gpu_types or tags:
