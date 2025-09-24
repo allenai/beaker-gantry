@@ -55,6 +55,28 @@ $header_border
 \e[0m"
 }
 
+function has_infiniband {
+    # See https://beaker-docs.apps.allenai.org/experiments/distributed-training.html
+    # for list of clusters with InfiniBand.
+    if [[ $BEAKER_NODE_HOSTNAME == "jupiter"* ]]; then
+        return 0
+    elif [[ $BEAKER_NODE_HOSTNAME == "titan"* ]]; then
+        return 0
+    elif [[ $BEAKER_NODE_HOSTNAME == "ceres"* ]]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+function is_multi_node_gpu_job {
+    if [[ -n "$BEAKER_REPLICA_COUNT" ]] && ((BEAKER_REPLICA_COUNT > 1)) && [[ -n "$BEAKER_ASSIGNED_GPU_COUNT" ]] && ((BEAKER_ASSIGNED_GPU_COUNT > 0)); then
+        return 0
+    else
+        return 1
+    fi
+}
+
 # usage: with_retries MAX_RETRIES(INT) COMMAND(TEXT) [ARGS(ANY)...]
 function with_retries {
     local max_retries="$1"
@@ -474,17 +496,27 @@ if [[ -n "$GITHUB_TOKEN" ]]; then
     with_retries 3 capture_logs "setup_gh_auth" gh auth setup-git
 fi
 
-if [[ -d "/var/lib/tcpxo/lib64" ]] && [[ -n "$BEAKER_REPLICA_COUNT" ]] && [[ -z "$GANTRY_SKIP_TCPXO_SETUP" ]]; then
-    log_info "Configuring NCCL for GPUDirect-TCPXO..."
-    log_info "Note: you can skip this step if needed by adding the flag '--skip_tcpxo_setup' to your 'gantry run ...' command."
-    export NCCL_LIB_DIR="/var/lib/tcpxo/lib64"
-    export LD_LIBRARY_PATH="/var/lib/tcpxo/lib64:$LD_LIBRARY_PATH"
-    # shellcheck disable=SC1091
-    source /var/lib/tcpxo/lib64/nccl-env-profile.sh
-    export NCCL_PROTO=Simple,LL128
-    export NCCL_TUNER_CONFIG_PATH=/var/lib/tcpxo/lib64/a3plus_tuner_config_ll128.textproto
-    export NCCL_SHIMNET_GUEST_CONFIG_CHECKER_CONFIG_FILE=/var/lib/tcpxo/lib64/a3plus_guest_config_ll128.textproto
-    log_info "Done."
+# Configure NCCL variables for the given hardware.
+# See https://beaker-docs.apps.allenai.org/experiments/distributed-training.html
+if is_multi_node_gpu_job && [[ -z "$GANTRY_SKIP_NCCL_SETUP" ]]; then
+    if has_infiniband; then
+        log_info "Configuring NCCL for InfiniBand..."
+        log_info "You can skip this step by setting the env var 'GANTRY_SKIP_NCCL_SETUP' in your job (--skip-nccl-setup)."
+        export NCCL_IB_HCA="^=mlx5_bond_0"
+        export NCCL_SOCKET_IFNAME="ib"
+        log_info "Done."
+    elif [[ -d "/var/lib/tcpxo/lib64" ]]; then
+        log_info "Configuring NCCL for GPUDirect-TCPXO..."
+        log_info "You can skip this step by setting the env var 'GANTRY_SKIP_NCCL_SETUP' in your job (--skip-nccl-setup)."
+        export NCCL_LIB_DIR="/var/lib/tcpxo/lib64"
+        export LD_LIBRARY_PATH="/var/lib/tcpxo/lib64:$LD_LIBRARY_PATH"
+        # shellcheck disable=SC1091
+        source /var/lib/tcpxo/lib64/nccl-env-profile.sh
+        export NCCL_PROTO=Simple,LL128
+        export NCCL_TUNER_CONFIG_PATH=/var/lib/tcpxo/lib64/a3plus_tuner_config_ll128.textproto
+        export NCCL_SHIMNET_GUEST_CONFIG_CHECKER_CONFIG_FILE=/var/lib/tcpxo/lib64/a3plus_guest_config_ll128.textproto
+        log_info "Done."
+    fi
 fi
 
 ###################################

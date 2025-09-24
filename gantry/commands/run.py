@@ -316,6 +316,16 @@ from .main import CLICK_COMMAND_DEFAULTS, config, main, new_optgroup
     If you do use this flag, you'll probably need to follow all of the steps documented here:
 
     https://beaker-docs.allen.ai/compute/augusta.html#distributed-workloads""",
+    hidden=True,  # deprecated in favor of '--skip-nccl-setup'
+)
+@optgroup.option(
+    "--skip-nccl-setup",
+    is_flag=True,
+    help="""By default Gantry will attempt to configure NCCL in an optimal way for the given hardware,
+    but you can use this flag to skip that step if you need a custom configuration.
+    If you do use this flag, you'll probably need to follow all of the steps documented here:
+
+    https://beaker-docs.allen.ai/compute/augusta.html#distributed-workloads""",
 )
 @new_optgroup("Runtime")
 @optgroup.option(

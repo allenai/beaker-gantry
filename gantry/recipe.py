@@ -74,7 +74,8 @@ class Recipe:
     propagate_failure: bool | None = None
     propagate_preemption: bool | None = None
     synchronized_start_timeout: str | None = None
-    skip_tcpxo_setup: bool = False
+    skip_tcpxo_setup: bool = dataclasses.field(default=False, repr=False)  # deprecated
+    skip_nccl_setup: bool = False
 
     # Runtime.
     runtime_dir: str = constants.RUNTIME_DIR
@@ -127,7 +128,7 @@ class Recipe:
         propagate_failure: bool = True,
         propagate_preemption: bool = True,
         synchronized_start_timeout: str = "5m",
-        skip_tcpxo_setup: bool = False,
+        skip_nccl_setup: bool = False,
     ) -> "Recipe":
         """
         Add replicas to the recipe.
@@ -142,5 +143,5 @@ class Recipe:
             propagate_failure=propagate_failure,
             propagate_preemption=propagate_preemption,
             synchronized_start_timeout=synchronized_start_timeout,
-            skip_tcpxo_setup=skip_tcpxo_setup,
+            skip_nccl_setup=skip_nccl_setup,
         )

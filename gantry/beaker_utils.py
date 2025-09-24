@@ -617,7 +617,7 @@ def build_experiment_spec(
     results: str = constants.RESULTS_DIR,
     runtime_dir: str = constants.RUNTIME_DIR,
     exec_method: Literal["exec", "bash"] = "exec",
-    skip_tcpxo_setup: bool = False,
+    skip_nccl_setup: bool = False,
     default_python_version: str = utils.get_local_python_version(),
     pre_setup: str | None = None,
     post_setup: str | None = None,
@@ -668,8 +668,8 @@ def build_experiment_spec(
     if gh_token_secret is not None:
         task_spec = task_spec.with_env_var(name="GITHUB_TOKEN", secret=gh_token_secret)
 
-    if skip_tcpxo_setup:
-        task_spec = task_spec.with_env_var(name="GANTRY_SKIP_TCPXO_SETUP", value="1")
+    if skip_nccl_setup:
+        task_spec = task_spec.with_env_var(name="GANTRY_SKIP_NCCL_SETUP", value="1")
 
     if no_python:
         task_spec = task_spec.with_env_var(name="GANTRY_NO_PYTHON", value="1")
