@@ -203,8 +203,9 @@ from .main import CLICK_COMMAND_DEFAULTS, config, main, new_optgroup
     "env_secrets",
     type=str,
     help="""Environment variables to add to the Beaker experiment from Beaker secrets.
-    Should be in the form '{NAME}={SECRET_NAME}', or just '{NAME}' to take the value from a local
-    environment variable of that name and create a new secret.""",
+    Should be in the form '{NAME}={SECRET_NAME}', or just '{NAME}' to take the value from either
+    (1) a Beaker secret in the workspace with the same name, or (2) a local
+    environment variable of that name, in which case a new Beaker secret is created.""",
     multiple=True,
 )
 @optgroup.option(

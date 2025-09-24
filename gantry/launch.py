@@ -200,12 +200,16 @@ def launch_experiment(
             try:
                 env_secret_name, secret = e.split("=", 1)
             except ValueError:
-                if e not in os.environ:
+                if beaker_utils.secret_exists(beaker, e):
+                    env_secret_name = e
+                    secret = e
+                elif e in os.environ:
+                    env_secret_name = e
+                    env_secret_value = os.environ[e]
+                    utils.print_stderr(f"[yellow]Taking secret value for '{e}' from environment[/]")
+                    secret = beaker_utils.ensure_secret(beaker, env_secret_name, env_secret_value)
+                else:
                     raise ConfigurationError(f"Invalid env secret: '{e}'")
-
-                env_secret_name = e
-                env_secret_value = os.environ[e]
-                secret = beaker_utils.ensure_secret(beaker, env_secret_name, env_secret_value)
 
             secret_names.add(env_secret_name)
             env_secrets_to_use.append((env_secret_name, secret))

@@ -202,6 +202,14 @@ def ensure_entrypoint_dataset(beaker: Beaker) -> BeakerDataset:
     return gantry_entrypoint_dataset
 
 
+def secret_exists(beaker: Beaker, name: str) -> bool:
+    try:
+        beaker.secret.get(name)
+        return True
+    except BeakerSecretNotFound:
+        return False
+
+
 def ensure_secret(beaker: Beaker, name: str, value: str) -> str:
     if not value:
         raise InvalidSecretError(f"Value for secret '{name}' can't be empty")
