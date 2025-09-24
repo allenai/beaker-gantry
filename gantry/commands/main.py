@@ -88,6 +88,8 @@ config = GantryConfig.load()
     default=config.log_level or "warning",
 )
 def main(quiet: bool = False, check_for_upgrades: bool | None = None, log_level: str = "warning"):
+    utils.enable_cli_mode()
+
     # Configure rich.
     if os.environ.get("GANTRY_GITHUB_TESTING"):
         # Force a broader terminal when running tests in GitHub Actions.

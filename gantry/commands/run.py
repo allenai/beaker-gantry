@@ -5,8 +5,8 @@ from beaker import BeakerJobPriority
 from click_option_group import optgroup
 
 from .. import constants, utils
-from ..api import launch_experiment
 from ..exceptions import *
+from ..recipe import Recipe
 from .main import CLICK_COMMAND_DEFAULTS, config, main, new_optgroup
 
 
@@ -429,7 +429,9 @@ from .main import CLICK_COMMAND_DEFAULTS, config, main, new_optgroup
     type=str,
     help="""The name or path to an existing conda environment on the image to use.""",
 )
-def run(args, **kwargs):
+def run(
+    args, show_logs: bool | None = None, timeout: int | None = None, dry_run: bool = False, **kwargs
+):
     """
     Run an experiment on Beaker.
 
@@ -459,4 +461,8 @@ def run(args, **kwargs):
             "Try 'gantry run --help' for help."
         )
 
-    launch_experiment(args=args, cli_mode=True, **kwargs)
+    recipe = Recipe(args=args, **kwargs)
+    if dry_run:
+        recipe.dry_run()
+    else:
+        recipe.launch(show_logs=show_logs, timeout=timeout)
