@@ -16,63 +16,90 @@ class Recipe:
     A recipe defines how Gantry creates a Beaker workload.
     """
 
+    # Workload settings
     args: Sequence[str]
     name: str | None = None
     description: str | None = None
-    task_name: str = "main"
     workspace: str | None = None
+    budget: str | None = None
     group_names: Sequence[str] | None = None
+
+    # Launch settings.
+    allow_dirty: bool = False
+    yes: bool | None = None
+    save_spec: PathOrStr | None = None
+
+    # Notifications.
+    slack_webhook_url: str | None = None
+
+    # Constraints.
     clusters: Sequence[str] | None = None
     gpu_types: Sequence[str] | None = None
     tags: Sequence[str] | None = None
     hostnames: Sequence[str] | None = None
-    beaker_image: str | None = None
-    docker_image: str | None = None
+
+    # Resources.
     cpus: float | None = None
     gpus: int | None = None
     memory: str | None = None
     shared_memory: str | None = None
+
+    # Inputs.
+    beaker_image: str | None = None
+    docker_image: str | None = None
     datasets: Sequence[str] | None = None
-    gh_token_secret: str = constants.GITHUB_TOKEN_SECRET
+    env_vars: Sequence[str | tuple[str, str]] | None = None
+    env_secrets: Sequence[str | tuple[str, str]] | None = None
+    dataset_secrets: Sequence[str | tuple[str, str]] | None = None
+    mounts: Sequence[str | tuple[str, str]] | None = None
+    weka: Sequence[str | tuple[str, str]] | None = None
     ref: str | None = None
     branch: str | None = None
-    conda_file: PathOrStr | None = None
-    conda_env: str | None = None
-    python_manager: Literal["uv", "conda"] | None = None
-    system_python: bool = False
-    uv_venv: str | None = None
-    uv_extras: Sequence[str] | None = None
-    uv_all_extras: bool | None = None
-    uv_torch_backend: str | None = None
-    env_vars: Sequence[str] | None = None
-    env_secrets: Sequence[str] | None = None
-    dataset_secrets: Sequence[str] | None = None
-    task_timeout: str | None = None
-    allow_dirty: bool = False
-    yes: bool | None = None
-    save_spec: PathOrStr | None = None
+    gh_token_secret: str = constants.GITHUB_TOKEN_SECRET
+
+    # Outputs.
+    results: str = constants.RESULTS_DIR
+
+    # Task settings.
+    task_name: str = "main"
     priority: str | None = None
-    install: str | None = None
-    no_python: bool = False
+    task_timeout: str | None = None
+    preemptible: bool | None = None
+    retries: int | None = None
+
+    # Multi-node config.
     replicas: int | None = None
     leader_selection: bool = False
     host_networking: bool = False
     propagate_failure: bool | None = None
     propagate_preemption: bool | None = None
     synchronized_start_timeout: str | None = None
-    mounts: Sequence[str] | None = None
-    weka: str | None = None
-    budget: str | None = None
-    preemptible: bool | None = None
-    retries: int | None = None
-    results: str = constants.RESULTS_DIR
+    skip_tcpxo_setup: bool = False
+
+    # Runtime.
     runtime_dir: str = constants.RUNTIME_DIR
     exec_method: Literal["exec", "bash"] = "exec"
-    skip_tcpxo_setup: bool = False
-    default_python_version: str = utils.get_local_python_version()
+
+    # Setup hooks.
     pre_setup: str | None = None
     post_setup: str | None = None
-    slack_webhook_url: str | None = None
+
+    # Python settings.
+    python_manager: Literal["uv", "conda"] | None = None
+    default_python_version: str = utils.get_local_python_version()
+    system_python: bool = False
+    install: str | None = None
+    no_python: bool = False
+
+    # Python UV settings.
+    uv_venv: str | None = None
+    uv_extras: Sequence[str] | None = None
+    uv_all_extras: bool | None = None
+    uv_torch_backend: str | None = None
+
+    # Python Conda settings.
+    conda_file: PathOrStr | None = None
+    conda_env: str | None = None
 
     def dry_run(self) -> None:
         """
@@ -100,6 +127,7 @@ class Recipe:
         propagate_failure: bool = True,
         propagate_preemption: bool = True,
         synchronized_start_timeout: str = "5m",
+        skip_tcpxo_setup: bool = False,
     ) -> "Recipe":
         """
         Add replicas to the recipe.
@@ -114,4 +142,5 @@ class Recipe:
             propagate_failure=propagate_failure,
             propagate_preemption=propagate_preemption,
             synchronized_start_timeout=synchronized_start_timeout,
+            skip_tcpxo_setup=skip_tcpxo_setup,
         )

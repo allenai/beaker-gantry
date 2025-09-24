@@ -186,7 +186,7 @@ from .main import CLICK_COMMAND_DEFAULTS, config, main, new_optgroup
     type=str,
     multiple=True,
     help="""A weka bucket to mount in the form of 'bucket-name:/mount/location',
-    e.g. --weka=oe-training-default:/data""",
+    e.g. '--weka=oe-training-default:/data'. Multiple allowed.""",
 )
 @optgroup.option(
     "--env",

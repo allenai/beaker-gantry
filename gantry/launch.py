@@ -55,9 +55,10 @@ def launch_experiment(
     uv_extras: Sequence[str] | None = None,
     uv_all_extras: bool | None = None,
     uv_torch_backend: str | None = None,
-    env_vars: Sequence[str] | None = None,
-    env_secrets: Sequence[str] | None = None,
-    dataset_secrets: Sequence[str] | None = None,
+    env_vars: Sequence[str | tuple[str, str]] | None = None,
+    env_secrets: Sequence[str | tuple[str, str]] | None = None,
+    dataset_secrets: Sequence[str | tuple[str, str]] | None = None,
+    mounts: Sequence[str | tuple[str, str]] | None = None,
     timeout: int | None = None,
     task_timeout: str | None = None,
     show_logs: bool | None = None,
@@ -74,8 +75,7 @@ def launch_experiment(
     propagate_failure: bool | None = None,
     propagate_preemption: bool | None = None,
     synchronized_start_timeout: str | None = None,
-    mounts: Sequence[str] | None = None,
-    weka: str | None = None,
+    weka: Sequence[str | tuple[str, str]] | None = None,
     budget: str | None = None,
     preemptible: bool | None = None,
     retries: int | None = None,
@@ -183,59 +183,88 @@ def launch_experiment(
         # Validate the input datasets.
         datasets_to_use = beaker_utils.ensure_datasets(beaker, *datasets) if datasets else []
 
+        env_var_names: set[str] = set()
         env_vars_to_use = []
         for e in env_vars or []:
-            try:
-                env_name, val = e.split("=", 1)
-            except ValueError:
-                if e in os.environ:
-                    env_name, val = e, os.environ[e]
-                else:
-                    raise ConfigurationError(f"Invalid env var: '{e}'")
+            if isinstance(e, tuple):
+                env_name, val = e
+            else:
+                try:
+                    env_name, val = e.split("=", 1)
+                except ValueError:
+                    if e in os.environ:
+                        env_name, val = e, os.environ[e]
+                    else:
+                        raise ConfigurationError(f"Invalid env var: '{e}'")
+            if env_name in env_var_names:
+                raise ConfigurationError(f"Duplicate env var name: '{env_name}'")
+            env_var_names.add(env_name)
             env_vars_to_use.append((env_name, val))
 
         secret_names: set[str] = set()
         env_secrets_to_use = []
         for e in env_secrets or []:
-            try:
-                env_secret_name, secret = e.split("=", 1)
-            except ValueError:
-                if beaker_utils.secret_exists(beaker, e):
-                    env_secret_name = e
-                    secret = e
-                elif e in os.environ:
-                    env_secret_name = e
-                    env_secret_value = os.environ[e]
-                    utils.print_stderr(f"[yellow]Taking secret value for '{e}' from environment[/]")
-                    secret = beaker_utils.ensure_secret(beaker, env_secret_name, env_secret_value)
-                else:
-                    raise ConfigurationError(f"Invalid env secret: '{e}'")
+            if isinstance(e, tuple):
+                env_secret_name, secret = e
+            else:
+                try:
+                    env_secret_name, secret = e.split("=", 1)
+                except ValueError:
+                    if beaker_utils.secret_exists(beaker, e):
+                        env_secret_name = e
+                        secret = e
+                    elif e in os.environ:
+                        env_secret_name = e
+                        env_secret_value = os.environ[e]
+                        utils.print_stderr(
+                            f"[yellow]Taking secret value for '{e}' from environment[/]"
+                        )
+                        secret = beaker_utils.ensure_secret(
+                            beaker, env_secret_name, env_secret_value
+                        )
+                    else:
+                        raise ConfigurationError(f"Invalid env secret: '{e}'")
 
+            if env_secret_name in secret_names:
+                raise ConfigurationError(f"Duplicate env secret name: '{env_secret_name}'")
+            if env_secret_name in env_var_names:
+                raise ConfigurationError(
+                    f"Env secret name '{env_secret_name}' conflicts with an env var of the same name"
+                )
             secret_names.add(env_secret_name)
             env_secrets_to_use.append((env_secret_name, secret))
 
         dataset_secrets_to_use = []
         for ds in dataset_secrets or []:
-            try:
-                secret, mount_path = ds.split(":", 1)
-            except ValueError:
-                raise ValueError(f"Invalid dataset secret: '{ds}'")
+            if isinstance(ds, tuple):
+                secret, mount_path = ds
+            else:
+                try:
+                    secret, mount_path = ds.split(":", 1)
+                except ValueError:
+                    raise ValueError(f"Invalid dataset secret: '{ds}'")
             dataset_secrets_to_use.append((secret, mount_path))
 
         mounts_to_use = []
         for m in mounts or []:
-            try:
-                source, target = m.split(":", 1)
-            except ValueError:
-                raise ValueError(f"Invalid dataset mount: '{m}'")
+            if isinstance(m, tuple):
+                source, target = m
+            else:
+                try:
+                    source, target = m.split(":", 1)
+                except ValueError:
+                    raise ValueError(f"Invalid dataset mount: '{m}'")
             mounts_to_use.append((source, target))
 
         weka_buckets = []
         for m in weka or []:
-            try:
-                source, target = m.split(":", 1)
-            except ValueError:
-                raise ValueError(f"Invalid weka mount: '{m}'")
+            if isinstance(m, tuple):
+                source, target = m
+            else:
+                try:
+                    source, target = m.split(":", 1)
+                except ValueError:
+                    raise ValueError(f"Invalid weka mount: '{m}'")
             weka_buckets.append((source, target))
 
         if weka_buckets and (not tags or "storage:weka" not in tags):
