@@ -138,6 +138,19 @@ function get_latest_release {
     fi
 }
 
+function webi_bootstrap_jq {
+    curl -sS https://webi.sh/jq | sh
+}
+
+function ensure_jq {
+    if ! command -v jq &> /dev/null; then
+        log_info "Installing jq..."
+        with_retries 5 capture_logs "webi_bootstrap_jq" webi_bootstrap_jq || return 1
+        path_prepend ~/.local/bin
+        log_info "Done. Installed $(jq --version)."
+    fi
+}
+
 function webi_bootstrap_gh {
     curl -sS https://webi.sh/gh | sh
 }
@@ -514,6 +527,32 @@ if [[ -n "$GITHUB_TOKEN" ]]; then
     # NOTE: this could fail due to race conditions if the user has mounted a host path to the container's '$HOME' directory
     # (it's happened before).
     with_retries 3 capture_logs "setup_gh_auth" gh auth setup-git
+fi
+
+# Install cloud credentials if given.
+if [[ -n "$GANTRY_AWS_CONFIG" ]]; then
+    log_info "Installing AWS config..."
+    mkdir -p ~/.aws
+    printenv GANTRY_AWS_CONFIG > ~/.aws/config
+    log_info "Done."
+fi
+if [[ -n "$GANTRY_AWS_CREDENTIALS" ]]; then
+    log_info "Installing AWS credentials..."
+    mkdir -p ~/.aws
+    printenv GANTRY_AWS_CREDENTIALS > ~/.aws/credentials
+    log_info "Done."
+fi
+if [[ -n "$GANTRY_GOOGLE_CREDENTIALS" ]]; then
+    log_info "Installing Google Cloud credentials..."
+    mkdir -p ~/.google
+    printenv GANTRY_GOOGLE_CREDENTIALS > ~/.google/credentials.json
+    export GOOGLE_APPLICATION_CREDENTIALS="$HOME/.google/credentials.json"
+    if command -v gcloud &> /dev/null; then
+        ensure_jq
+        service_account=$(printenv GANTRY_GOOGLE_CREDENTIALS | jq -r .client_email)
+        gcloud auth activate-service-account "$service_account" --key-file="$GOOGLE_APPLICATION_CREDENTIALS"
+    fi
+    log_info "Done."
 fi
 
 # Configure NCCL variables for the given hardware.
