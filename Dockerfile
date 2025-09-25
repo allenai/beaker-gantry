@@ -11,25 +11,26 @@ ENV LANG=C.UTF-8
 ENV DEBIAN_FRONTEND="noninteractive"
 
 # Install basic tools.
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
        build-essential \
        ca-certificates \
        curl \
+       unzip \
        wget \
        libxml2-dev \
        jq \
        cmake \
-       git && \
-    rm -rf /var/lib/apt/lists/*
+       git \
+    && rm -rf /var/lib/apt/lists/*
 
 # Install conda.
-RUN curl -fsSL -v -o ~/miniconda.sh -O https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh && \
-    chmod +x ~/miniconda.sh && \
-    ~/miniconda.sh -b -p /opt/conda && \
-    rm ~/miniconda.sh && \
-    /opt/conda/bin/conda clean -afy && \
-    rm -rf /opt/conda/pkgs
+RUN curl -fsSL -v -o ~/miniconda.sh -O https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh \
+    && chmod +x ~/miniconda.sh \
+    && ~/miniconda.sh -b -p /opt/conda \
+    && rm ~/miniconda.sh \
+    && /opt/conda/bin/conda clean -afy \
+    && rm -rf /opt/conda/pkgs
 
 # Install uv.
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
@@ -48,7 +49,8 @@ RUN echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] http://packages.c
         | tee -a /etc/apt/sources.list.d/google-cloud-sdk.list \
     && curl https://packages.cloud.google.com/apt/doc/apt-key.gpg \
         | apt-key --keyring /usr/share/keyrings/cloud.google.gpg add - \
-    && apt-get update -y && apt-get install google-cloud-sdk -y \
+    && apt-get update -y \
+    && apt-get install google-cloud-sdk -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Install MLNX OFED user-space drivers for InfiniBand.
