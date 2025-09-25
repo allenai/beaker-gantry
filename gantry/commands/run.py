@@ -286,25 +286,33 @@ from .main import CLICK_COMMAND_DEFAULTS, config, main, new_optgroup
     help="""The number of task replicas to run.""",
 )
 @optgroup.option(
-    "--leader-selection",
+    "--leader-selection/--no-leader-selection",
     is_flag=True,
     help="""Specifies that the first task replica should be the leader and populates each task
     with 'BEAKER_LEADER_REPLICA_HOSTNAME' and 'BEAKER_LEADER_REPLICA_NODE_ID' environment variables.
     This is only applicable when '--replicas INT' and '--host-networking' are used,
     although the '--host-networking' flag can be omitted in this case since it's assumed.""",
+    default=None,
 )
 @optgroup.option(
-    "--host-networking",
+    "--host-networking/--no-host-networking",
     is_flag=True,
     help="""Specifies that each task replica should use the host's network.
     When used with '--replicas INT', this allows the replicas to communicate with each
     other using their hostnames.""",
+    default=None,
 )
 @optgroup.option(
-    "--propagate-failure", is_flag=True, help="""Stop the experiment if any task fails."""
+    "--propagate-failure/--no-propagate-failure",
+    is_flag=True,
+    help="""Stop the experiment if any task fails.""",
+    default=None,
 )
 @optgroup.option(
-    "--propagate-preemption", is_flag=True, help="""Stop the experiment if any task is preempted."""
+    "--propagate-preemption/--no-propagate-preemption",
+    is_flag=True,
+    help="""Stop the experiment if any task is preempted.""",
+    default=None,
 )
 @optgroup.option(
     "--synchronized-start-timeout",
@@ -351,6 +359,19 @@ from .main import CLICK_COMMAND_DEFAULTS, config, main, new_optgroup
     One reason you might prefer 'bash' over 'exec' is if you have shell variables in your arguments that
     you want expanded at runtime.""",
     show_default=True,
+)
+@optgroup.option(
+    "--torchrun",
+    is_flag=True,
+    help="""Launch the given command with torchrun. This is just a shortcut for configuring your command
+    with torchrun manually.
+
+    When this flag is used with '--replicas INT', the '--leader-selection' flag is assumed (and not necessary),
+    and gantry will automatically configure torchrun to use all GPUs across all replicas.
+    Additionally '--propagate-failure' and '--propagate-preemption' are assumed, and '--synchronized-start-timeout'
+    will default to '5m'.
+
+    If don't want torchrun to communicate with replicas, you can use '--no-leader-selection'.""",
 )
 @new_optgroup("Setup hooks")
 @optgroup.option(

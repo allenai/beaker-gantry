@@ -264,29 +264,44 @@ gantry run --show-logs --weka='oe-training-default:/mount/weka' -- ls -l /mount/
 ```
 </details>
 
-### How can I run distributed batch jobs with Gantry?
+### How can I run distributed multi-node batch jobs with Gantry?
 <details>
 <summary>Click to expand 💬</summary>
 
-The three options `--replicas INT`, `--leader-selection`, `--host-networking` used together give you the ability to run distributed batch jobs. See the [Beaker docs](https://beaker-docs.apps.allenai.org/experiments/distributed-training.html#batch-jobs) for more information.
-Consider also setting `--propagate-failure`, `--propagate-preemption`, and `--synchronized-start-timeout TEXT` depending on your workload.
+If you're using `torchrun` you can simply set the option `--replicas INT` along with the flag `--torchrun`.
+Gantry will automatically configure your experiment and `torchrun` to run your command with all GPUs across all replicas.
 
 For example:
 
 ```bash
 gantry run \
   --show-logs \
+  --gpus=8 \
+  --gpu-type='h100' \
+  --replicas=2 \
+  --torchrun \
+  --install 'uv pip install . torch numpy --torch-backend=cu129' \
+  -- python -m gantry.all_reduce_bench
+```
+
+In general, the three options `--replicas INT`, `--leader-selection`, `--host-networking` used together give you the ability to run distributed batch jobs. See the [Beaker docs](https://beaker-docs.apps.allenai.org/experiments/distributed-training.html#batch-jobs) for more information.
+Consider also setting `--propagate-failure`, `--propagate-preemption`, and `--synchronized-start-timeout TEXT` depending on your workload.
+
+Here's a complete example using `torchrun` manually (without the `--torchrun` flag):
+
+```bash
+gantry run \
+  --show-logs \
+  --gpus=8 \
+  --gpu-type='h100' \
   --replicas=2 \
   --leader-selection \
   --host-networking \
   --propagate-failure \
   --propagate-preemption \
   --synchronized-start-timeout='5m' \
-  --gpu-type='h100' \
-  --gpus=8 \
-  --beaker-image='ai2/cuda12.8-ubuntu22.04-torch2.7.0' \
-  --system-python \
-  --exec-method='bash' \
+  --install 'uv pip install . torch numpy --torch-backend=cu129' \
+  --exec-method=bash
   -- torchrun \
     '--nnodes="$BEAKER_REPLICA_COUNT:$BEAKER_REPLICA_COUNT"' \
     '--nproc-per-node="$BEAKER_ASSIGNED_GPU_COUNT"' \
@@ -309,16 +324,15 @@ Then change your `gantry run` command like this:
 ```diff
  gantry run \
    --show-logs \
+   --gpus=8 \
+   --gpu-type='h100' \
    --replicas=2 \
    --leader-selection \
    --host-networking \
    --propagate-failure \
    --propagate-preemption \
    --synchronized-start-timeout='5m' \
-   --gpu-type='h100' \
-   --gpus=8 \
-   --beaker-image='ai2/cuda12.8-ubuntu22.04-torch2.7.0' \
-   --system-python \
+   --install 'uv pip install . torch numpy --torch-backend=cu129' \
 -  --exec-method='bash' \
 -  -- torchrun \
 -    '--nnodes="$BEAKER_REPLICA_COUNT:$BEAKER_REPLICA_COUNT"' \

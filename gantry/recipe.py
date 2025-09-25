@@ -1,6 +1,6 @@
 import dataclasses
 from dataclasses import dataclass
-from typing import Literal, Sequence
+from typing import Any, Literal, Sequence
 
 from beaker import BeakerWorkload
 
@@ -70,8 +70,8 @@ class Recipe:
 
     # Multi-node config.
     replicas: int | None = None
-    leader_selection: bool = False
-    host_networking: bool = False
+    leader_selection: bool | None = None
+    host_networking: bool | None = None
     propagate_failure: bool | None = None
     propagate_preemption: bool | None = None
     synchronized_start_timeout: str | None = None
@@ -81,6 +81,7 @@ class Recipe:
     # Runtime.
     runtime_dir: str = constants.RUNTIME_DIR
     exec_method: Literal["exec", "bash"] = "exec"
+    torchrun: bool = False
 
     # Setup hooks.
     pre_setup: str | None = None
@@ -103,12 +104,23 @@ class Recipe:
     conda_file: PathOrStr | None = None
     conda_env: str | None = None
 
+    def _get_launch_args(self) -> Sequence[str]:
+        return self.args
+
+    def _get_launch_kwargs(self) -> dict[str, Any]:
+        kwargs = dataclasses.asdict(self)
+        kwargs.pop("args")
+        return kwargs
+
     def dry_run(self) -> None:
         """
         Do a dry-run to validate options.
         """
-        kwargs = dataclasses.asdict(self)
-        launch_experiment(**kwargs, dry_run=True)
+        launch_experiment(
+            self._get_launch_args(),
+            **self._get_launch_kwargs(),
+            dry_run=True,
+        )
 
     def launch(self, show_logs: bool | None = None, timeout: int | None = None) -> BeakerWorkload:
         """
@@ -116,8 +128,12 @@ class Recipe:
 
         :returns: The Beaker workload.
         """
-        kwargs = dataclasses.asdict(self)
-        workload = launch_experiment(**kwargs, show_logs=show_logs, timeout=timeout)
+        workload = launch_experiment(
+            self._get_launch_args(),
+            **self._get_launch_kwargs(),
+            show_logs=show_logs,
+            timeout=timeout,
+        )
         assert workload is not None
         return workload
 

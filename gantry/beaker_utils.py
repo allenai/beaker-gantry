@@ -1,6 +1,7 @@
 import binascii
 import hashlib
 import os
+import random
 import tempfile
 import time
 from collections import defaultdict
@@ -617,6 +618,7 @@ def build_experiment_spec(
     results: str = constants.RESULTS_DIR,
     runtime_dir: str = constants.RUNTIME_DIR,
     exec_method: Literal["exec", "bash"] = "exec",
+    torchrun: bool = False,
     skip_nccl_setup: bool = False,
     default_python_version: str = utils.get_local_python_version(),
     pre_setup: str | None = None,
@@ -655,6 +657,13 @@ def build_experiment_spec(
         .with_env_var(name="GANTRY_EXEC_METHOD", value=exec_method)
         .with_dataset("/gantry", beaker=entrypoint_dataset)
     )
+
+    if torchrun:
+        task_spec = task_spec.with_env_var(name="GANTRY_USE_TORCHRUN", value="1")
+        if replicas and leader_selection:
+            task_spec = task_spec.with_env_var(
+                name="GANTRY_RDZV_ID", value=str(random.randint(0, 999))
+            ).with_env_var(name="GANTRY_RDZV_PORT", value=str(random.randint(29_000, 29_999)))
 
     if git_config.branch is not None:
         task_spec = task_spec.with_env_var(name="GIT_BRANCH", value=git_config.branch)

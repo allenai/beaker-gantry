@@ -70,7 +70,11 @@ function has_infiniband {
 }
 
 function is_multi_node_gpu_job {
-    if [[ -n "$BEAKER_REPLICA_COUNT" ]] && ((BEAKER_REPLICA_COUNT > 1)) && [[ -n "$BEAKER_ASSIGNED_GPU_COUNT" ]] && ((BEAKER_ASSIGNED_GPU_COUNT > 0)); then
+    if [[ -n "$BEAKER_REPLICA_COUNT" ]] &&
+       ((BEAKER_REPLICA_COUNT > 1)) &&
+       [[ -n "$BEAKER_LEADER_REPLICA_HOSTNAME" ]] &&
+       [[ -n "$BEAKER_ASSIGNED_GPU_COUNT" ]] &&
+       ((BEAKER_ASSIGNED_GPU_COUNT > 0)); then
         return 0
     else
         return 1
@@ -295,7 +299,7 @@ function uv_setup_python {
 
     if [[ -n "$GANTRY_UV_VENV" ]]; then
         if [[ ! -d "$GANTRY_UV_VENV" ]] || [[ ! -f "$GANTRY_UV_VENV/bin/activate" ]]; then
-            log_error "--uv-venv '$GANTRY_UV_VENV' should be a path to a virtual env directory"
+            log_error "'GANTRY_UV_VENV' (--uv-venv) '$GANTRY_UV_VENV' should be a path to a virtual env directory"
             return 1
         fi
 
@@ -305,7 +309,7 @@ function uv_setup_python {
         log_info "Done."
     elif [[ -n "$GANTRY_USE_SYSTEM_PYTHON" ]]; then
         if ! command -v python &> /dev/null; then
-            log_error "No system python found. If your image doesn't include a Python distribution you should omit the --system-python flag."
+            log_error "No system python found. If your image doesn't include a Python distribution you should omit the 'GANTRY_USE_SYSTEM_PYTHON' (--system-python) flag."
             return 1
         fi
 
@@ -387,7 +391,7 @@ function conda_setup_python {
         if conda activate base &> /dev/null; then
             log_info "Using default conda base environment."
         else
-            log_error "No conda base environment found (required due to --system-python flag)"
+            log_error "No conda base environment found, which is required due to the 'GANTRY_USE_SYSTEM_PYTHON' (--system-python) flag"
             return 1
         fi
 
@@ -472,6 +476,22 @@ for env_var in "GANTRY_EXEC_METHOD" "GITHUB_REPO" "GIT_REF" "RESULTS_DIR" "BEAKE
         exit 1
     fi
 done
+
+if [[ -n "$GANTRY_USE_TORCHRUN" ]]; then
+    if [[ -z "$BEAKER_ASSIGNED_GPU_COUNT" ]] || ((BEAKER_ASSIGNED_GPU_COUNT < 1)); then
+        log_error "'GANTRY_USE_TORCHRUN' (--torchrun) is set but 'BEAKER_ASSIGNED_GPU_COUNT' (--gpus) is not set or less than 1"
+        exit 1
+    fi
+    if is_multi_node_gpu_job; then
+        for env_var in "GANTRY_RDZV_ID" "GANTRY_RDZV_PORT"; do
+            if [[ -z "${!env_var+x}" ]]; then
+                log_error "Required environment variable '$env_var' is empty"
+                exit 1
+            fi
+        done
+    fi
+fi
+
 
 log_info "Shell is $(bash --version | head -n 1)."
 log_info "Running on Beaker node '${BEAKER_NODE_HOSTNAME}' (${BEAKER_NODE_ID})"
@@ -580,12 +600,37 @@ end_time=$(date +%s)
 log_header "Setup complete" "(finished in $((end_time-start_time)) seconds)"
 ##############################################################################
 
-# Execute the arguments to this script as commands themselves.
-if [[ "$GANTRY_EXEC_METHOD" == "exec" ]]; then
-    exec "$@"
-elif [[ "$GANTRY_EXEC_METHOD" == "bash" ]]; then
-    bash -c "$*"
+if is_multi_node_gpu_job && [[ -n "$GANTRY_USE_TORCHRUN" ]]; then
+    cmd=(
+        torchrun
+        --no-python
+        --nnodes="$BEAKER_REPLICA_COUNT:$BEAKER_REPLICA_COUNT"
+        --nproc-per-node="$BEAKER_ASSIGNED_GPU_COUNT"
+        --rdzv-id="$GANTRY_RDZV_ID"
+        --rdzv-backend=static
+        --rdzv-endpoint="$BEAKER_LEADER_REPLICA_HOSTNAME:$GANTRY_RDZV_PORT"
+        --node-rank="$BEAKER_REPLICA_RANK"
+        --rdzv-conf="read_timeout=420"
+        "$@"
+    )
+elif [[ -n "$GANTRY_USE_TORCHRUN" ]]; then
+    cmd=(
+        torchrun
+        --no-python
+        --nproc-per-node="$BEAKER_ASSIGNED_GPU_COUNT"
+        "$@"
+    )
 else
-    log_error "Unknown value for --exec-method, got '$GANTRY_EXEC_METHOD'."
+    cmd=("$@")
+fi
+
+if [[ "$GANTRY_EXEC_METHOD" == "exec" ]]; then
+    # exec "$@"
+    exec "${cmd[@]}"
+elif [[ "$GANTRY_EXEC_METHOD" == "bash" ]]; then
+    # bash -c "$*"
+    bash -c "${cmd[*]}"
+else
+    log_error "Unknown value for 'GANTRY_EXEC_METHOD' (--exec-method), got '$GANTRY_EXEC_METHOD'."
     exit 1
 fi

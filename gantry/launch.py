@@ -71,8 +71,8 @@ def launch_experiment(
     install: str | None = None,
     no_python: bool = False,
     replicas: int | None = None,
-    leader_selection: bool = False,
-    host_networking: bool = False,
+    leader_selection: bool | None = None,
+    host_networking: bool | None = None,
     propagate_failure: bool | None = None,
     propagate_preemption: bool | None = None,
     synchronized_start_timeout: str | None = None,
@@ -83,6 +83,7 @@ def launch_experiment(
     results: str = constants.RESULTS_DIR,
     runtime_dir: str = constants.RUNTIME_DIR,
     exec_method: Literal["exec", "bash"] = "exec",
+    torchrun: bool = False,
     skip_tcpxo_setup: bool = False,
     skip_nccl_setup: bool = False,
     default_python_version: str = utils.get_local_python_version(),
@@ -103,6 +104,19 @@ def launch_experiment(
             )
         else:
             raise ConfigurationError("'args' are required!")
+
+    if torchrun and not gpus:
+        raise ConfigurationError(
+            f"{utils.fmt_opt('--torchrun')} mode requires {utils.fmt_opt('--gpus')} to be set to a positive integer."
+        )
+
+    if replicas is not None:
+        if replicas <= 0:
+            raise ConfigurationError(
+                f"{utils.fmt_opt('--replicas')} must be a positive integer (got {replicas})"
+            )
+        elif replicas <= 1:
+            replicas = None
 
     if yes is None:
         if os.environ.get("GANTRY_GITHUB_TESTING"):
@@ -375,6 +389,26 @@ def launch_experiment(
             )
             env_secrets_to_use.append(("GANTRY_SLACK_WEBHOOK_URL", slack_webhook_url_secret))
 
+        if leader_selection is None:
+            if replicas and torchrun and host_networking is not False:
+                leader_selection = True
+            else:
+                leader_selection = False
+
+        if host_networking is None:
+            if replicas and leader_selection:
+                host_networking = True
+            else:
+                host_networking = False
+
+        if torchrun and replicas and leader_selection:
+            if propagate_failure is None:
+                propagate_failure = True
+            if propagate_preemption is None and propagate_failure:
+                propagate_preemption = True
+            if synchronized_start_timeout is None:
+                synchronized_start_timeout = "5m"
+
         # Initialize experiment and task spec.
         spec = beaker_utils.build_experiment_spec(
             task_name=task_name,
@@ -406,7 +440,7 @@ def launch_experiment(
             no_python=no_python,
             replicas=replicas,
             leader_selection=leader_selection,
-            host_networking=host_networking or (bool(replicas) and leader_selection),
+            host_networking=host_networking,
             propagate_failure=propagate_failure,
             propagate_preemption=propagate_preemption,
             synchronized_start_timeout=synchronized_start_timeout,
@@ -419,6 +453,7 @@ def launch_experiment(
             results=results,
             runtime_dir=runtime_dir,
             exec_method=exec_method,
+            torchrun=torchrun,
             skip_nccl_setup=skip_nccl_setup or skip_tcpxo_setup,
             default_python_version=default_python_version,
             pre_setup=pre_setup,
