@@ -29,7 +29,7 @@ RUN curl -fsSL -v -o ~/miniconda.sh -O https://repo.anaconda.com/miniconda/Minic
     ~/miniconda.sh -b -p /opt/conda && \
     rm ~/miniconda.sh && \
     /opt/conda/bin/conda clean -afy && \
-    rm -rf /opt/conda/pkgs && \
+    rm -rf /opt/conda/pkgs
 
 # Install uv.
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
