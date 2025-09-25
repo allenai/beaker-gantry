@@ -115,7 +115,7 @@ def launch_experiment(
             raise ConfigurationError(
                 f"{utils.fmt_opt('--replicas')} must be a positive integer (got {replicas})"
             )
-        elif replicas <= 1:
+        elif replicas == 1:
             replicas = None
 
     if yes is None:

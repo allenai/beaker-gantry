@@ -663,7 +663,10 @@ def build_experiment_spec(
         if replicas and leader_selection:
             task_spec = task_spec.with_env_var(
                 name="GANTRY_RDZV_ID", value=str(random.randint(0, 999))
-            ).with_env_var(name="GANTRY_RDZV_PORT", value=str(random.randint(29_000, 29_999)))
+            )
+            task_spec = task_spec.with_env_var(
+                name="GANTRY_RDZV_PORT", value=str(random.randint(29_000, 29_999))
+            )
 
     if git_config.branch is not None:
         task_spec = task_spec.with_env_var(name="GIT_BRANCH", value=git_config.branch)
