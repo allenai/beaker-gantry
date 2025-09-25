@@ -1,5 +1,8 @@
 # See https://hub.docker.com/r/nvidia/cuda/tags?name=-base-ubuntu22 for good defaults
-ARG BASE_IMAGE=nvidia/cuda:12.8.1-base-ubuntu22.04
+ARG UBUNTU_VERSION=22.04
+ARG TARGET_PLATFORM=x86_64
+ARG CUDA_VERSION=12.8.1
+ARG BASE_IMAGE=nvidia/cuda:${CUDA_VERSION}-base-ubuntu${UBUNTU_VERSION}
 
 FROM ${BASE_IMAGE}
 
@@ -26,6 +29,17 @@ RUN apt-get update && \
     rm -rf /opt/conda/pkgs && \
     curl -sS https://webi.sh/gh | sh && \
     curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Install MLNX OFED user-space drivers for InfiniBand.
+# See https://docs.nvidia.com/networking/pages/releaseview.action?pageId=15049785#Howto:DeployRDMAacceleratedDockercontaineroverInfiniBandfabric.-Dockerfile
+ARG UBUNTU_VERSION
+ARG TARGET_PLATFORM
+ENV MOFED_VER="24.01-0.3.3.1"
+RUN wget --quiet https://content.mellanox.com/ofed/MLNX_OFED-${MOFED_VER}/MLNX_OFED_LINUX-${MOFED_VER}-ubuntu${UBUNTU_VERSION}-${TARGET_PLATFORM}.tgz && \
+    tar -xvf MLNX_OFED_LINUX-${MOFED_VER}-ubuntu${UBUNTU_VERSION}-${TARGET_PLATFORM}.tgz && \
+    MLNX_OFED_LINUX-${MOFED_VER}-ubuntu${UBUNTU_VERSION}-${TARGET_PLATFORM}/mlnxofedinstall --basic --user-space-only --without-fw-update -q && \
+    rm -rf MLNX_OFED_LINUX-${MOFED_VER}-ubuntu${UBUNTU_VERSION}-${TARGET_PLATFORM} && \
+    rm MLNX_OFED_LINUX-${MOFED_VER}-ubuntu${UBUNTU_VERSION}-${TARGET_PLATFORM}.tgz
 
 ENV PATH=/opt/conda/bin:~/.local/bin:$PATH
 WORKDIR ~/

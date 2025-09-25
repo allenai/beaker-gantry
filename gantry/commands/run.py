@@ -5,8 +5,8 @@ from beaker import BeakerJobPriority
 from click_option_group import optgroup
 
 from .. import constants, utils
-from ..api import launch_experiment
 from ..exceptions import *
+from ..recipe import Recipe
 from .main import CLICK_COMMAND_DEFAULTS, config, main, new_optgroup
 
 
@@ -110,6 +110,12 @@ from .main import CLICK_COMMAND_DEFAULTS, config, main, new_optgroup
     show_default=True,
 )
 @optgroup.option(
+    "--interconnect",
+    type=click.Choice(["ib", "tcpxo"]),
+    help="""Filter clusters by the type of interconnect they have, e.g. 'ib' for InfiniBand.""",
+    default=None,
+)
+@optgroup.option(
     "--tag",
     "tags",
     type=str,
@@ -186,7 +192,7 @@ from .main import CLICK_COMMAND_DEFAULTS, config, main, new_optgroup
     type=str,
     multiple=True,
     help="""A weka bucket to mount in the form of 'bucket-name:/mount/location',
-    e.g. --weka=oe-training-default:/data""",
+    e.g. '--weka=oe-training-default:/data'. Multiple allowed.""",
 )
 @optgroup.option(
     "--env",
@@ -203,8 +209,9 @@ from .main import CLICK_COMMAND_DEFAULTS, config, main, new_optgroup
     "env_secrets",
     type=str,
     help="""Environment variables to add to the Beaker experiment from Beaker secrets.
-    Should be in the form '{NAME}={SECRET_NAME}', or just '{NAME}' to take the value from a local
-    environment variable of that name and create a new secret.""",
+    Should be in the form '{NAME}={SECRET_NAME}', or just '{NAME}' to take the value from either
+    (1) a Beaker secret in the workspace with the same name, or (2) a local
+    environment variable of that name, in which case a new Beaker secret is created.""",
     multiple=True,
 )
 @optgroup.option(
@@ -279,25 +286,33 @@ from .main import CLICK_COMMAND_DEFAULTS, config, main, new_optgroup
     help="""The number of task replicas to run.""",
 )
 @optgroup.option(
-    "--leader-selection",
+    "--leader-selection/--no-leader-selection",
     is_flag=True,
     help="""Specifies that the first task replica should be the leader and populates each task
     with 'BEAKER_LEADER_REPLICA_HOSTNAME' and 'BEAKER_LEADER_REPLICA_NODE_ID' environment variables.
     This is only applicable when '--replicas INT' and '--host-networking' are used,
     although the '--host-networking' flag can be omitted in this case since it's assumed.""",
+    default=None,
 )
 @optgroup.option(
-    "--host-networking",
+    "--host-networking/--no-host-networking",
     is_flag=True,
     help="""Specifies that each task replica should use the host's network.
     When used with '--replicas INT', this allows the replicas to communicate with each
     other using their hostnames.""",
+    default=None,
 )
 @optgroup.option(
-    "--propagate-failure", is_flag=True, help="""Stop the experiment if any task fails."""
+    "--propagate-failure/--no-propagate-failure",
+    is_flag=True,
+    help="""Stop the experiment if any task fails.""",
+    default=None,
 )
 @optgroup.option(
-    "--propagate-preemption", is_flag=True, help="""Stop the experiment if any task is preempted."""
+    "--propagate-preemption/--no-propagate-preemption",
+    is_flag=True,
+    help="""Stop the experiment if any task is preempted.""",
+    default=None,
 )
 @optgroup.option(
     "--synchronized-start-timeout",
@@ -312,6 +327,16 @@ from .main import CLICK_COMMAND_DEFAULTS, config, main, new_optgroup
     is_flag=True,
     help="""By default Gantry will configure NCCL for TCPXO when running a multi-node job on Augusta
     (--replicas > 1), but you can use this flag to skip that step if you need a custom configuration.
+    If you do use this flag, you'll probably need to follow all of the steps documented here:
+
+    https://beaker-docs.allen.ai/compute/augusta.html#distributed-workloads""",
+    hidden=True,  # deprecated in favor of '--skip-nccl-setup'
+)
+@optgroup.option(
+    "--skip-nccl-setup",
+    is_flag=True,
+    help="""By default Gantry will attempt to configure NCCL in an optimal way for the given hardware,
+    but you can use this flag to skip that step if you need a custom configuration.
     If you do use this flag, you'll probably need to follow all of the steps documented here:
 
     https://beaker-docs.allen.ai/compute/augusta.html#distributed-workloads""",
@@ -334,6 +359,19 @@ from .main import CLICK_COMMAND_DEFAULTS, config, main, new_optgroup
     One reason you might prefer 'bash' over 'exec' is if you have shell variables in your arguments that
     you want expanded at runtime.""",
     show_default=True,
+)
+@optgroup.option(
+    "--torchrun",
+    is_flag=True,
+    help="""Launch the given command with torchrun. This is just a shortcut for configuring your command
+    with torchrun manually.
+
+    When this flag is used with '--replicas INT', the '--leader-selection' flag is assumed (and not necessary),
+    and gantry will automatically configure torchrun to use all GPUs across all replicas.
+    Additionally '--propagate-failure' and '--propagate-preemption' are assumed, and '--synchronized-start-timeout'
+    will default to '5m'.
+
+    If don't want torchrun to communicate with replicas, you can use '--no-leader-selection'.""",
 )
 @new_optgroup("Setup hooks")
 @optgroup.option(
@@ -429,7 +467,9 @@ from .main import CLICK_COMMAND_DEFAULTS, config, main, new_optgroup
     type=str,
     help="""The name or path to an existing conda environment on the image to use.""",
 )
-def run(args, **kwargs):
+def run(
+    args, show_logs: bool | None = None, timeout: int | None = None, dry_run: bool = False, **kwargs
+):
     """
     Run an experiment on Beaker.
 
@@ -459,4 +499,8 @@ def run(args, **kwargs):
             "Try 'gantry run --help' for help."
         )
 
-    launch_experiment(args=args, cli_mode=True, **kwargs)
+    recipe = Recipe(args=args, **kwargs)
+    if dry_run:
+        recipe.dry_run()
+    else:
+        recipe.launch(show_logs=show_logs, timeout=timeout)

@@ -9,17 +9,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Added `--torchrun` flag to `gantry run`, which is a shortcut for configuring your experiment and `torchrun`
+  to run your command with all GPUs across all replicas.
 - Added `--text` option to `gantry list` command for filtering by name or description.
 - Added `client` parameter to `api.update_workload_description()` for providing an existing Beaker client,
   which avoids creating one each time the function is called.
 - Added support for configuring the GitHub token secret name in a `pyproject.toml` as the field `[tool.gantry.gh_token_secret]`.
 - Added the top-level flag `--check-for-upgrades/--no-check-for-upgrades` with corresponding env var `GANTRY_CHECK_FOR_UPGRADES`.
 - Added `--slack-webhook-url` option to `gantry run` command for getting updates on Slack. For now these webhooks are only sent if following the job locally, e.g. via `--show-logs` or `--timeout=-1`.
+- Added `gantry.api.Recipe` class for programmatically configuring workloads.
+- Added `--interconnect` option to `gantry run` command.
+- Added InfiniBand drivers to the default Beaker image.
 
 ### Changed
 
 - You can now specify the `--env` option as just `--env 'NAME'` instead of `--env 'NAME=VALUE'` to take the `VALUE` from a local environment variable of that name.
 - You can now specify the `--env-secret` option as just `--env-secret 'NAME'` instead of `--env-secret 'NAME=SECRET_NAME'` to create a new secret from a local environment variable of that name.
+- Gantry will now automatically configure NCCL for InfiniBand when appropriate.
+- `--skip-tcpxo-setup` is now deprecated in favor of `--skip-nccl-setup`.
 
 ### Fixed
 

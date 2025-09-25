@@ -52,7 +52,7 @@ def main():
     try:
         print_rank0("Initializing distributed process group...")
         dist.init_process_group("nccl", timeout=timedelta(seconds=30), device_id=device)
-        print_rank0("Done.")
+        print_rank0(f"Done. Connected to {dist.get_world_size()} processes.")
 
         mat = torch.rand(N, M, dtype=torch.float32).to(device)
 

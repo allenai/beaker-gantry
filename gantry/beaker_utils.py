@@ -1,9 +1,11 @@
 import binascii
-import functools as ft
 import hashlib
+import os
+import random
 import tempfile
 import time
 from collections import defaultdict
+from contextlib import ExitStack
 from fnmatch import fnmatch
 from pathlib import Path
 from typing import Iterable, Literal, Sequence
@@ -12,6 +14,7 @@ import rich
 from beaker import *
 from beaker.exceptions import *
 from rich import prompt
+from rich.status import Status
 
 from . import constants, utils
 from .aliases import PathOrStr
@@ -27,10 +30,7 @@ def init_client(
     ensure_workspace: bool = True,
     beaker_token: str | None = None,
     check_for_upgrades: bool = True,
-    cli_mode: bool = True,
 ) -> Beaker:
-    fmt_opt = ft.partial(utils.format_option, cli_mode=cli_mode)
-
     Beaker.MAX_RETRIES = 10_000  # effectively retry forever
     Beaker.BACKOFF_MAX = 32
 
@@ -50,7 +50,7 @@ def init_client(
                 raise KeyboardInterrupt
         except BeakerWorkspaceNotSet:
             raise ConfigurationError(
-                f"{fmt_opt('--workspace')} option is required since you don't have a default workspace set"
+                f"{utils.fmt_opt('--workspace')} option is required since you don't have a default workspace set"
             )
     return beaker
 
@@ -201,6 +201,14 @@ def ensure_entrypoint_dataset(beaker: Beaker) -> BeakerDataset:
             )
 
     return gantry_entrypoint_dataset
+
+
+def secret_exists(beaker: Beaker, name: str) -> bool:
+    try:
+        beaker.secret.get(name)
+        return True
+    except BeakerSecretNotFound:
+        return False
 
 
 def ensure_secret(beaker: Beaker, name: str, value: str) -> str:
@@ -469,6 +477,103 @@ def display_results(
         raise ValueError(f"unexpected workload status '{status}'")
 
 
+def follow_workload(
+    beaker: Beaker,
+    workload: BeakerWorkload,
+    *,
+    task: BeakerTask | None = None,
+    timeout: int = 0,
+    tail: bool = False,
+    show_logs: bool = True,
+    notifiers: list[Notifier] | None = None,
+) -> BeakerJob:
+    """
+    Follow a workload until completion while streaming logs to stdout.
+
+    :param task: A specific task in the workload to follow. Defaults to the first task.
+    :param timeout: The number of seconds to wait for the workload to complete. Raises a timeout
+        error if it doesn't complete in time. Set to 0 (the default) to wait indefinitely.
+    :param tail: Start tailing the logs if a job is already running. Otherwise shows all logs.
+    :param show_logs: Set to ``False`` to avoid streaming the logs.
+
+    :returns: The finalized :class:`~beaker.types.BeakerJob` from the task being followed.
+
+    :raises ~gantry.exceptions.BeakerJobTimeoutError: If ``timeout`` is set to a positive number
+        and the workload doesn't complete in time.
+    """
+    console = rich.get_console()
+    start_time = time.monotonic()
+    preempted_job_ids = set()
+
+    while True:
+        job: BeakerJob | None = None
+        with ExitStack() as stack:
+            msg = "[i]waiting on job...[/]"
+            status: Status | None = None
+            if not os.environ.get("GANTRY_GITHUB_TESTING"):
+                status = stack.enter_context(console.status(msg, spinner="point", speed=0.8))
+            else:
+                utils.print_stdout(msg)
+
+            # Wait for job to be created...
+            while job is None:
+                if (
+                    j := beaker.workload.get_latest_job(workload, task=task)
+                ) is not None and j.id not in preempted_job_ids:
+                    job = j
+                else:
+                    time.sleep(1.0)
+
+            if status is not None:
+                status.update("[i]waiting for job to launch...[/]")
+
+            # Wait for job to start...
+            job = wait_for_job_to_start(
+                beaker=beaker,
+                job=job,
+                start_time=start_time,
+                timeout=timeout,
+                show_logs=show_logs,
+            )
+
+        assert job is not None
+
+        for notifier in notifiers or []:
+            notifier.notify(workload, "started", job=job)
+
+        # Stream logs...
+        if show_logs and job.status.HasField("started"):
+            utils.print_stdout()
+            rich.get_console().rule("Logs")
+
+            for job_log in beaker.job.logs(job, tail_lines=10 if tail else None, follow=True):
+                utils.print_stdout(job_log.message.decode(), markup=False)
+                if timeout > 0 and (time.monotonic() - start_time) > timeout:
+                    raise BeakerJobTimeoutError(
+                        f"Timed out while waiting for job '{job.id}' to finish"
+                    )
+
+            utils.print_stdout()
+            rich.get_console().rule("End logs")
+
+        # Wait for job to finalize...
+        while not job.status.HasField("finalized"):
+            time.sleep(0.5)
+            job = beaker.job.get(job.id)
+
+        utils.print_stdout()
+
+        # If job was preempted, we start over...
+        if job_was_preempted(job):
+            utils.print_stdout(f"[yellow]Job '{job.id}' preempted.[/] ")
+            preempted_job_ids.add(job.id)
+            for notifier in notifiers or []:
+                notifier.notify(workload, "preempted", job=job)
+            continue
+
+        return job
+
+
 def build_experiment_spec(
     *,
     task_name: str,
@@ -513,17 +618,15 @@ def build_experiment_spec(
     results: str = constants.RESULTS_DIR,
     runtime_dir: str = constants.RUNTIME_DIR,
     exec_method: Literal["exec", "bash"] = "exec",
-    skip_tcpxo_setup: bool = False,
+    torchrun: bool = False,
+    skip_nccl_setup: bool = False,
     default_python_version: str = utils.get_local_python_version(),
     pre_setup: str | None = None,
     post_setup: str | None = None,
-    cli_mode: bool = True,
 ):
-    fmt_opt = ft.partial(utils.format_option, cli_mode=cli_mode)
-
     if exec_method not in ("exec", "bash"):
         raise ConfigurationError(
-            f"expected one of 'exec' or 'bash' for {fmt_opt('--exec-method')}, but got '{exec_method}'."
+            f"expected one of 'exec' or 'bash' for {utils.fmt_opt('--exec-method')}, but got '{exec_method}'."
         )
 
     task_spec = (
@@ -555,6 +658,16 @@ def build_experiment_spec(
         .with_dataset("/gantry", beaker=entrypoint_dataset)
     )
 
+    if torchrun:
+        task_spec = task_spec.with_env_var(name="GANTRY_USE_TORCHRUN", value="1")
+        if replicas and leader_selection:
+            task_spec = task_spec.with_env_var(
+                name="GANTRY_RDZV_ID", value=str(random.randint(0, 999))
+            )
+            task_spec = task_spec.with_env_var(
+                name="GANTRY_RDZV_PORT", value=str(random.randint(29_000, 29_999))
+            )
+
     if git_config.branch is not None:
         task_spec = task_spec.with_env_var(name="GIT_BRANCH", value=git_config.branch)
 
@@ -567,8 +680,8 @@ def build_experiment_spec(
     if gh_token_secret is not None:
         task_spec = task_spec.with_env_var(name="GITHUB_TOKEN", secret=gh_token_secret)
 
-    if skip_tcpxo_setup:
-        task_spec = task_spec.with_env_var(name="GANTRY_SKIP_TCPXO_SETUP", value="1")
+    if skip_nccl_setup:
+        task_spec = task_spec.with_env_var(name="GANTRY_SKIP_NCCL_SETUP", value="1")
 
     if no_python:
         task_spec = task_spec.with_env_var(name="GANTRY_NO_PYTHON", value="1")
@@ -584,7 +697,7 @@ def build_experiment_spec(
             or conda_file is not None
         ):
             raise ConfigurationError(
-                f"other python options can't be used with {fmt_opt('--no-python')}"
+                f"other python options can't be used with {utils.fmt_opt('--no-python')}"
             )
     else:
         has_project_file = (
@@ -616,7 +729,7 @@ def build_experiment_spec(
                 python_manager = "uv"
         elif python_manager not in {"uv", "conda"}:
             raise ConfigurationError(
-                f"unknown option for {fmt_opt('--python-manager')}: '{python_manager}'. Should be either 'uv' or 'conda'."
+                f"unknown option for {utils.fmt_opt('--python-manager')}: '{python_manager}'. Should be either 'uv' or 'conda'."
             )
 
         task_spec = task_spec.with_env_var(
@@ -627,13 +740,15 @@ def build_experiment_spec(
         if python_manager == "uv":
             if conda_env is not None or conda_file is not None:
                 raise ConfigurationError(
-                    f"{fmt_opt('--conda-*')} options are only relevant when using the conda python manager ({fmt_opt('--python-manager')}=conda)."
+                    f"{utils.fmt_opt('--conda-*')} options are only relevant when using the conda python manager "
+                    f"({utils.fmt_opt('--python-manager')}=conda)."
                 )
 
             if uv_venv is not None:
                 if system_python:
                     raise ConfigurationError(
-                        f"{fmt_opt('--system-python')} flag is incompatible with {fmt_opt('--uv-venv')} option."
+                        f"{utils.fmt_opt('--system-python')} flag is incompatible with "
+                        f"{utils.fmt_opt('--uv-venv')} option."
                     )
 
                 task_spec = task_spec.with_env_var(
@@ -648,13 +763,14 @@ def build_experiment_spec(
                     uv_all_extras = False
             elif uv_extras:
                 raise ConfigurationError(
-                    f"{fmt_opt('--uv-all-extras/--uv-no-extras')} is mutually exclusive with {fmt_opt('--uv-extra')}."
+                    f"{utils.fmt_opt('--uv-all-extras/--uv-no-extras')} is mutually exclusive "
+                    f"with {utils.fmt_opt('--uv-extra')}."
                 )
 
             if uv_all_extras:
                 if not has_project_file:
                     raise ConfigurationError(
-                        f"{fmt_opt('--uv-all-extras')} is only valid when you have a pyproject.toml, setup.py, or setup.cfg file."
+                        f"{utils.fmt_opt('--uv-all-extras')} is only valid when you have a pyproject.toml, setup.py, or setup.cfg file."
                     )
 
                 task_spec = task_spec.with_env_var(name="GANTRY_UV_ALL_EXTRAS", value="1")
@@ -662,7 +778,7 @@ def build_experiment_spec(
             if uv_extras:
                 if not has_project_file:
                     raise ConfigurationError(
-                        f"{fmt_opt('--uv-extra')} is only valid when you have a pyproject.toml, setup.py, or setup.cfg file."
+                        f"{utils.fmt_opt('--uv-extra')} is only valid when you have a pyproject.toml, setup.py, or setup.cfg file."
                     )
 
                 task_spec = task_spec.with_env_var(
@@ -679,13 +795,15 @@ def build_experiment_spec(
                 or uv_torch_backend is not None
             ):
                 raise ConfigurationError(
-                    f"{fmt_opt('--uv-*')} options are only relevant when using the uv python manager ({fmt_opt('--python-manager')}=uv)."
+                    f"{utils.fmt_opt('--uv-*')} options are only relevant when using the uv python "
+                    f"manager ({utils.fmt_opt('--python-manager')}=uv)."
                 )
 
             if conda_env is not None:
                 if system_python:
                     raise ConfigurationError(
-                        f"{fmt_opt('--system-python')} flag is incompatible with {fmt_opt('--conda-env')} option."
+                        f"{utils.fmt_opt('--system-python')} flag is incompatible with "
+                        f"{utils.fmt_opt('--conda-env')} option."
                     )
 
                 task_spec = task_spec.with_env_var(

@@ -26,6 +26,17 @@ except RuntimeError:
     # Can't locate home directory.
     pass
 
+CLI_MODE = False
+
+
+def enable_cli_mode():
+    global CLI_MODE
+    CLI_MODE = True
+
+
+def is_cli_mode() -> bool:
+    return CLI_MODE
+
 
 @dataclass
 class InternalConfig:
@@ -77,8 +88,8 @@ def get_local_python_version() -> str:
     return ".".join(platform.python_version_tuple()[:-1])
 
 
-def format_option(option: str, cli_mode: bool) -> str:
-    if cli_mode:
+def fmt_opt(option: str) -> str:
+    if is_cli_mode():
         option = option.strip("-").replace("_", "-")
         return f"'--{option}'"
     else:
