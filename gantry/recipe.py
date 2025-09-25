@@ -13,7 +13,8 @@ from .launch import launch_experiment
 @dataclass
 class Recipe:
     """
-    A recipe defines how Gantry creates a Beaker workload.
+    A recipe defines how Gantry creates a Beaker workload and can be used to programmatically
+    launch Gantry runs from Python as opposed to from the command-line.
     """
 
     # Workload settings
@@ -104,7 +105,30 @@ class Recipe:
     conda_file: PathOrStr | None = None
     conda_env: str | None = None
 
+    @classmethod
+    def multi_node_torchrun(
+        cls,
+        cmd: Sequence[str],
+        gpus_per_node: int,
+        num_nodes: int,
+        shared_memory: str | None = "10GiB",
+        **kwargs,
+    ) -> "Recipe":
+        """
+        Create a multi-node recipe using torchrun.
+        """
+        return cls(
+            args=cmd,
+            gpus=gpus_per_node,
+            replicas=num_nodes,
+            shared_memory=shared_memory,
+            torchrun=True,
+            **kwargs,
+        )
+
     def _get_launch_args(self) -> Sequence[str]:
+        if isinstance(self.args, str):
+            raise ConfigurationError("args must be a sequence of strings, not a single string")
         return self.args
 
     def _get_launch_kwargs(self) -> dict[str, Any]:
