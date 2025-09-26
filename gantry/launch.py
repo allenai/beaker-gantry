@@ -90,6 +90,9 @@ def launch_experiment(
     pre_setup: str | None = None,
     post_setup: str | None = None,
     slack_webhook_url: str | None = None,
+    aws_config_secret: str | None = None,
+    aws_credentials_secret: str | None = None,
+    google_credentials_secret: str | None = None,
 ) -> BeakerWorkload | None:
     """
     Launch an experiment on Beaker. Same as the ``gantry run`` command.
@@ -377,6 +380,33 @@ def launch_experiment(
                 )
 
             gh_token_secret_to_use = gh_token_secret
+
+        if aws_config_secret is not None:
+            try:
+                beaker.secret.get(aws_config_secret)
+            except BeakerSecretNotFound:
+                raise ConfigurationError(
+                    f"AWS config secret '{aws_config_secret}' not found in workspace"
+                )
+            env_secrets_to_use.append(("GANTRY_AWS_CONFIG", aws_config_secret))
+
+        if aws_credentials_secret is not None:
+            try:
+                beaker.secret.get(aws_credentials_secret)
+            except BeakerSecretNotFound:
+                raise ConfigurationError(
+                    f"AWS credentials secret '{aws_credentials_secret}' not found in workspace"
+                )
+            env_secrets_to_use.append(("GANTRY_AWS_CREDENTIALS", aws_credentials_secret))
+
+        if google_credentials_secret is not None:
+            try:
+                beaker.secret.get(google_credentials_secret)
+            except BeakerSecretNotFound:
+                raise ConfigurationError(
+                    f"Google Cloud credentials secret '{google_credentials_secret}' not found in workspace"
+                )
+            env_secrets_to_use.append(("GANTRY_GOOGLE_CREDENTIALS", google_credentials_secret))
 
         if slack_webhook_url is not None and "GANTRY_SLACK_WEBHOOK_URL" not in secret_names:
             if not slack_webhook_url:

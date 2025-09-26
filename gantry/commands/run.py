@@ -239,6 +239,22 @@ from .main import CLICK_COMMAND_DEFAULTS, config, main, new_optgroup
     {config.get_help_string_for_default('gh_token_secret', constants.GITHUB_TOKEN_SECRET)}""",
     default=config.gh_token_secret or constants.GITHUB_TOKEN_SECRET,
 )
+@optgroup.option(
+    "--aws-config-secret",
+    type=str,
+    help="""The name of a Beaker secret that contains an AWS config file.""",
+)
+@optgroup.option(
+    "--aws-credentials-secret",
+    type=str,
+    help="""The name of a Beaker secret that contains an AWS credentials file.""",
+)
+@optgroup.option(
+    "--google-credentials-secret",
+    type=str,
+    help="""The name of a Beaker secret that contains a Google Cloud credentials JSON file
+    for a service account.""",
+)
 @new_optgroup("Outputs")
 @optgroup.option(
     "--results",

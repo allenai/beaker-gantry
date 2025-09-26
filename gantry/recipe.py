@@ -58,6 +58,9 @@ class Recipe:
     ref: str | None = None
     branch: str | None = None
     gh_token_secret: str = constants.GITHUB_TOKEN_SECRET
+    aws_config_secret: str | None = None
+    aws_credentials_secret: str | None = None
+    google_credentials_secret: str | None = None
 
     # Outputs.
     results: str = constants.RESULTS_DIR

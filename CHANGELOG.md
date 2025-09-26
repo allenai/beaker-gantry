@@ -19,7 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `--slack-webhook-url` option to `gantry run` command for getting updates on Slack. For now these webhooks are only sent if following the job locally, e.g. via `--show-logs` or `--timeout=-1`.
 - Added `gantry.api.Recipe` class for programmatically configuring workloads.
 - Added `--interconnect` option to `gantry run` command.
-- Added InfiniBand drivers to the default Beaker image.
+- Added AWS CLI, Google Cloud CLI, and InfiniBand drivers to the default Beaker image.
+- Added options to `gantry run` for automatically installing AWS (`--aws-config-secret`, `--aws-credentials-secret`) and Google Cloud credentials (`--google-credentials-secret`) from Beaker secrets.
 
 ### Changed
 
