@@ -18,8 +18,9 @@ from beaker.exceptions import BeakerGroupNotFound
 from rich.table import Table
 
 from .. import beaker_utils, utils
+from ..config import get_global_config
 from ..exceptions import ConfigurationError
-from .main import CLICK_COMMAND_DEFAULTS, config, main
+from .main import CLICK_COMMAND_DEFAULTS, main
 
 
 class Defaults:
@@ -32,7 +33,7 @@ class Defaults:
     "-w",
     "--workspace",
     type=str,
-    help=f"""The Beaker workspace to pull experiments from. {config.get_help_string_for_default('workspace')}""",
+    help=f"""The Beaker workspace to pull experiments from. {get_global_config().get_help_string_for_default('workspace')}""",
 )
 @click.option("-g", "--group", type=str, help="""The Beaker group to pull experiments from.""")
 @click.option(
@@ -224,7 +225,7 @@ def iter_workloads(
             yield wl, wl.experiment.tasks
     else:
         if workspace is None:
-            workspace = config.workspace
+            workspace = get_global_config().workspace
 
         for wl in beaker.workload.list(
             workspace=None if workspace is None else beaker.workspace.get(workspace),

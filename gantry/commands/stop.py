@@ -6,8 +6,9 @@ from beaker.exceptions import BeakerWorkloadNotFound
 from rich import prompt
 
 from .. import beaker_utils, utils
+from ..config import get_global_config
 from ..exceptions import ConfigurationError, NotFoundError
-from .main import CLICK_COMMAND_DEFAULTS, config, main
+from .main import CLICK_COMMAND_DEFAULTS, main
 
 
 @main.command(**CLICK_COMMAND_DEFAULTS)
@@ -19,7 +20,7 @@ from .main import CLICK_COMMAND_DEFAULTS, config, main
     "-w",
     "--workspace",
     type=str,
-    help=f"""The Beaker workspace to pull experiments from. {config.get_help_string_for_default('workspace')}""",
+    help=f"""The Beaker workspace to pull experiments from. {get_global_config().get_help_string_for_default('workspace')}""",
 )
 @click.option("--dry-run", is_flag=True, help="Do a dry-run without stopping any experiments.")
 @click.option(
@@ -57,7 +58,7 @@ def stop(
             )
 
         wl = beaker_utils.get_latest_workload(
-            beaker, workspace_name=workspace or config.workspace, running=True
+            beaker, workspace_name=workspace or get_global_config().workspace, running=True
         )
         if wl is None:
             utils.print_stderr("[yellow]No running workloads to stop[/]")

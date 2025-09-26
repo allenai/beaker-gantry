@@ -5,9 +5,12 @@ from beaker import BeakerJobPriority
 from click_option_group import optgroup
 
 from .. import constants, utils
+from ..config import get_global_config
 from ..exceptions import *
 from ..recipe import Recipe
-from .main import CLICK_COMMAND_DEFAULTS, config, main, new_optgroup
+from .main import CLICK_COMMAND_DEFAULTS, main, new_optgroup
+
+config = get_global_config()
 
 
 @main.command(**CLICK_COMMAND_DEFAULTS)

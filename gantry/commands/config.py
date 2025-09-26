@@ -1,9 +1,8 @@
 import click
 
 from .. import beaker_utils, constants, utils
-from .main import CLICK_COMMAND_DEFAULTS, CLICK_GROUP_DEFAULTS
-from .main import config as _config
-from .main import main
+from ..config import get_global_config
+from .main import CLICK_COMMAND_DEFAULTS, CLICK_GROUP_DEFAULTS, main
 
 
 @main.group(**CLICK_GROUP_DEFAULTS)
@@ -19,16 +18,16 @@ def config():
     "-w",
     "--workspace",
     type=str,
-    help=f"""The Beaker workspace to pull experiments from. {_config.get_help_string_for_default('workspace')}""",
-    default=_config.workspace,
+    help=f"""The Beaker workspace to pull experiments from. {get_global_config().get_help_string_for_default('workspace')}""",
+    default=get_global_config().workspace,
 )
 @click.option(
     "-s",
     "--secret",
     type=str,
     help=f"""The name of the Beaker secret to write to.
-    {_config.get_help_string_for_default('gh_token_secret', constants.GITHUB_TOKEN_SECRET)}""",
-    default=_config.gh_token_secret or constants.GITHUB_TOKEN_SECRET,
+    {get_global_config().get_help_string_for_default('gh_token_secret', constants.GITHUB_TOKEN_SECRET)}""",
+    default=get_global_config().gh_token_secret or constants.GITHUB_TOKEN_SECRET,
 )
 @click.option(
     "-y",

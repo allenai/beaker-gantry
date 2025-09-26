@@ -12,7 +12,7 @@ from rich import pretty, traceback
 from rich.logging import RichHandler
 
 from .. import utils
-from ..config import GantryConfig
+from ..config import get_global_config
 from ..exceptions import *
 from ..version import VERSION
 
@@ -57,7 +57,7 @@ def handle_sigterm(sig, frame):
     raise TermInterrupt
 
 
-config = GantryConfig.load()
+config = get_global_config()
 
 
 @click.group(**CLICK_GROUP_DEFAULTS)  # type: ignore[call-overload]

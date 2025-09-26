@@ -60,3 +60,13 @@ class GantryConfig:
             return f"Defaults to {self._get_value_string(value)} (from config in {self.path})."
         else:
             return f"Defaults to {self._get_value_string(value)} (from config)."
+
+
+_GLOBAL_CONFIG: GantryConfig | None = None
+
+
+def get_global_config() -> GantryConfig:
+    global _GLOBAL_CONFIG
+    if _GLOBAL_CONFIG is None:
+        _GLOBAL_CONFIG = GantryConfig.load()
+    return _GLOBAL_CONFIG
