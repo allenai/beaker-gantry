@@ -551,6 +551,8 @@ if [[ -n "$GANTRY_GOOGLE_CREDENTIALS" ]]; then
         ensure_jq
         service_account=$(printenv GANTRY_GOOGLE_CREDENTIALS | jq -r .client_email)
         gcloud auth activate-service-account "$service_account" --key-file="$GOOGLE_APPLICATION_CREDENTIALS"
+    else
+        log_warning "'gcloud' CLI not found so credentials can't be activated globally. As a result some tools like 'gsutil' may not be able to authenticate."
     fi
     log_info "Done."
 fi
