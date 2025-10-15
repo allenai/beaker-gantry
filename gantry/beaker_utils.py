@@ -388,52 +388,6 @@ def filter_clusters_by_gpu_type(
     return final_clusters
 
 
-def wait_for_job_to_start(
-    *,
-    beaker: Beaker,
-    job: BeakerJob,
-    start_time: float,
-    timeout: int | None = None,
-    start_timeout: int | None = None,
-    show_logs: bool = True,
-) -> BeakerJob:
-    # Pull events until job is running (or fails)...
-    events = set()
-    while True:
-        for event in beaker.job.list_summarized_events(
-            job, sort_order=BeakerSortOrder.descending, sort_field="latest_occurrence"
-        ):
-            event_hashable = (event.latest_occurrence.ToSeconds(), event.latest_message)
-            if event_hashable not in events:
-                events.add(event_hashable)
-                utils.print_stdout(f"✓ [i]{event.latest_message}[/]")
-                time.sleep(0.5)
-
-        job_finalized = job.status.HasField("finalized")
-        job_started = job.status.HasField("started")
-
-        if job_finalized:
-            break
-        elif job_started and show_logs:
-            break
-        elif timeout is not None and (time.monotonic() - start_time) > timeout:
-            if job_started:
-                raise BeakerJobTimeoutError(f"Timed out while waiting for job '{job.id}' to finish")
-            else:
-                raise BeakerJobTimeoutError(f"Timed out while waiting for job '{job.id}' to start")
-        elif (
-            start_timeout is not None
-            and not job_started
-            and (time.monotonic() - start_time) > start_timeout
-        ):
-            raise BeakerJobTimeoutError(f"Timed out while waiting for job '{job.id}' to start")
-        else:
-            time.sleep(0.5)
-            job = beaker.job.get(job.id)
-
-    return job
-
-
 def display_logs(
     beaker: Beaker, job: BeakerJob, tail_lines: int | None = None, follow: bool = True
 ) -> BeakerJob:
@@ -551,15 +505,45 @@ def follow_workload(
             if status is not None:
                 status.update("[i]waiting for job to launch...[/]")
 
-            # Wait for job to start...
-            job = wait_for_job_to_start(
-                beaker=beaker,
-                job=job,
-                start_time=start_time,
-                timeout=timeout,
-                start_timeout=start_timeout,
-                show_logs=show_logs,
-            )
+            # Pull events until job is running (or fails)...
+            events = set()
+            while True:
+                for event in beaker.job.list_summarized_events(
+                    job, sort_order=BeakerSortOrder.descending, sort_field="latest_occurrence"
+                ):
+                    event_hashable = (event.latest_occurrence.ToSeconds(), event.latest_message)
+                    if event_hashable not in events:
+                        events.add(event_hashable)
+                        utils.print_stdout(f"✓ [i]{event.latest_message}[/]")
+                        time.sleep(0.5)
+
+                job = beaker.job.get(job.id)
+                job_finalized = job.status.HasField("finalized")
+                job_started = job.status.HasField("started")
+
+                if job_finalized:
+                    break
+                elif job_started and show_logs:
+                    break
+                elif timeout is not None and (time.monotonic() - start_time) > timeout:
+                    if job_started:
+                        raise BeakerJobTimeoutError(
+                            f"Timed out while waiting for job '{job.id}' to finish"
+                        )
+                    else:
+                        raise BeakerJobTimeoutError(
+                            f"Timed out while waiting for job '{job.id}' to start"
+                        )
+                elif (
+                    start_timeout is not None
+                    and not job_started
+                    and (time.monotonic() - start_time) > start_timeout
+                ):
+                    raise BeakerJobTimeoutError(
+                        f"Timed out while waiting for job '{job.id}' to start"
+                    )
+                else:
+                    time.sleep(0.5)
 
         assert job is not None
 
