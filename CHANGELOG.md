@@ -28,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - You can now specify the `--env-secret` option as just `--env-secret 'NAME'` instead of `--env-secret 'NAME=SECRET_NAME'` to create a new secret from a local environment variable of that name.
 - Gantry will now automatically configure NCCL for InfiniBand when appropriate.
 - `--skip-tcpxo-setup` is now deprecated in favor of `--skip-nccl-setup`.
+- Create `entrypoint.sh` dataset with the same budget as the workload.
 
 ### Fixed
 
