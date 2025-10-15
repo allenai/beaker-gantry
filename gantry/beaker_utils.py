@@ -124,7 +124,7 @@ def ensure_datasets(beaker: Beaker, *datasets: str) -> list[tuple[str, str | Non
     return out
 
 
-def ensure_entrypoint_dataset(beaker: Beaker) -> BeakerDataset:
+def ensure_entrypoint_dataset(beaker: Beaker, budget: str | None = None) -> BeakerDataset:
     from importlib.resources import read_binary
 
     import gantry
@@ -161,7 +161,7 @@ def ensure_entrypoint_dataset(beaker: Beaker) -> BeakerDataset:
                 with open(entrypoint_path, "wb") as entrypoint_file:
                     entrypoint_file.write(contents)
                 gantry_entrypoint_dataset = beaker.dataset.create(
-                    entrypoint_dataset_name, entrypoint_path
+                    entrypoint_dataset_name, entrypoint_path, budget=budget
                 )
         except BeakerDatasetConflict:  # could be in a race with another `gantry` process.
             time.sleep(1.0)

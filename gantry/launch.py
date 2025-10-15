@@ -197,7 +197,7 @@ def launch_experiment(
                 groups.append(group)
 
         # Get the entrypoint dataset.
-        entrypoint_dataset = beaker_utils.ensure_entrypoint_dataset(beaker)
+        entrypoint_dataset = beaker_utils.ensure_entrypoint_dataset(beaker, budget)
 
         # Validate the input datasets.
         datasets_to_use = beaker_utils.ensure_datasets(beaker, *datasets) if datasets else []
