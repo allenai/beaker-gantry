@@ -62,6 +62,7 @@ def launch_experiment(
     mounts: Sequence[str | tuple[str, str]] | None = None,
     timeout: int | None = None,
     task_timeout: str | None = None,
+    start_timeout: int | None = None,
     show_logs: bool | None = None,
     allow_dirty: bool = False,
     dry_run: bool = False,
@@ -581,7 +582,8 @@ def launch_experiment(
             job = beaker_utils.follow_workload(
                 beaker,
                 workload,
-                timeout=timeout,
+                timeout=timeout if timeout > 0 else None,
+                start_timeout=start_timeout,
                 show_logs=show_logs,
                 notifiers=notifiers,
             )

@@ -63,6 +63,12 @@ config = get_global_config()
     show_default=True,
 )
 @optgroup.option(
+    "--start-timeout",
+    type=int,
+    default=None,
+    help="""Time to wait (in seconds) for the experiment to start.""",
+)
+@optgroup.option(
     "--allow-dirty",
     is_flag=True,
     help="""Allow submitting the experiment with a dirty working directory.""",
@@ -487,7 +493,12 @@ config = get_global_config()
     help="""The name or path to an existing conda environment on the image to use.""",
 )
 def run(
-    args, show_logs: bool | None = None, timeout: int | None = None, dry_run: bool = False, **kwargs
+    args,
+    show_logs: bool | None = None,
+    timeout: int | None = None,
+    start_timeout: int | None = None,
+    dry_run: bool = False,
+    **kwargs,
 ):
     """
     Run an experiment on Beaker.
@@ -522,4 +533,4 @@ def run(
     if dry_run:
         recipe.dry_run()
     else:
-        recipe.launch(show_logs=show_logs, timeout=timeout)
+        recipe.launch(show_logs=show_logs, timeout=timeout, start_timeout=start_timeout)

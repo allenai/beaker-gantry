@@ -149,7 +149,12 @@ class Recipe:
             dry_run=True,
         )
 
-    def launch(self, show_logs: bool | None = None, timeout: int | None = None) -> BeakerWorkload:
+    def launch(
+        self,
+        show_logs: bool | None = None,
+        timeout: int | None = None,
+        start_timeout: int | None = None,
+    ) -> BeakerWorkload:
         """
         Launch an experiment on Beaker. Same as the ``gantry run`` command.
 
@@ -160,6 +165,7 @@ class Recipe:
             **self._get_launch_kwargs(),
             show_logs=show_logs,
             timeout=timeout,
+            start_timeout=start_timeout,
         )
         assert workload is not None
         return workload

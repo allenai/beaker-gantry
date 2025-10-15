@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `--interconnect` option to `gantry run` command.
 - Added AWS CLI, Google Cloud CLI, and InfiniBand drivers to the default Beaker image.
 - Added options to `gantry run` for automatically installing AWS (`--aws-config-secret`, `--aws-credentials-secret`) and Google Cloud credentials (`--google-credentials-secret`) from Beaker secrets.
+- Added `--start-timeout` option to `gantry run`.
 
 ### Changed
 

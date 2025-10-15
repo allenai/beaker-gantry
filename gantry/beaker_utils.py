@@ -393,15 +393,13 @@ def wait_for_job_to_start(
     beaker: Beaker,
     job: BeakerJob,
     start_time: float,
-    timeout: int = 0,
+    timeout: int | None = None,
+    start_timeout: int | None = None,
     show_logs: bool = True,
 ) -> BeakerJob:
     # Pull events until job is running (or fails)...
     events = set()
-    while not (job.status.HasField("finalized") or (show_logs and job.status.HasField("started"))):
-        if timeout > 0 and (time.monotonic() - start_time) > timeout:
-            raise BeakerJobTimeoutError(f"Timed out while waiting for job '{job.id}' to finish")
-
+    while True:
         for event in beaker.job.list_summarized_events(
             job, sort_order=BeakerSortOrder.descending, sort_field="latest_occurrence"
         ):
@@ -411,8 +409,27 @@ def wait_for_job_to_start(
                 utils.print_stdout(f"✓ [i]{event.latest_message}[/]")
                 time.sleep(0.5)
 
-        time.sleep(0.5)
-        job = beaker.job.get(job.id)
+        job_finalized = job.status.HasField("finalized")
+        job_started = job.status.HasField("started")
+
+        if job_finalized:
+            break
+        elif job_started and show_logs:
+            break
+        elif timeout is not None and (time.monotonic() - start_time) > timeout:
+            if job_started:
+                raise BeakerJobTimeoutError(f"Timed out while waiting for job '{job.id}' to finish")
+            else:
+                raise BeakerJobTimeoutError(f"Timed out while waiting for job '{job.id}' to start")
+        elif (
+            start_timeout is not None
+            and not job_started
+            and (time.monotonic() - start_time) > start_timeout
+        ):
+            raise BeakerJobTimeoutError(f"Timed out while waiting for job '{job.id}' to start")
+        else:
+            time.sleep(0.5)
+            job = beaker.job.get(job.id)
 
     return job
 
@@ -482,7 +499,8 @@ def follow_workload(
     workload: BeakerWorkload,
     *,
     task: BeakerTask | None = None,
-    timeout: int = 0,
+    timeout: int | None = None,
+    start_timeout: int | None = None,
     tail: bool = False,
     show_logs: bool = True,
     notifiers: list[Notifier] | None = None,
@@ -492,7 +510,9 @@ def follow_workload(
 
     :param task: A specific task in the workload to follow. Defaults to the first task.
     :param timeout: The number of seconds to wait for the workload to complete. Raises a timeout
-        error if it doesn't complete in time. Set to 0 (the default) to wait indefinitely.
+        error if it doesn't complete in time.
+    :param start_timeout: The number of seconds to wait for the workload to start running.
+        Raises a timeout error if it doesn't start in time.
     :param tail: Start tailing the logs if a job is already running. Otherwise shows all logs.
     :param show_logs: Set to ``False`` to avoid streaming the logs.
 
@@ -521,6 +541,10 @@ def follow_workload(
                     j := beaker.workload.get_latest_job(workload, task=task)
                 ) is not None and j.id not in preempted_job_ids:
                     job = j
+                elif timeout is not None and (time.monotonic() - start_time) > timeout:
+                    raise BeakerJobTimeoutError("Timed out while waiting for job to be created")
+                elif start_timeout is not None and (time.monotonic() - start_time) > start_timeout:
+                    raise BeakerJobTimeoutError("Timed out while waiting for job to be created")
                 else:
                     time.sleep(1.0)
 
@@ -533,6 +557,7 @@ def follow_workload(
                 job=job,
                 start_time=start_time,
                 timeout=timeout,
+                start_timeout=start_timeout,
                 show_logs=show_logs,
             )
 
@@ -548,7 +573,7 @@ def follow_workload(
 
             for job_log in beaker.job.logs(job, tail_lines=10 if tail else None, follow=True):
                 utils.print_stdout(job_log.message.decode(), markup=False)
-                if timeout > 0 and (time.monotonic() - start_time) > timeout:
+                if timeout is not None and (time.monotonic() - start_time) > timeout:
                     raise BeakerJobTimeoutError(
                         f"Timed out while waiting for job '{job.id}' to finish"
                     )
