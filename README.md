@@ -301,7 +301,7 @@ gantry run \
   --propagate-preemption \
   --synchronized-start-timeout='5m' \
   --install 'uv pip install . torch numpy --torch-backend=cu129' \
-  --exec-method=bash
+  --exec-method=bash \
   -- torchrun \
     '--nnodes="$BEAKER_REPLICA_COUNT:$BEAKER_REPLICA_COUNT"' \
     '--nproc-per-node="$BEAKER_ASSIGNED_GPU_COUNT"' \
