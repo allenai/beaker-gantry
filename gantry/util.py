@@ -261,7 +261,7 @@ def ref_exists_on_remote(git_ref: str) -> bool:
     return len(output) > 0
 
 
-def ensure_entrypoint_dataset(beaker: Beaker) -> Dataset:
+def ensure_entrypoint_dataset(beaker: Beaker, budget: Optional[str] = None) -> Dataset:
     import hashlib
     from importlib.resources import read_binary
 
@@ -290,7 +290,7 @@ def ensure_entrypoint_dataset(beaker: Beaker) -> Dataset:
                 with open(entrypoint_path, "wb") as entrypoint_file:
                     entrypoint_file.write(contents)
                 gantry_entrypoint_dataset = beaker.dataset.create(
-                    entrypoint_dataset_name, entrypoint_path
+                    entrypoint_dataset_name, entrypoint_path, budget=budget
                 )
         except DatasetConflict:  # could be in a race with another `gantry` process.
             time.sleep(1.0)

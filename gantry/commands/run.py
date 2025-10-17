@@ -398,7 +398,7 @@ def run(
             raise ConfigurationError(f"Beaker image '{beaker_image}' not found")
 
     # Get the entrypoint dataset.
-    entrypoint_dataset = util.ensure_entrypoint_dataset(beaker)
+    entrypoint_dataset = util.ensure_entrypoint_dataset(beaker, budget)
 
     # Get / set the GitHub token secret.
     if not is_public:
