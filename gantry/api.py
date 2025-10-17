@@ -222,7 +222,7 @@ def launch_experiment(
                     sys.exit(1)
 
         # Get the entrypoint dataset.
-        entrypoint_dataset = util.ensure_entrypoint_dataset(beaker)
+        entrypoint_dataset = util.ensure_entrypoint_dataset(beaker, budget)
 
         # Get / set the GitHub token secret.
         if not git_config.is_public:

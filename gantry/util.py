@@ -235,7 +235,7 @@ def get_gpu_type(beaker: Beaker, cluster: BeakerCluster) -> str | None:
         return None
 
 
-def ensure_entrypoint_dataset(beaker: Beaker) -> BeakerDataset:
+def ensure_entrypoint_dataset(beaker: Beaker, budget: str | None = None) -> BeakerDataset:
     import hashlib
     from importlib.resources import read_binary
 
@@ -273,7 +273,7 @@ def ensure_entrypoint_dataset(beaker: Beaker) -> BeakerDataset:
                 with open(entrypoint_path, "wb") as entrypoint_file:
                     entrypoint_file.write(contents)
                 gantry_entrypoint_dataset = beaker.dataset.create(
-                    entrypoint_dataset_name, entrypoint_path
+                    entrypoint_dataset_name, entrypoint_path, budget=budget
                 )
         except BeakerDatasetConflict:  # could be in a race with another `gantry` process.
             time.sleep(1.0)
