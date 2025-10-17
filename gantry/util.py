@@ -261,7 +261,7 @@ def ref_exists_on_remote(git_ref: str) -> bool:
     return len(output) > 0
 
 
-def ensure_entrypoint_dataset(beaker: Beaker, budget: str | None = None) -> Dataset:
+def ensure_entrypoint_dataset(beaker: Beaker, budget: Optional[str] = None) -> Dataset:
     import hashlib
     from importlib.resources import read_binary
 
