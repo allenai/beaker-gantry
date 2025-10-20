@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [v3.3.0](https://github.com/allenai/beaker-gantry/releases/tag/v3.3.0) - 2025-10-20
+
 ### Added
 
 - Added `--torchrun` flag to `gantry run`, which is a shortcut for configuring your experiment and `torchrun`
