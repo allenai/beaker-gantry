@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [v1.17.2](https://github.com/allenai/beaker-gantry/releases/tag/v1.17.2) - 2025-10-20
+
+### Fixed
+
+- Attach workload's budget to `entrypoint.sh` dataset.
+
 ## [v1.17.1](https://github.com/allenai/beaker-gantry/releases/tag/v1.17.1) - 2025-07-16
 
 ### Added
