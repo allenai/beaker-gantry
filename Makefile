@@ -18,6 +18,7 @@ docker-image :
 .PHONY : beaker-image
 beaker-image : docker-image
 	./scripts/create_beaker_image.sh $(IMAGE_NAME) $(IMAGE_NAME) $(BEAKER_WORKSPACE)
+	./scripts/create_beaker_image.sh $(IMAGE_NAME) $(IMAGE_NAME)-v$(GANTRY_VERSION) $(BEAKER_WORKSPACE)
 
 .PHONY : dev-tools-image
 dev-tools-image :

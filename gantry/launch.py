@@ -136,13 +136,6 @@ def launch_experiment(
             f"Cannot use {utils.fmt_opt('--show-logs')} with {utils.fmt_opt('--timeout=0')}!"
         )
 
-    if beaker_image is None and docker_image is None:
-        beaker_image = constants.DEFAULT_IMAGE
-    elif (beaker_image is None) == (docker_image is None):
-        raise ConfigurationError(
-            f"Either {utils.fmt_opt('--beaker-image')} or {utils.fmt_opt('--docker-image')} must be specified, but not both."
-        )
-
     task_resources = BeakerTaskResources(
         cpu_count=cpus, gpu_count=gpus, memory=memory, shared_memory=shared_memory
     )
@@ -158,7 +151,17 @@ def launch_experiment(
 
     # Initialize Beaker client and validate workspace.
     with beaker_utils.init_client(workspace=workspace, yes=yes) as beaker:
-        if beaker_image is not None and beaker_image != constants.DEFAULT_IMAGE:
+        if beaker_image is None and docker_image is None:
+            try:
+                beaker.image.get(constants.VERSIONED_DEFAULT_IMAGE)
+                beaker_image = constants.VERSIONED_DEFAULT_IMAGE
+            except BeakerImageNotFound:
+                beaker_image = constants.DEFAULT_IMAGE
+        elif (beaker_image is None) == (docker_image is None):
+            raise ConfigurationError(
+                f"Either {utils.fmt_opt('--beaker-image')} or {utils.fmt_opt('--docker-image')} must be specified, but not both."
+            )
+        elif beaker_image is not None and beaker_image != constants.DEFAULT_IMAGE:
             try:
                 beaker_image = beaker.image.get(beaker_image).id
             except BeakerImageNotFound:
