@@ -70,6 +70,7 @@ def logs(
 
         job: BeakerJob | None = None
         task: BeakerTask | None = None
+        out_path: Path | None = None
         if all_tasks:
             if output is None:
                 raise ConfigurationError(
@@ -93,9 +94,7 @@ def logs(
             with ThreadPoolExecutor() as executor:
                 futures = []
                 for job, task in zip(all_jobs, tasks):
-                    out_path = (
-                        None if output is None else _resolve_output_file_path(output, task, run)
-                    )
+                    out_path = _resolve_output_file_path(output, task, run)
                     future = executor.submit(
                         beaker_utils.download_logs,
                         beaker,
@@ -133,7 +132,8 @@ def logs(
                 utils.print_stderr("[yellow]Experiment has not started yet[/]")
                 return
 
-            out_path = None if output is None else _resolve_output_file_path(output, task, run)
+            if output is not None:
+                out_path = _resolve_output_file_path(output, task, run)
 
             utils.print_stdout(f"Pulling logs from job '{job.id}' for task '{task.name}'...")
             beaker_utils.download_logs(
