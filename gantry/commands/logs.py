@@ -81,6 +81,9 @@ def logs(
                     "--output must be a directory when pulling logs from all tasks/replicas"
                 )
 
+            if wl.experiment.id and wl.experiment.id not in str(output):
+                output = output / wl.experiment.id
+
             utils.print_stdout(f"Pulling logs from {len(tasks):,d} tasks/replicas...")
             with ThreadPoolExecutor() as executor:
                 futures = []
