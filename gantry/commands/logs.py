@@ -76,7 +76,7 @@ def logs(
                 raise ConfigurationError(
                     "An --output directory must be provided when pulling logs from all tasks/replicas"
                 )
-            elif output.is_file() or output.suffix:
+            elif not output.is_dir() and output.suffix:
                 raise ConfigurationError(
                     "--output must be a directory when pulling logs from all tasks/replicas"
                 )
