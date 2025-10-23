@@ -579,7 +579,7 @@ def follow_workload(
 
         # Stream logs...
         if show_logs and job.status.HasField("started"):
-            queue = Queue()
+            queue: Queue = Queue()
             sentinel = object()
 
             def fill_queue():
