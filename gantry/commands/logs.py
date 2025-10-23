@@ -4,7 +4,7 @@ from datetime import datetime
 from pathlib import Path
 
 import click
-from beaker import BeakerJob, BeakerTask
+from beaker import Beaker, BeakerJob, BeakerTask, BeakerWorkload
 
 from .. import beaker_utils, utils
 from ..aliases import PathOrStr
@@ -81,35 +81,36 @@ def logs(
                     "--output must be a directory when pulling logs from all tasks/replicas"
                 )
 
-            all_jobs: list[BeakerJob] = []
-            for task in tasks:
-                job = beaker_utils.get_job(beaker, wl, task, run=run)
-                if job is None:
-                    utils.print_stderr("[yellow]Experiment has not started yet[/]")
-                    return
-                else:
-                    all_jobs.append(job)
-
-            utils.print_stdout(f"Pulling logs from all {len(tasks):,d} tasks/replicas...")
+            utils.print_stdout(f"Pulling logs from {len(tasks):,d} tasks/replicas...")
             with ThreadPoolExecutor() as executor:
                 futures = []
-                for job, task in zip(all_jobs, tasks):
+                for task in tasks:
                     out_path = _resolve_output_file_path(output, task, run)
                     future = executor.submit(
-                        beaker_utils.download_logs,
+                        _resolve_job_and_download_logs,
                         beaker,
-                        job,
-                        tail_lines=tail,
-                        follow=False,
+                        wl=wl,
+                        task=task,
+                        run=run,
+                        tail=tail,
                         since=since_dt,
                         out_path=out_path,
                     )
                     futures.append(future)
 
+                num_log_files_written = 0
                 for future in concurrent.futures.as_completed(futures):
-                    future.result()
+                    task, job = future.result()
+                    assert task is not None
+                    if job is None:
+                        utils.print_stderr(
+                            f"[yellow]Job for task '{task.name}' has not started yet[/]"
+                        )
+                    else:
+                        num_log_files_written += 1
 
-            utils.print_stdout(f"Logs saved to [cyan]{output}[/]")
+            if num_log_files_written > 0:
+                utils.print_stdout(f"Logs saved to [cyan]{output}[/]")
         else:
             if replica is not None:
                 for task in tasks:
@@ -158,3 +159,26 @@ def _resolve_output_file_path(output: Path, task: BeakerTask, run: int | None) -
             return output / f"{task.name}.log"
     else:
         return output
+
+
+def _resolve_job_and_download_logs(
+    beaker: Beaker,
+    *,
+    wl: BeakerWorkload,
+    task: BeakerTask,
+    run: int | None,
+    out_path: Path,
+    tail: int | None = None,
+    since: datetime | None = None,
+) -> tuple[BeakerTask, BeakerJob | None]:
+    job = beaker_utils.get_job(beaker, wl, task, run=run)
+    if job is None:
+        return task, None
+    return task, beaker_utils.download_logs(
+        beaker,
+        job,
+        tail_lines=tail,
+        follow=False,
+        since=since,
+        out_path=out_path,
+    )
