@@ -69,6 +69,12 @@ config = get_global_config()
     help="""Time to wait (in seconds) for the experiment to start.""",
 )
 @optgroup.option(
+    "--inactive-timeout",
+    type=int,
+    default=None,
+    help="""Time to wait (in seconds) for new log events when streaming logs.""",
+)
+@optgroup.option(
     "--allow-dirty",
     is_flag=True,
     help="""Allow submitting the experiment with a dirty working directory.""",
@@ -497,6 +503,7 @@ def run(
     show_logs: bool | None = None,
     timeout: int | None = None,
     start_timeout: int | None = None,
+    inactive_timeout: int | None = None,
     dry_run: bool = False,
     **kwargs,
 ):
@@ -533,4 +540,9 @@ def run(
     if dry_run:
         recipe.dry_run()
     else:
-        recipe.launch(show_logs=show_logs, timeout=timeout, start_timeout=start_timeout)
+        recipe.launch(
+            show_logs=show_logs,
+            timeout=timeout,
+            start_timeout=start_timeout,
+            inactive_timeout=inactive_timeout,
+        )

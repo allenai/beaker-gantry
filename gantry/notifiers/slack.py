@@ -19,6 +19,8 @@ class SlackNotifier(Notifier):
             text = f":check: Workload <{workload_url}|*{workload_name}*> has started! :runner:"
         elif event == "preempted":
             text = f":warning: Workload <{workload_url}|*{workload_name}*> was preempted!"
+        elif event == "canceled":
+            text = f":warning: Workload <{workload_url}|*{workload_name}*> canceled!"
         elif event == "failed":
             text = f":check-failed: Workload <{workload_url}|*{workload_name}*> failed!"
         elif event == "succeeded":

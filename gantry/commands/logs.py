@@ -105,6 +105,7 @@ def logs(
                         out_path=out_path,
                     )
                     futures.append(future)
+
                 for future in concurrent.futures.as_completed(futures):
                     future.result()
 

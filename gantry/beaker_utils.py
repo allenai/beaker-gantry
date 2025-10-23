@@ -9,6 +9,8 @@ from contextlib import ExitStack
 from datetime import datetime
 from fnmatch import fnmatch
 from pathlib import Path
+from queue import Empty, Queue
+from threading import Thread
 from typing import Iterable, Literal, Sequence
 
 import rich
@@ -478,6 +480,7 @@ def follow_workload(
     task: BeakerTask | None = None,
     timeout: int | None = None,
     start_timeout: int | None = None,
+    inactive_timeout: int | None = None,
     tail: bool = False,
     show_logs: bool = True,
     notifiers: list[Notifier] | None = None,
@@ -490,6 +493,7 @@ def follow_workload(
         error if it doesn't complete in time.
     :param start_timeout: The number of seconds to wait for the workload to start running.
         Raises a timeout error if it doesn't start in time.
+    :param inactive_timeout: The number of seconds to wait for new logs before timing out.
     :param tail: Start tailing the logs if a job is already running. Otherwise shows all logs.
     :param show_logs: Set to ``False`` to avoid streaming the logs.
 
@@ -575,11 +579,47 @@ def follow_workload(
 
         # Stream logs...
         if show_logs and job.status.HasField("started"):
+            queue = Queue()
+            sentinel = object()
+
+            def fill_queue():
+                assert job is not None
+                try:
+                    for job_log in beaker.job.logs(
+                        job, tail_lines=10 if tail else None, follow=True
+                    ):
+                        queue.put(job_log)
+                except Exception as e:
+                    queue.put(e)
+                finally:
+                    queue.put(sentinel)
+
+            thread = Thread(target=fill_queue, daemon=True)
+            thread.start()
+
             utils.print_stdout()
             rich.get_console().rule("Logs")
 
-            for job_log in beaker.job.logs(job, tail_lines=10 if tail else None, follow=True):
-                utils.print_stdout(job_log.message.decode(), markup=False)
+            last_event = time.monotonic()
+            while True:
+                try:
+                    job_log = queue.get(timeout=1.0)
+                    last_event = time.monotonic()
+                    if job_log is sentinel:
+                        break
+                    elif isinstance(job_log, Exception):
+                        raise job_log
+                    else:
+                        utils.print_stdout(job_log.message.decode(), markup=False)
+                except Empty:
+                    if (
+                        inactive_timeout is not None
+                        and (time.monotonic() - last_event) > inactive_timeout
+                    ):
+                        raise BeakerJobTimeoutError(
+                            f"Timed out while waiting for job '{job.id}' to produce more logs"
+                        )
+
                 if timeout is not None and (time.monotonic() - start_time) > timeout:
                     raise BeakerJobTimeoutError(
                         f"Timed out while waiting for job '{job.id}' to finish"

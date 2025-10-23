@@ -3,7 +3,7 @@ from typing import Literal
 
 from beaker import Beaker, BeakerJob, BeakerWorkload
 
-Event = Literal["started", "failed", "preempted", "succeeded"]
+Event = Literal["started", "failed", "preempted", "succeeded", "canceled"]
 
 
 class Notifier(metaclass=ABCMeta):
