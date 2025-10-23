@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- Added `--since` option and `-a/-all` flag to `gantry logs` command.
+
 ## [v3.3.0](https://github.com/allenai/beaker-gantry/releases/tag/v3.3.0) - 2025-10-20
 
 ### Added

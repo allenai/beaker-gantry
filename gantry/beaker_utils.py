@@ -6,6 +6,7 @@ import tempfile
 import time
 from collections import defaultdict
 from contextlib import ExitStack
+from datetime import datetime
 from fnmatch import fnmatch
 from pathlib import Path
 from typing import Iterable, Literal, Sequence
@@ -388,15 +389,37 @@ def filter_clusters_by_gpu_type(
     return final_clusters
 
 
-def display_logs(
-    beaker: Beaker, job: BeakerJob, tail_lines: int | None = None, follow: bool = True
+def download_logs(
+    beaker: Beaker,
+    job: BeakerJob,
+    tail_lines: int | None = None,
+    since: datetime | None = None,
+    follow: bool = True,
+    out_path: PathOrStr | None = None,
 ) -> BeakerJob:
-    utils.print_stdout()
-    rich.get_console().rule("Logs")
-    for job_log in beaker.job.logs(job, follow=follow, tail_lines=tail_lines):
-        utils.print_stdout(job_log.message.decode(), markup=False)
-    utils.print_stdout()
-    rich.get_console().rule("End logs")
+    if out_path is not None:
+        out_path = Path(out_path)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+    else:
+        utils.print_stdout()
+        rich.get_console().rule("Logs")
+
+    with ExitStack() as stack:
+        out_file = None
+        if out_path is not None:
+            out_file = stack.enter_context(open(out_path, "wb"))
+
+        for job_log in beaker.job.logs(job, follow=follow, tail_lines=tail_lines, since=since):
+            if out_file is None:
+                utils.print_stdout(job_log.message.decode(), markup=False)
+            else:
+                out_file.write(job_log.message)
+                out_file.write(b"\n")
+
+    if out_path is None:
+        utils.print_stdout()
+        rich.get_console().rule("End logs")
+
     return beaker.job.get(job.id)
 
 
