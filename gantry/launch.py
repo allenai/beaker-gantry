@@ -154,10 +154,10 @@ def launch_experiment(
     )
 
     # Get git information.
-    git_config = GitRepoState.from_env(ref=ref, branch=branch)
+    git_repo = GitRepoState.from_env(ref=ref, branch=branch)
 
     # Validate repo state.
-    if ref is None and not allow_dirty and git_config.is_dirty:
+    if ref is None and not allow_dirty and git_repo.is_dirty:
         raise DirtyRepoError(
             f"You have uncommitted changes! Use {utils.fmt_opt('--allow-dirty')} to force."
         )
@@ -363,7 +363,7 @@ def launch_experiment(
 
         # Get / set the GitHub token secret.
         gh_token_secret_to_use: str | None = None
-        if not git_config.is_public and "GITHUB_TOKEN" not in secret_names:
+        if not git_repo.is_public and "GITHUB_TOKEN" not in secret_names:
             try:
                 beaker.secret.get(gh_token_secret)
             except BeakerSecretNotFound:
@@ -463,7 +463,7 @@ def launch_experiment(
             task_resources=task_resources,
             arguments=list(args),
             entrypoint_dataset=entrypoint_dataset.id,
-            git_config=git_config,
+            git_repo=git_repo,
             budget=budget,
             group_names=[group.full_name for group in groups],
             description=description,
@@ -550,8 +550,8 @@ def launch_experiment(
         info_header = (
             f"[b]Workspace:[/] [cyan]{beaker.workspace.get().name}[/] → [blue u]{beaker.workspace.url()}[/]\n"
             + (("[b]Groups:[/]\n ❯ " + groups_str + "\n") if groups else "")
-            + f"[b]Commit:[/] [cyan]{git_config.short_ref}[/] {git_config.short_commit_message() or ''} → [blue u]{git_config.ref_url}[/]\n"
-            + f"[b]Branch:[/] [cyan]{git_config.branch}[/] → [blue u]{git_config.branch_url}[/]"
+            + f"[b]Commit:[/] [cyan]{git_repo.short_ref}[/] {git_repo.short_commit_message() or ''} → [blue u]{git_repo.ref_url}[/]\n"
+            + f"[b]Branch:[/] [cyan]{git_repo.branch}[/] → [blue u]{git_repo.branch_url}[/]"
         )
 
         if dry_run:

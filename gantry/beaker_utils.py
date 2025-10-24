@@ -479,7 +479,7 @@ def build_experiment_spec(
     task_resources: BeakerTaskResources,
     arguments: list[str],
     entrypoint_dataset: str,
-    git_config: GitRepoState,
+    git_repo: GitRepoState,
     budget: str | None = None,
     group_names: list[str] | None = None,
     description: str | None = None,
@@ -521,7 +521,7 @@ def build_experiment_spec(
     default_python_version: str = utils.get_local_python_version(),
     pre_setup: str | None = None,
     post_setup: str | None = None,
-):
+) -> BeakerExperimentSpec:
     if exec_method not in ("exec", "bash"):
         raise ConfigurationError(
             f"expected one of 'exec' or 'bash' for {utils.fmt_opt('--exec-method')}, but got '{exec_method}'."
@@ -547,8 +547,8 @@ def build_experiment_spec(
             timeout=task_timeout,
         )
         .with_env_var(name="GANTRY_VERSION", value=VERSION)
-        .with_env_var(name="GITHUB_REPO", value=git_config.repo)
-        .with_env_var(name="GIT_REF", value=git_config.ref)
+        .with_env_var(name="GITHUB_REPO", value=git_repo.repo)
+        .with_env_var(name="GIT_REF", value=git_repo.ref)
         .with_env_var(name="GANTRY_TASK_NAME", value=task_name)
         .with_env_var(name="RESULTS_DIR", value=results)
         .with_env_var(name="GANTRY_RUNTIME_DIR", value=runtime_dir)
@@ -566,8 +566,8 @@ def build_experiment_spec(
                 name="GANTRY_RDZV_PORT", value=str(random.randint(29_000, 29_999))
             )
 
-    if git_config.branch is not None:
-        task_spec = task_spec.with_env_var(name="GIT_BRANCH", value=git_config.branch)
+    if git_repo.branch is not None:
+        task_spec = task_spec.with_env_var(name="GIT_BRANCH", value=git_repo.branch)
 
     if clusters:
         task_spec = task_spec.with_constraint(cluster=clusters)
@@ -599,9 +599,9 @@ def build_experiment_spec(
             )
     else:
         has_project_file = (
-            git_config.is_in_tree("pyproject.toml")
-            or git_config.is_in_tree("setup.py")
-            or git_config.is_in_tree("setup.cfg")
+            git_repo.is_in_tree("pyproject.toml")
+            or git_repo.is_in_tree("setup.py")
+            or git_repo.is_in_tree("setup.cfg")
         )
 
         task_spec = task_spec.with_env_var(
@@ -619,8 +619,8 @@ def build_experiment_spec(
             if (
                 conda_env is not None
                 or conda_file is not None
-                or git_config.is_in_tree("environment.yml")
-                or git_config.is_in_tree("environment.yaml")
+                or git_repo.is_in_tree("environment.yml")
+                or git_repo.is_in_tree("environment.yaml")
             ):
                 python_manager = "conda"
             else:
@@ -716,7 +716,7 @@ def build_experiment_spec(
                 )
             else:
                 for path in ("environment.yml", "environment.yaml"):
-                    if git_config.is_in_tree(path):
+                    if git_repo.is_in_tree(path):
                         task_spec = task_spec.with_env_var(
                             name="GANTRY_CONDA_FILE",
                             value=path,
