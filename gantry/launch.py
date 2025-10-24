@@ -1,13 +1,21 @@
+import logging
 import os
 import sys
+import time
+from contextlib import ExitStack
 from pathlib import Path
+from queue import Empty, Queue
+from threading import Thread
 from typing import Literal, Sequence
 
 import rich
 from beaker import (
+    Beaker,
     BeakerCluster,
     BeakerGroup,
     BeakerJob,
+    BeakerSortOrder,
+    BeakerTask,
     BeakerTaskResources,
     BeakerWorkload,
 )
@@ -18,12 +26,15 @@ from beaker.exceptions import (
     BeakerSecretNotFound,
 )
 from rich import prompt
+from rich.status import Status
 
 from . import beaker_utils, constants, utils
 from .aliases import PathOrStr
 from .exceptions import *
 from .git_utils import GitRepoState
 from .notifiers import *
+
+log = logging.getLogger(__name__)
 
 
 def launch_experiment(
@@ -584,7 +595,7 @@ def launch_experiment(
 
         job: BeakerJob | None = None
         try:
-            job = beaker_utils.follow_workload(
+            job = follow_workload(
                 beaker,
                 workload,
                 timeout=timeout if timeout > 0 else None,
@@ -635,3 +646,195 @@ def launch_experiment(
             notifiers=notifiers,
         )
         return workload
+
+
+def follow_workload(
+    beaker: Beaker,
+    workload: BeakerWorkload,
+    *,
+    task: BeakerTask | None = None,
+    timeout: int | None = None,
+    start_timeout: int | None = None,
+    inactive_timeout: int | None = None,
+    inactive_soft_timeout: int | None = None,
+    tail: bool = False,
+    show_logs: bool = True,
+    notifiers: list[Notifier] | None = None,
+) -> BeakerJob:
+    """
+    Follow a workload until completion while streaming logs to stdout.
+
+    :param task: A specific task in the workload to follow. Defaults to the first task.
+    :param timeout: The number of seconds to wait for the workload to complete. Raises a timeout
+        error if it doesn't complete in time.
+    :param start_timeout: The number of seconds to wait for the workload to start running.
+        Raises a timeout error if it doesn't start in time.
+    :param inactive_timeout: The number of seconds to wait for new logs before timing out.
+        Raises a timeout error if no new logs are produced in time.
+    :param inactive_soft_timeout: The number of seconds to wait for new logs before timing out.
+        Issues a warning notification if no new logs are produced in time.
+    :param tail: Start tailing the logs if a job is already running. Otherwise shows all logs.
+    :param show_logs: Set to ``False`` to avoid streaming the logs.
+
+    :returns: The finalized :class:`~beaker.types.BeakerJob` from the task being followed.
+
+    :raises ~gantry.exceptions.BeakerJobTimeoutError: If ``timeout`` is set to a positive number
+        and the workload doesn't complete in time.
+    """
+    console = rich.get_console()
+    start_time = time.monotonic()
+    preempted_job_ids = set()
+
+    while True:
+        job: BeakerJob | None = None
+        with ExitStack() as stack:
+            msg = "[i]waiting on job...[/]"
+            status: Status | None = None
+            if not os.environ.get("GANTRY_GITHUB_TESTING"):
+                status = stack.enter_context(console.status(msg, spinner="point", speed=0.8))
+            else:
+                utils.print_stdout(msg)
+
+            # Wait for job to be created...
+            while job is None:
+                if (
+                    j := beaker.workload.get_latest_job(workload, task=task)
+                ) is not None and j.id not in preempted_job_ids:
+                    job = j
+                elif timeout is not None and (time.monotonic() - start_time) > timeout:
+                    raise BeakerJobTimeoutError("Timed out while waiting for job to be created")
+                elif start_timeout is not None and (time.monotonic() - start_time) > start_timeout:
+                    raise BeakerJobTimeoutError("Timed out while waiting for job to be created")
+                else:
+                    time.sleep(1.0)
+
+            if status is not None:
+                status.update("[i]waiting for job to launch...[/]")
+
+            # Pull events until job is running (or fails)...
+            events = set()
+            while True:
+                for event in beaker.job.list_summarized_events(
+                    job, sort_order=BeakerSortOrder.descending, sort_field="latest_occurrence"
+                ):
+                    event_hashable = (event.latest_occurrence.ToSeconds(), event.latest_message)
+                    if event_hashable not in events:
+                        events.add(event_hashable)
+                        utils.print_stdout(f"✓ [i]{event.latest_message}[/]")
+                        time.sleep(0.5)
+
+                job = beaker.job.get(job.id)
+                job_finalized = job.status.HasField("finalized")
+                job_started = job.status.HasField("started")
+
+                if job_finalized:
+                    break
+                elif job_started and show_logs:
+                    break
+                elif timeout is not None and (time.monotonic() - start_time) > timeout:
+                    if job_started:
+                        raise BeakerJobTimeoutError(
+                            f"Timed out while waiting for job '{job.id}' to finish"
+                        )
+                    else:
+                        raise BeakerJobTimeoutError(
+                            f"Timed out while waiting for job '{job.id}' to start"
+                        )
+                elif (
+                    start_timeout is not None
+                    and not job_started
+                    and (time.monotonic() - start_time) > start_timeout
+                ):
+                    raise BeakerJobTimeoutError(
+                        f"Timed out while waiting for job '{job.id}' to start"
+                    )
+                else:
+                    time.sleep(0.5)
+
+        assert job is not None
+
+        for notifier in notifiers or []:
+            notifier.notify(workload, "started", job=job)
+
+        # Stream logs...
+        if show_logs and job.status.HasField("started"):
+            queue: Queue = Queue()
+            sentinel = object()
+
+            def fill_queue():
+                assert job is not None
+                try:
+                    for job_log in beaker.job.logs(
+                        job, tail_lines=10 if tail else None, follow=True
+                    ):
+                        queue.put(job_log)
+                except Exception as e:
+                    queue.put(e)
+                finally:
+                    queue.put(sentinel)
+
+            thread = Thread(target=fill_queue, daemon=True)
+            thread.start()
+
+            utils.print_stdout()
+            rich.get_console().rule("Logs")
+
+            last_event = time.monotonic()
+            last_inactive_warning = 0.0
+            while True:
+                try:
+                    job_log = queue.get(timeout=1.0)
+                    last_event = time.monotonic()
+                    if job_log is sentinel:
+                        break
+                    elif isinstance(job_log, Exception):
+                        raise job_log
+                    else:
+                        utils.print_stdout(job_log.message.decode(), markup=False)
+                except Empty:
+                    cur_time = time.monotonic()
+                    if inactive_timeout is not None and (cur_time - last_event) > inactive_timeout:
+                        raise BeakerJobTimeoutError(
+                            f"Timed out while waiting for job '{job.id}' to produce more logs"
+                        )
+
+                    if (
+                        inactive_soft_timeout is not None
+                        and (cur_time - last_event) > inactive_soft_timeout
+                        and (cur_time - last_inactive_warning) > max(inactive_soft_timeout, 3600)
+                    ):
+                        last_inactive_warning = cur_time
+                        formatted_duration = utils.format_timedelta(
+                            cur_time - last_event,
+                            resolution="minutes" if inactive_soft_timeout % 60 == 0 else "seconds",
+                        )
+                        log.warning(
+                            f"Job appears to be inactive! No new logs within the past {formatted_duration}."
+                        )
+                        for notifier in notifiers or []:
+                            notifier.notify(workload, "inactive", job=job)
+
+                if timeout is not None and (time.monotonic() - start_time) > timeout:
+                    raise BeakerJobTimeoutError(
+                        f"Timed out while waiting for job '{job.id}' to finish"
+                    )
+
+            utils.print_stdout()
+            rich.get_console().rule("End logs")
+
+        # Wait for job to finalize...
+        while not job.status.HasField("finalized"):
+            time.sleep(0.5)
+            job = beaker.job.get(job.id)
+
+        utils.print_stdout()
+
+        # If job was preempted, we start over...
+        if beaker_utils.job_was_preempted(job):
+            utils.print_stdout(f"[yellow]Job '{job.id}' preempted.[/] ")
+            preempted_job_ids.add(job.id)
+            for notifier in notifiers or []:
+                notifier.notify(workload, "preempted", job=job)
+            continue
+
+        return job

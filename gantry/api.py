@@ -10,9 +10,8 @@ from typing import Any, Literal
 from beaker import Beaker
 
 from . import beaker_utils
-from .beaker_utils import follow_workload
 from .git_utils import GitRepoState
-from .launch import launch_experiment
+from .launch import follow_workload, launch_experiment
 from .recipe import Recipe
 
 __all__ = [

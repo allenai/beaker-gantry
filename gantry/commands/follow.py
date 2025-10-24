@@ -4,6 +4,7 @@ from beaker import BeakerWorkload
 from .. import beaker_utils, utils
 from ..config import get_global_config
 from ..exceptions import ConfigurationError, NotFoundError
+from ..launch import follow_workload
 from .main import CLICK_COMMAND_DEFAULTS, main
 
 
@@ -68,5 +69,5 @@ def follow(
             )
 
         assert wl is not None
-        job = beaker_utils.follow_workload(beaker, wl, tail=tail)
+        job = follow_workload(beaker, wl, tail=tail)
         beaker_utils.display_results(beaker, wl, job)
