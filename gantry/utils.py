@@ -1,15 +1,18 @@
 import json
 import logging
 import platform
+import re
 import time
 from dataclasses import asdict, dataclass
-from datetime import timedelta
+from datetime import datetime, timedelta
 from functools import cache
 from pathlib import Path
-from typing import Optional, cast
+from typing import Any, Literal, Optional, cast
 
 import rich
-from rich.console import Console
+from rich.console import Console, ConsoleRenderable
+from rich.text import Text
+from rich.traceback import Traceback
 
 from . import constants
 from .exceptions import *
@@ -114,18 +117,70 @@ def print_exception(*args, **kwargs):
     stderr_console().print_exception(*args, **kwargs)
 
 
-def format_timedelta(td: "timedelta") -> str:
+def parse_timedelta(dur: str) -> timedelta:
+    dur_normalized = dur.replace(" ", "").lower()
+    if not re.match(r"^(([0-9.e-]+)([a-z]*))+$", dur_normalized):
+        raise ValueError(f"invalid duration string '{dur}'")
+
+    seconds = 0.0
+    for match in re.finditer(r"([0-9.e-]+)([a-z]*)", dur_normalized):
+        value_str, unit = match.group(1), match.group(2)
+        try:
+            value = float(value_str)
+        except ValueError:
+            raise ValueError(f"invalid duration string '{dur}'")
+
+        if not unit:
+            # assume seconds
+            unit = "s"
+
+        if unit in ("ns", "nanosecond", "nanoseconds"):
+            # nanoseconds
+            seconds += value / 1_000_000_000
+        elif unit in ("µs", "microsecond", "microseconds"):
+            seconds += value / 1_000_000
+        elif unit in ("ms", "millisecond", "milliseconds"):
+            # milliseconds
+            seconds += value / 1_000
+        elif unit in ("s", "sec", "second", "seconds"):
+            # seconds
+            seconds += value
+        elif unit in ("m", "min", "minute", "minutes"):
+            # minutes
+            seconds += value * 60
+        elif unit in ("h", "hr", "hour", "hours"):
+            # hours
+            seconds += value * 3_600
+        elif unit in ("d", "day", "days"):
+            # days
+            seconds += value * 86_400
+        else:
+            raise ValueError(f"invalid duration string '{dur}'")
+
+    return timedelta(seconds=seconds)
+
+
+def format_timedelta(
+    td: timedelta | float, resolution: Literal["seconds", "minutes"] = "seconds"
+) -> str:
+    if isinstance(td, float):
+        td = timedelta(seconds=td)
+
     def format_value_and_unit(value: int, unit: str) -> str:
         if value == 1:
             return f"{value} {unit}"
         else:
             return f"{value} {unit}s"
 
-    parts = []
     seconds = int(td.total_seconds())
+    if resolution == "minutes":
+        seconds = round(seconds / 60) * 60
+
     days, seconds = divmod(seconds, 86400)
     hours, seconds = divmod(seconds, 3600)
     minutes, seconds = divmod(seconds, 60)
+
+    parts = []
     if days:
         parts.append(format_value_and_unit(days, "day"))
     if hours:
@@ -134,6 +189,13 @@ def format_timedelta(td: "timedelta") -> str:
         parts.append(format_value_and_unit(minutes, "minute"))
     if seconds:
         parts.append(format_value_and_unit(seconds, "second"))
+
+    if not parts:
+        if resolution == "minutes":
+            parts.append("under 1 minute")
+        else:
+            parts.append("under 1 second")
+
     return ", ".join(parts)
 
 
@@ -204,3 +266,64 @@ def replace_tags(contents: bytes) -> bytes:
         tag_start = contents.find(b"${{", tag_end)
     assert b"${{" not in contents
     return contents
+
+
+class RichHandler(logging.Handler):
+    """
+    A simplified version of rich.logging.RichHandler from
+    https://github.com/Textualize/rich/blob/master/rich/logging.py
+    """
+
+    def __init__(
+        self,
+        *,
+        level: int | str = logging.NOTSET,
+        console: Optional[Console] = None,
+        markup: bool = False,
+    ) -> None:
+        super().__init__(level=level)
+        self.console = console or rich.get_console()
+        self.markup = markup
+
+    def emit(self, record: logging.LogRecord) -> None:
+        try:
+            if hasattr(record.msg, "__rich__") or hasattr(record.msg, "__rich_console__"):
+                self.console.print(record.msg)
+            else:
+                msg: Any = record.msg
+                if isinstance(record.msg, str):
+                    msg = self.render_message(record=record, message=record.getMessage())
+                renderables = [
+                    self.get_time_text(record),
+                    self.get_level_text(record),
+                    self.get_location_text(record),
+                    msg,
+                ]
+                if record.exc_info is not None:
+                    tb = Traceback.from_exception(*record.exc_info)  # type: ignore
+                    renderables.append(tb)
+                self.console.print(*renderables)
+        except Exception:
+            self.handleError(record)
+
+    def render_message(self, *, record: logging.LogRecord, message: str) -> ConsoleRenderable:
+        use_markup = getattr(record, "markup", self.markup)
+        message_text = Text.from_markup(message) if use_markup else Text(message)
+        return message_text
+
+    def get_time_text(self, record: logging.LogRecord) -> Text:
+        log_time = datetime.fromtimestamp(record.created)
+        time_str = log_time.strftime("[%Y-%m-%d %X]")
+        return Text(time_str, style="log.time", end=" ")
+
+    def get_level_text(self, record: logging.LogRecord) -> Text:
+        level_name = record.levelname
+        level_text = Text.styled(level_name.ljust(8), f"logging.level.{level_name.lower()}")
+        level_text.style = "log.level"
+        level_text.end = " "
+        return level_text
+
+    def get_location_text(self, record: logging.LogRecord) -> Text:
+        name_and_line = f"{record.name}:{record.lineno}" if record.name != "root" else "root"
+        text = f"[{name_and_line}]"  # type: ignore
+        return Text(text, style="log.path")

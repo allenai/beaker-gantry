@@ -54,9 +54,11 @@ config = get_global_config()
 )
 @optgroup.option(
     "--timeout",
-    type=int,
+    "timeout_str",
+    type=str,
     default=None,
-    help="""Time to wait (in seconds) for the experiment to finish.
+    help="""Time to wait (in seconds, by default) for the experiment to finish.
+    Can also be specified as a duration such as '5m', '2h', etc.
     A timeout of -1 means wait indefinitely.
     A timeout of 0 means don't wait at all.
     This defaults to 0 unless you set --show-logs, in which case it defaults to -1.""",
@@ -64,9 +66,30 @@ config = get_global_config()
 )
 @optgroup.option(
     "--start-timeout",
-    type=int,
+    "start_timeout_str",
+    type=str,
     default=None,
-    help="""Time to wait (in seconds) for the experiment to start.""",
+    help="""Time to wait (in seconds, by default) for the experiment to start.
+    Can also be specified as a duration such as '5m', '2h', etc.
+    The experiment will be canceled if it doesn't start within this time.""",
+)
+@optgroup.option(
+    "--inactive-timeout",
+    "inactive_timeout_str",
+    type=str,
+    default=None,
+    help="""Time to wait (in seconds, by default) for new log events when streaming logs.
+    Can also be specified as a duration such as '5m', '2h', etc.
+    The experiment will be canceled if no new logs are received within this time.""",
+)
+@optgroup.option(
+    "--inactive-soft-timeout",
+    "inactive_soft_timeout_str",
+    type=str,
+    default=None,
+    help="""Time to wait (in seconds, by default) for new log events when streaming logs.
+    Can also be specified as a duration such as '5m', '2h', etc.
+    A warning notification will be issued if no new logs are received within this time.""",
 )
 @optgroup.option(
     "--allow-dirty",
@@ -495,8 +518,10 @@ config = get_global_config()
 def run(
     args,
     show_logs: bool | None = None,
-    timeout: int | None = None,
-    start_timeout: int | None = None,
+    timeout_str: str | None = None,
+    start_timeout_str: str | None = None,
+    inactive_timeout_str: str | None = None,
+    inactive_soft_timeout_str: str | None = None,
     dry_run: bool = False,
     **kwargs,
 ):
@@ -529,8 +554,41 @@ def run(
             "Try 'gantry run --help' for help."
         )
 
+    # Parse timeouts.
+    # NOTE: `timeout_str` has to be handled specially because of the '-1' value.
+    timeout: int | None = None
+    if timeout_str is not None:
+        try:
+            timeout = int(timeout_str)
+        except ValueError:
+            timeout = int(utils.parse_timedelta(timeout_str).total_seconds())
+
+    start_timeout = (
+        None
+        if start_timeout_str is None
+        else int(utils.parse_timedelta(start_timeout_str).total_seconds())
+    )
+
+    inactive_timeout = (
+        None
+        if inactive_timeout_str is None
+        else int(utils.parse_timedelta(inactive_timeout_str).total_seconds())
+    )
+
+    inactive_soft_timeout = (
+        None
+        if inactive_soft_timeout_str is None
+        else int(utils.parse_timedelta(inactive_soft_timeout_str).total_seconds())
+    )
+
     recipe = Recipe(args=args, **kwargs)
     if dry_run:
         recipe.dry_run()
     else:
-        recipe.launch(show_logs=show_logs, timeout=timeout, start_timeout=start_timeout)
+        recipe.launch(
+            show_logs=show_logs,
+            timeout=timeout,
+            start_timeout=start_timeout,
+            inactive_timeout=inactive_timeout,
+            inactive_soft_timeout=inactive_soft_timeout,
+        )

@@ -154,6 +154,8 @@ class Recipe:
         show_logs: bool | None = None,
         timeout: int | None = None,
         start_timeout: int | None = None,
+        inactive_timeout: int | None = None,
+        inactive_soft_timeout: int | None = None,
     ) -> BeakerWorkload:
         """
         Launch an experiment on Beaker. Same as the ``gantry run`` command.
@@ -166,6 +168,8 @@ class Recipe:
             show_logs=show_logs,
             timeout=timeout,
             start_timeout=start_timeout,
+            inactive_timeout=inactive_timeout,
+            inactive_soft_timeout=inactive_soft_timeout,
         )
         assert workload is not None
         return workload

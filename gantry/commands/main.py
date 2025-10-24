@@ -9,7 +9,6 @@ from beaker.exceptions import BeakerError
 from click_help_colors import HelpColorsCommand, HelpColorsGroup
 from click_option_group import optgroup
 from rich import pretty, traceback
-from rich.logging import RichHandler
 
 from .. import utils
 from ..config import get_global_config
@@ -103,7 +102,7 @@ def main(quiet: bool = False, check_for_upgrades: bool | None = None, log_level:
     logging.basicConfig(
         level=getattr(logging, log_level.upper()),
         format="%(message)s",
-        handlers=[RichHandler(log_time_format="❯ [GANTRY (local)] [%X]")],
+        handlers=[utils.RichHandler()],
     )
 
     # Handle SIGTERM just like KeyboardInterrupt

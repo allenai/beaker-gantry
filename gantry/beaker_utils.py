@@ -1,13 +1,17 @@
 import binascii
 import hashlib
+import logging
 import os
 import random
 import tempfile
 import time
 from collections import defaultdict
 from contextlib import ExitStack
+from datetime import datetime
 from fnmatch import fnmatch
 from pathlib import Path
+from queue import Empty, Queue
+from threading import Thread
 from typing import Iterable, Literal, Sequence
 
 import rich
@@ -22,6 +26,8 @@ from .exceptions import *
 from .git_utils import GitRepoState
 from .notifiers import *
 from .version import VERSION
+
+log = logging.getLogger(__name__)
 
 
 def init_client(
@@ -388,15 +394,37 @@ def filter_clusters_by_gpu_type(
     return final_clusters
 
 
-def display_logs(
-    beaker: Beaker, job: BeakerJob, tail_lines: int | None = None, follow: bool = True
+def download_logs(
+    beaker: Beaker,
+    job: BeakerJob,
+    tail_lines: int | None = None,
+    since: datetime | None = None,
+    follow: bool = True,
+    out_path: PathOrStr | None = None,
 ) -> BeakerJob:
-    utils.print_stdout()
-    rich.get_console().rule("Logs")
-    for job_log in beaker.job.logs(job, follow=follow, tail_lines=tail_lines):
-        utils.print_stdout(job_log.message.decode(), markup=False)
-    utils.print_stdout()
-    rich.get_console().rule("End logs")
+    if out_path is not None:
+        out_path = Path(out_path)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+    else:
+        utils.print_stdout()
+        rich.get_console().rule("Logs")
+
+    with ExitStack() as stack:
+        out_file = None
+        if out_path is not None:
+            out_file = stack.enter_context(open(out_path, "wb"))
+
+        for job_log in beaker.job.logs(job, follow=follow, tail_lines=tail_lines, since=since):
+            if out_file is None:
+                utils.print_stdout(job_log.message.decode(), markup=False)
+            else:
+                out_file.write(job_log.message)
+                out_file.write(b"\n")
+
+    if out_path is None:
+        utils.print_stdout()
+        rich.get_console().rule("End logs")
+
     return beaker.job.get(job.id)
 
 
@@ -455,6 +483,8 @@ def follow_workload(
     task: BeakerTask | None = None,
     timeout: int | None = None,
     start_timeout: int | None = None,
+    inactive_timeout: int | None = None,
+    inactive_soft_timeout: int | None = None,
     tail: bool = False,
     show_logs: bool = True,
     notifiers: list[Notifier] | None = None,
@@ -467,6 +497,10 @@ def follow_workload(
         error if it doesn't complete in time.
     :param start_timeout: The number of seconds to wait for the workload to start running.
         Raises a timeout error if it doesn't start in time.
+    :param inactive_timeout: The number of seconds to wait for new logs before timing out.
+        Raises a timeout error if no new logs are produced in time.
+    :param inactive_soft_timeout: The number of seconds to wait for new logs before timing out.
+        Issues a warning notification if no new logs are produced in time.
     :param tail: Start tailing the logs if a job is already running. Otherwise shows all logs.
     :param show_logs: Set to ``False`` to avoid streaming the logs.
 
@@ -552,11 +586,62 @@ def follow_workload(
 
         # Stream logs...
         if show_logs and job.status.HasField("started"):
+            queue: Queue = Queue()
+            sentinel = object()
+
+            def fill_queue():
+                assert job is not None
+                try:
+                    for job_log in beaker.job.logs(
+                        job, tail_lines=10 if tail else None, follow=True
+                    ):
+                        queue.put(job_log)
+                except Exception as e:
+                    queue.put(e)
+                finally:
+                    queue.put(sentinel)
+
+            thread = Thread(target=fill_queue, daemon=True)
+            thread.start()
+
             utils.print_stdout()
             rich.get_console().rule("Logs")
 
-            for job_log in beaker.job.logs(job, tail_lines=10 if tail else None, follow=True):
-                utils.print_stdout(job_log.message.decode(), markup=False)
+            last_event = time.monotonic()
+            last_inactive_warning = 0.0
+            while True:
+                try:
+                    job_log = queue.get(timeout=1.0)
+                    last_event = time.monotonic()
+                    if job_log is sentinel:
+                        break
+                    elif isinstance(job_log, Exception):
+                        raise job_log
+                    else:
+                        utils.print_stdout(job_log.message.decode(), markup=False)
+                except Empty:
+                    cur_time = time.monotonic()
+                    if inactive_timeout is not None and (cur_time - last_event) > inactive_timeout:
+                        raise BeakerJobTimeoutError(
+                            f"Timed out while waiting for job '{job.id}' to produce more logs"
+                        )
+
+                    if (
+                        inactive_soft_timeout is not None
+                        and (cur_time - last_event) > inactive_soft_timeout
+                        and (cur_time - last_inactive_warning) > max(inactive_soft_timeout, 3600)
+                    ):
+                        last_inactive_warning = cur_time
+                        formatted_duration = utils.format_timedelta(
+                            cur_time - last_event,
+                            resolution="minutes" if inactive_soft_timeout % 60 == 0 else "seconds",
+                        )
+                        log.warning(
+                            f"Job appears to be inactive! No new logs within the past {formatted_duration}."
+                        )
+                        for notifier in notifiers or []:
+                            notifier.notify(workload, "inactive", job=job)
+
                 if timeout is not None and (time.monotonic() - start_time) > timeout:
                     raise BeakerJobTimeoutError(
                         f"Timed out while waiting for job '{job.id}' to finish"

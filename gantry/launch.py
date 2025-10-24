@@ -63,6 +63,8 @@ def launch_experiment(
     timeout: int | None = None,
     task_timeout: str | None = None,
     start_timeout: int | None = None,
+    inactive_timeout: int | None = None,
+    inactive_soft_timeout: int | None = None,
     show_logs: bool | None = None,
     allow_dirty: bool = False,
     dry_run: bool = False,
@@ -587,6 +589,8 @@ def launch_experiment(
                 workload,
                 timeout=timeout if timeout > 0 else None,
                 start_timeout=start_timeout,
+                inactive_timeout=inactive_timeout,
+                inactive_soft_timeout=inactive_soft_timeout,
                 show_logs=show_logs,
                 notifiers=notifiers,
             )
@@ -594,6 +598,8 @@ def launch_experiment(
             utils.print_stderr(f"[red][bold]{exc.__class__.__name__}:[/] [i]{exc}[/][/]")
             beaker.workload.cancel(workload)
             utils.print_stderr("[yellow]Experiment cancelled.[/]")
+            for notifier in notifiers or []:
+                notifier.notify(workload, "canceled", job=job)
             if utils.is_cli_mode():
                 sys.exit(1)
             else:
