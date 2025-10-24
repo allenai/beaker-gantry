@@ -64,6 +64,7 @@ def launch_experiment(
     task_timeout: str | None = None,
     start_timeout: int | None = None,
     inactive_timeout: int | None = None,
+    inactive_soft_timeout: int | None = None,
     show_logs: bool | None = None,
     allow_dirty: bool = False,
     dry_run: bool = False,
@@ -589,6 +590,7 @@ def launch_experiment(
                 timeout=timeout if timeout > 0 else None,
                 start_timeout=start_timeout,
                 inactive_timeout=inactive_timeout,
+                inactive_soft_timeout=inactive_soft_timeout,
                 show_logs=show_logs,
                 notifiers=notifiers,
             )

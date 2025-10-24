@@ -70,9 +70,12 @@ class Defaults:
 )
 @click.option(
     "--max-age",
-    type=int,
+    "max_age_str",
+    type=str,
     default=Defaults.max_age,
-    help=f"Maximum age of experiments, in days. Default: {Defaults.max_age}",
+    help=f"""Maximum age of experiments (in days, by default).
+    Can also be specified as a duration such as '5m', '2h', etc.
+    Default: {Defaults.max_age} days.""",
 )
 @click.option(
     "--all",
@@ -88,13 +91,19 @@ def list_cmd(
     me: bool = False,
     status: list[str] | None = None,
     name_or_description: str | None = None,
-    max_age: int = Defaults.max_age,
+    max_age_str: str = str(Defaults.max_age),
     show_all: bool = False,
 ):
     """
     List recent experiments within a workspace or group.
     This will only show experiments launched with Gantry by default, unless '--all' is specified.
     """
+    max_age: timedelta
+    try:
+        max_age = timedelta(days=int(max_age_str))
+    except ValueError:
+        max_age = utils.parse_timedelta(max_age_str)
+
     with beaker_utils.init_client(ensure_workspace=False) as beaker:
         table = Table(title="Experiments", show_lines=True)
         table.add_column("Workload", justify="left", no_wrap=True)
@@ -170,11 +179,11 @@ def iter_workloads(
     author: str | None,
     statuses: list[str] | None,
     name_or_description: str | None,
-    max_age: int,
+    max_age: timedelta,
     show_all: bool,
     limit: int | None = None,
 ) -> Generator[tuple[BeakerWorkload, Iterable[BeakerTask]], None, None]:
-    created_after = datetime.now(tz=timezone.utc).astimezone() - timedelta(days=max_age)
+    created_after = datetime.now(tz=timezone.utc).astimezone() - max_age
     author_id = None if author is None else beaker.user.get(author)
     workload_statuses = (
         None if not statuses else [BeakerWorkloadStatus.from_any(s) for s in statuses]

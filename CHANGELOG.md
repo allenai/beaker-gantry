@@ -10,7 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Added `--since` option and `-a/-all` flag to `gantry logs` command.
-- Added `--inactive-timeout` option to `gantry run` command.
+- Added `--inactive-timeout` and `--inactive-soft-timeout` options to `gantry run` command.
+
+### Changed
+
+- Timeout CLI options can now be specified as duration strings, e.g. "2m30s".
 
 ## [v3.3.0](https://github.com/allenai/beaker-gantry/releases/tag/v3.3.0) - 2025-10-20
 

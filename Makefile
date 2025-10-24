@@ -3,11 +3,20 @@ BEAKER_WORKSPACE=ai2/gantry-testing
 GANTRY_VERSION := $(shell cat gantry/version.py | cut -d'"' -f2-2)
 
 .PHONY : run-checks
-run-checks :
+run-checks : style lint test
+
+.PHONY : style
+style :
 	isort --check .
 	black --check .
+
+.PHONY : lint
+lint :
 	ruff check .
 	mypy .
+
+.PHONY : test
+test :
 	pytest -v --durations=5 tests/
 
 .PHONY : docker-image

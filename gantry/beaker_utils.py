@@ -1,5 +1,6 @@
 import binascii
 import hashlib
+import logging
 import os
 import random
 import tempfile
@@ -25,6 +26,8 @@ from .exceptions import *
 from .git_utils import GitRepoState
 from .notifiers import *
 from .version import VERSION
+
+log = logging.getLogger(__name__)
 
 
 def init_client(
@@ -481,6 +484,7 @@ def follow_workload(
     timeout: int | None = None,
     start_timeout: int | None = None,
     inactive_timeout: int | None = None,
+    inactive_soft_timeout: int | None = None,
     tail: bool = False,
     show_logs: bool = True,
     notifiers: list[Notifier] | None = None,
@@ -494,6 +498,9 @@ def follow_workload(
     :param start_timeout: The number of seconds to wait for the workload to start running.
         Raises a timeout error if it doesn't start in time.
     :param inactive_timeout: The number of seconds to wait for new logs before timing out.
+        Raises a timeout error if no new logs are produced in time.
+    :param inactive_soft_timeout: The number of seconds to wait for new logs before timing out.
+        Issues a warning notification if no new logs are produced in time.
     :param tail: Start tailing the logs if a job is already running. Otherwise shows all logs.
     :param show_logs: Set to ``False`` to avoid streaming the logs.
 
@@ -601,6 +608,7 @@ def follow_workload(
             rich.get_console().rule("Logs")
 
             last_event = time.monotonic()
+            last_inactive_warning = 0.0
             while True:
                 try:
                     job_log = queue.get(timeout=1.0)
@@ -612,13 +620,27 @@ def follow_workload(
                     else:
                         utils.print_stdout(job_log.message.decode(), markup=False)
                 except Empty:
-                    if (
-                        inactive_timeout is not None
-                        and (time.monotonic() - last_event) > inactive_timeout
-                    ):
+                    cur_time = time.monotonic()
+                    if inactive_timeout is not None and (cur_time - last_event) > inactive_timeout:
                         raise BeakerJobTimeoutError(
                             f"Timed out while waiting for job '{job.id}' to produce more logs"
                         )
+
+                    if (
+                        inactive_soft_timeout is not None
+                        and (cur_time - last_event) > inactive_soft_timeout
+                        and (cur_time - last_inactive_warning) > max(inactive_soft_timeout, 3600)
+                    ):
+                        last_inactive_warning = cur_time
+                        formatted_duration = utils.format_timedelta(
+                            cur_time - last_event,
+                            resolution="minutes" if inactive_soft_timeout % 60 == 0 else "seconds",
+                        )
+                        log.warning(
+                            f"Job appears to be inactive! No new logs within the past {formatted_duration}."
+                        )
+                        for notifier in notifiers or []:
+                            notifier.notify(workload, "inactive", job=job)
 
                 if timeout is not None and (time.monotonic() - start_time) > timeout:
                     raise BeakerJobTimeoutError(
