@@ -71,7 +71,7 @@ class Callback(Registrable):
         workload: BeakerWorkload,
     ):
         """
-        Called when a callback is attached to a gantry workload.
+        Runs when a callback is attached to the workload.
         """
         self._beaker = beaker
         self._git_repo = git_repo
@@ -80,7 +80,7 @@ class Callback(Registrable):
 
     def detach(self):
         """
-        Called when a callback is detached from a gantry workload.
+        Runs when a callback is detached from the workload.
         """
         self._beaker = None
         self._git_repo = None
@@ -88,27 +88,52 @@ class Callback(Registrable):
         self._workload = None
 
     def on_start(self, job: BeakerJob):
+        """
+        Runs when a job for the workload starts.
+        """
         del job
 
     def on_log(self, job: BeakerJob, log_line: str, log_time: float):
+        """
+        Runs when a new log event is received from the workload.
+        """
         del job, log_line, log_time
 
     def on_start_timeout(self, job: BeakerJob):
+        """
+        Runs when the active job for the workload hits the configured start timeout before starting.
+        """
         del job
 
     def on_timeout(self, job: BeakerJob):
+        """
+        Runs when the active job for the workload hits the configured timeout before completing.
+        """
         del job
 
     def on_inactive_timeout(self, job: BeakerJob):
+        """
+        Runs when the active job for the workload hits the configured inactive timeout.
+        """
         del job
 
     def on_inactive_soft_timeout(self, job: BeakerJob):
+        """
+        Runs when the active job for the workload hits the configured inactive hard timeout.
+        """
         del job
 
     def on_preemption(self, job: BeakerJob):
+        """
+        Runs when the active job for the workload is preempted.
+        """
         del job
 
     def on_cancellation(self, job: BeakerJob | None):
+        """
+        Runs when the active job for the workload is canceled by the user, either directly or because.
+        a timeout was reached.
+        """
         del job
 
     def on_failure(
@@ -118,6 +143,9 @@ class Callback(Registrable):
         metrics: dict[str, Any] | None = None,
         results_ds: BeakerDataset | None = None,
     ):
+        """
+        Runs when the active job for the workload fails.
+        """
         del job, metrics, results_ds
 
     def on_success(
@@ -127,4 +155,7 @@ class Callback(Registrable):
         metrics: dict[str, Any] | None = None,
         results_ds: BeakerDataset | None = None,
     ):
+        """
+        Runs when the active job for the workload succeeds.
+        """
         del job, metrics, results_ds
