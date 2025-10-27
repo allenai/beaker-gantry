@@ -17,7 +17,7 @@ from ..git_utils import GitRepoState
 @dataclass(kw_only=True)
 class Callback(Registrable):
     """
-    Base class for gantry callbacks. Callbacks provide a way to hook into the gantry's launch
+    Base class for gantry callbacks. Callbacks provide a way to hook into gantry's launch
     loop to customize behavior on certain events.
     """
 

@@ -114,7 +114,11 @@ log = logging.getLogger(__name__)
     type=click.Path(dir_okay=False, file_okay=True),
     help="""A path to save the generated YAML Beaker experiment spec to.""",
 )
-@new_optgroup("Callbacks")
+@new_optgroup(
+    "Callbacks",
+    "Callbacks provide a way to hook into events from gantry's launch loop. "
+    "See https://github.com/allenai/beaker-gantry/blob/main/gantry/callbacks/slack.py for an example.",
+)
 @optgroup.option(
     "--callback-module",
     "callback_modules",
