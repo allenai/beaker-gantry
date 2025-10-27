@@ -1,4 +1,4 @@
-from . import api, notifiers
+from . import api, callbacks
 from .constants import METRICS_FILE, RESULTS_DIR, RUNTIME_DIR
 
 __all__ = [
@@ -6,5 +6,5 @@ __all__ = [
     "RUNTIME_DIR",
     "METRICS_FILE",
     "api",
-    "notifiers",
+    "callbacks",
 ]

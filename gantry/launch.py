@@ -30,9 +30,9 @@ from rich.status import Status
 
 from . import beaker_utils, constants, utils
 from .aliases import PathOrStr
+from .callbacks import Callback, SlackCallback
 from .exceptions import *
 from .git_utils import GitRepoState
-from .notifiers import *
 
 log = logging.getLogger(__name__)
 
@@ -107,6 +107,7 @@ def launch_experiment(
     aws_config_secret: str | None = None,
     aws_credentials_secret: str | None = None,
     google_credentials_secret: str | None = None,
+    callbacks: Sequence[Callback] | None = None,
 ) -> BeakerWorkload | None:
     """
     Launch an experiment on Beaker. Same as the ``gantry run`` command.
@@ -585,13 +586,26 @@ def launch_experiment(
         )
         utils.print_stdout(info_header)
 
+        # Initialize and attach callbacks.
+        callbacks = list(callbacks) if callbacks is not None else []
+        if slack_webhook_url is not None:
+            for callback in callbacks:
+                if isinstance(callback, SlackCallback):
+                    break
+            else:
+                callbacks.append(SlackCallback(webhook_url=slack_webhook_url))
+
+        for callback in callbacks:
+            callback.attach(
+                beaker=beaker,
+                git_repo=git_repo,
+                spec=spec,
+                workload=workload,
+            )
+
         # Can return right away if timeout is 0.
         if timeout == 0:
             return workload
-
-        notifiers: list[Notifier] = []
-        if slack_webhook_url:
-            notifiers.append(SlackNotifier(beaker, slack_webhook_url))
 
         job: BeakerJob | None = None
         try:
@@ -603,14 +617,16 @@ def launch_experiment(
                 inactive_timeout=inactive_timeout,
                 inactive_soft_timeout=inactive_soft_timeout,
                 show_logs=show_logs,
-                notifiers=notifiers,
+                callbacks=callbacks,
             )
         except (TermInterrupt, BeakerJobTimeoutError) as exc:
             utils.print_stderr(f"[red][bold]{exc.__class__.__name__}:[/] [i]{exc}[/][/]")
             beaker.workload.cancel(workload)
             utils.print_stderr("[yellow]Experiment cancelled.[/]")
-            for notifier in notifiers or []:
-                notifier.notify(workload, "canceled", job=job)
+
+            for callback in callbacks:
+                callback.on_cancellation(job)
+
             if utils.is_cli_mode():
                 sys.exit(1)
             else:
@@ -622,6 +638,10 @@ def launch_experiment(
                 utils.print_stderr(
                     f"[red]Experiment stopped:[/] [blue u]{beaker.workload.url(workload)}[/]"
                 )
+
+                for callback in callbacks:
+                    callback.on_cancellation(job)
+
                 if utils.is_cli_mode():
                     return None
                 else:
@@ -638,13 +658,18 @@ def launch_experiment(
                 else:
                     raise
 
-        beaker_utils.display_results(
-            beaker,
-            workload,
-            job,
-            info_header if show_logs else None,
-            notifiers=notifiers,
-        )
+        try:
+            beaker_utils.display_results(
+                beaker,
+                workload,
+                job,
+                info_header if show_logs else None,
+                callbacks=callbacks,
+            )
+        finally:
+            for callback in callbacks:
+                callback.detach()
+
         return workload
 
 
@@ -659,7 +684,7 @@ def follow_workload(
     inactive_soft_timeout: int | None = None,
     tail: bool = False,
     show_logs: bool = True,
-    notifiers: list[Notifier] | None = None,
+    callbacks: Sequence[Callback] | None = None,
 ) -> BeakerJob:
     """
     Follow a workload until completion while streaming logs to stdout.
@@ -732,6 +757,8 @@ def follow_workload(
                 elif job_started and show_logs:
                     break
                 elif timeout is not None and (time.monotonic() - start_time) > timeout:
+                    for callback in callbacks or []:
+                        callback.on_timeout(job)
                     if job_started:
                         raise BeakerJobTimeoutError(
                             f"Timed out while waiting for job '{job.id}' to finish"
@@ -745,6 +772,8 @@ def follow_workload(
                     and not job_started
                     and (time.monotonic() - start_time) > start_timeout
                 ):
+                    for callback in callbacks or []:
+                        callback.on_start_timeout(job)
                     raise BeakerJobTimeoutError(
                         f"Timed out while waiting for job '{job.id}' to start"
                     )
@@ -753,8 +782,8 @@ def follow_workload(
 
         assert job is not None
 
-        for notifier in notifiers or []:
-            notifier.notify(workload, "started", job=job)
+        for callback in callbacks or []:
+            callback.on_start(job)
 
         # Stream logs...
         if show_logs and job.status.HasField("started"):
@@ -790,10 +819,16 @@ def follow_workload(
                     elif isinstance(job_log, Exception):
                         raise job_log
                     else:
-                        utils.print_stdout(job_log.message.decode(), markup=False)
+                        log_line = job_log.message.decode()
+                        log_time = job_log.timestamp.seconds + job_log.timestamp.nanos / 1e9
+                        utils.print_stdout(log_line, markup=False)
+                        for callback in callbacks or []:
+                            callback.on_log(job, log_line, log_time)
                 except Empty:
                     cur_time = time.monotonic()
                     if inactive_timeout is not None and (cur_time - last_event) > inactive_timeout:
+                        for callback in callbacks or []:
+                            callback.on_inactive_timeout(job)
                         raise BeakerJobTimeoutError(
                             f"Timed out while waiting for job '{job.id}' to produce more logs"
                         )
@@ -811,10 +846,12 @@ def follow_workload(
                         log.warning(
                             f"Job appears to be inactive! No new logs within the past {formatted_duration}."
                         )
-                        for notifier in notifiers or []:
-                            notifier.notify(workload, "inactive", job=job)
+                        for callback in callbacks or []:
+                            callback.on_inactive_soft_timeout(job)
 
                 if timeout is not None and (time.monotonic() - start_time) > timeout:
+                    for callback in callbacks or []:
+                        callback.on_timeout(job)
                     raise BeakerJobTimeoutError(
                         f"Timed out while waiting for job '{job.id}' to finish"
                     )
@@ -833,8 +870,8 @@ def follow_workload(
         if beaker_utils.job_was_preempted(job):
             utils.print_stdout(f"[yellow]Job '{job.id}' preempted.[/] ")
             preempted_job_ids.add(job.id)
-            for notifier in notifiers or []:
-                notifier.notify(workload, "preempted", job=job)
+            for callback in callbacks or []:
+                callback.on_preemption(job)
             continue
 
         return job

@@ -6,6 +6,7 @@ from beaker import BeakerWorkload
 
 from . import constants, utils
 from .aliases import PathOrStr
+from .callbacks import Callback
 from .exceptions import *
 from .launch import launch_experiment
 
@@ -30,7 +31,8 @@ class Recipe:
     yes: bool | None = None
     save_spec: PathOrStr | None = None
 
-    # Notifications.
+    # Callbacks.
+    callbacks: Sequence[Callback] | None = None
     slack_webhook_url: str | None = None
 
     # Constraints.
