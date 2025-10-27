@@ -33,7 +33,6 @@ class Recipe:
 
     # Callbacks.
     callbacks: Sequence[Callback] | None = None
-    slack_webhook_url: str | None = None
 
     # Constraints.
     clusters: Sequence[str] | None = None

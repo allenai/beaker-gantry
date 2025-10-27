@@ -1,16 +1,21 @@
+import logging
 import sys
+from typing import Sequence
 
 import click
 from beaker import BeakerJobPriority
 from click_option_group import optgroup
+from dataclass_extensions import decode
 
 from .. import constants, utils
+from ..callbacks import Callback, SlackCallback
 from ..config import get_global_config
 from ..exceptions import *
 from ..recipe import Recipe
 from .main import CLICK_COMMAND_DEFAULTS, main, new_optgroup
 
 config = get_global_config()
+log = logging.getLogger(__name__)
 
 
 @main.command(**CLICK_COMMAND_DEFAULTS)
@@ -109,12 +114,28 @@ config = get_global_config()
     type=click.Path(dir_okay=False, file_okay=True),
     help="""A path to save the generated YAML Beaker experiment spec to.""",
 )
-@new_optgroup("Notifications")
+@new_optgroup("Callbacks")
+@optgroup.option(
+    "--callback-module",
+    "callback_modules",
+    type=str,
+    multiple=True,
+    help=f"""A module to import where custom callbacks are defined/registered. Multiple allowed.
+    {config.get_help_string_for_default('callback_modules')}""",
+    default=config.callback_modules,
+)
+@optgroup.option(
+    "--callback",
+    "callback_configs",
+    type=str,
+    multiple=True,
+    help="""A callback name or JSON/YAML config to use. Multiple allowed. Note that callbacks are only
+    used when following a workload locally (e.g. with '--show-logs' or '--timeout=-1').""",
+)
 @optgroup.option(
     "--slack-webhook-url",
     type=str,
-    help="""A Slack webhook URL to send updates to.
-    For now this is only used when following the experiment locally (e.g. with --show-logs or --timeout=-1).""",
+    help="""A Slack webhook URL to send updates to. This is just a shortcut for configuring the 'slack' callback.""",
     envvar="GANTRY_SLACK_WEBHOOK_URL",
 )
 @new_optgroup("Constraints")
@@ -523,6 +544,9 @@ def run(
     inactive_timeout_str: str | None = None,
     inactive_soft_timeout_str: str | None = None,
     dry_run: bool = False,
+    callback_modules: Sequence[str] | None = None,
+    callback_configs: Sequence[str] | None = None,
+    slack_webhook_url: str | None = None,
     **kwargs,
 ):
     """
@@ -581,7 +605,58 @@ def run(
         else int(utils.parse_timedelta(inactive_soft_timeout_str).total_seconds())
     )
 
-    recipe = Recipe(args=args, **kwargs)
+    # Import registered callback modules.
+    callback_names = set(Callback.get_registered_names())
+    for callback_module in callback_modules or []:
+        utils.import_module(callback_module)
+        for name in Callback.get_registered_names():
+            if name not in callback_names:
+                log.debug(f"Imported callback '{name}' from module '{callback_module}'.")
+                callback_names.add(name)
+
+    # Initialize callbacks.
+    callbacks: list[Callback] = []
+    has_slack_callback = False
+    for callback_config_str in callback_configs or []:
+        callback: Callback
+        if "{" not in callback_config_str and "}" not in callback_config_str:
+            try:
+                callback_cls = Callback.get_registered_class(callback_config_str)
+            except KeyError:
+                raise ConfigurationError(f"Unknown callback name '{callback_config_str}'")
+
+            try:
+                callback = callback_cls()
+            except TypeError as e:
+                raise ConfigurationError(
+                    f"Failed to initialize '{callback_config_str}' callback. If the callback has "
+                    f"required arguments, you'll need to specify the callback as a JSON/YAML config.\n"
+                    f"For example: --callback '{{type: {callback_config_str}, arg1: value1}}'."
+                ) from e
+        else:
+            import yaml
+
+            try:
+                callback_json_config = yaml.safe_load(callback_config_str)
+            except yaml.error.YAMLError as e:
+                raise ConfigurationError(f"Invalid callback config: '{callback_config_str}'") from e
+
+            try:
+                callback = decode(Callback, callback_json_config)
+            except Exception as e:
+                raise ConfigurationError(
+                    f"Failed to decode callback from '{callback_config_str}'"
+                ) from e
+
+        callbacks.append(callback)
+        log.debug("Initialized callback: %s", callback)
+        if isinstance(callback, SlackCallback):
+            has_slack_callback = True
+
+    if slack_webhook_url is not None and not has_slack_callback:
+        callbacks.append(SlackCallback(webhook_url=slack_webhook_url))
+
+    recipe = Recipe(args=args, callbacks=callbacks, **kwargs)
     if dry_run:
         recipe.dry_run()
     else:

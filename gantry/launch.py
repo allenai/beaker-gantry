@@ -30,7 +30,7 @@ from rich.status import Status
 
 from . import beaker_utils, constants, utils
 from .aliases import PathOrStr
-from .callbacks import Callback, SlackCallback
+from .callbacks import Callback
 from .exceptions import *
 from .git_utils import GitRepoState
 
@@ -103,7 +103,6 @@ def launch_experiment(
     default_python_version: str = utils.get_local_python_version(),
     pre_setup: str | None = None,
     post_setup: str | None = None,
-    slack_webhook_url: str | None = None,
     aws_config_secret: str | None = None,
     aws_credentials_secret: str | None = None,
     google_credentials_secret: str | None = None,
@@ -426,17 +425,6 @@ def launch_experiment(
                 )
             env_secrets_to_use.append(("GANTRY_GOOGLE_CREDENTIALS", google_credentials_secret))
 
-        if slack_webhook_url is not None and "GANTRY_SLACK_WEBHOOK_URL" not in secret_names:
-            if not slack_webhook_url:
-                raise ConfigurationError(
-                    f"{utils.fmt_opt('--slack-webhook-url')} cannot be an empty string"
-                )
-
-            slack_webhook_url_secret = beaker_utils.ensure_secret(
-                beaker, "GANTRY_SLACK_WEBHOOK_URL", slack_webhook_url
-            )
-            env_secrets_to_use.append(("GANTRY_SLACK_WEBHOOK_URL", slack_webhook_url_secret))
-
         if leader_selection is None:
             if replicas and torchrun and host_networking is not False:
                 leader_selection = True
@@ -588,13 +576,6 @@ def launch_experiment(
 
         # Initialize and attach callbacks.
         callbacks = list(callbacks) if callbacks is not None else []
-        if slack_webhook_url is not None:
-            for callback in callbacks:
-                if isinstance(callback, SlackCallback):
-                    break
-            else:
-                callbacks.append(SlackCallback(webhook_url=slack_webhook_url))
-
         for callback in callbacks:
             callback.attach(
                 beaker=beaker,

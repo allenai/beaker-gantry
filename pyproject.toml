@@ -30,6 +30,7 @@ dependencies = [
     "packaging",
     "tomli",
     "dataclass-extensions",
+    "PyYAML",
 ]
 
 [project.optional-dependencies]
