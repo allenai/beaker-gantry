@@ -64,6 +64,14 @@ def job_was_preempted(job: BeakerJob) -> bool:
     )
 
 
+def job_has_started(job: BeakerJob) -> bool:
+    return job.status.HasField("started")
+
+
+def job_has_finalized(job: BeakerJob) -> bool:
+    return job.status.HasField("finalized")
+
+
 def get_latest_workload(
     beaker: Beaker,
     *,

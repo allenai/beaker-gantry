@@ -658,6 +658,7 @@ def follow_workload(
     beaker: Beaker,
     workload: BeakerWorkload,
     *,
+    job: BeakerJob | None = None,
     task: BeakerTask | None = None,
     timeout: int | None = None,
     start_timeout: int | None = None,
@@ -692,34 +693,40 @@ def follow_workload(
     preempted_job_ids = set()
 
     while True:
-        job: BeakerJob | None = None
         with ExitStack() as stack:
-            msg = "[i]waiting on job...[/]"
-            status: Status | None = None
-            if not os.environ.get("GANTRY_GITHUB_TESTING"):
-                status = stack.enter_context(console.status(msg, spinner="point", speed=0.8))
-            else:
-                utils.print_stdout(msg)
-
-            # Wait for job to be created...
-            while job is None:
-                if (
-                    j := beaker.workload.get_latest_job(workload, task=task)
-                ) is not None and j.id not in preempted_job_ids:
-                    job = j
-                elif timeout is not None and (time.monotonic() - start_time) > timeout:
-                    raise BeakerJobTimeoutError("Timed out while waiting for job to be created")
-                elif start_timeout is not None and (time.monotonic() - start_time) > start_timeout:
-                    raise BeakerJobTimeoutError("Timed out while waiting for job to be created")
+            if job is None:
+                msg = "[i]waiting on job...[/]"
+                status: Status | None = None
+                if not os.environ.get("GANTRY_GITHUB_TESTING"):
+                    status = stack.enter_context(console.status(msg, spinner="point", speed=0.8))
                 else:
-                    time.sleep(1.0)
+                    utils.print_stdout(msg)
 
-            if status is not None:
-                status.update("[i]waiting for job to launch...[/]")
+                # Wait for job to be created...
+                while job is None:
+                    if (
+                        j := beaker.workload.get_latest_job(workload, task=task)
+                    ) is not None and j.id not in preempted_job_ids:
+                        job = j
+                    elif timeout is not None and (time.monotonic() - start_time) > timeout:
+                        raise BeakerJobTimeoutError("Timed out while waiting for job to be created")
+                    elif (
+                        start_timeout is not None
+                        and (time.monotonic() - start_time) > start_timeout
+                    ):
+                        raise BeakerJobTimeoutError("Timed out while waiting for job to be created")
+                    else:
+                        time.sleep(1.0)
 
-            # Pull events until job is running (or fails)...
+                if status is not None:
+                    status.update("[i]waiting for job to launch...[/]")
+
+            # Pull events until job is running or fails (whichever happens first)...
             events = set()
-            while True:
+            while not (
+                beaker_utils.job_has_finalized(job)
+                or (beaker_utils.job_has_started(job) and show_logs)
+            ):
                 for event in beaker.job.list_summarized_events(
                     job, sort_order=BeakerSortOrder.descending, sort_field="latest_occurrence"
                 ):
@@ -729,18 +736,10 @@ def follow_workload(
                         utils.print_stdout(f"✓ [i]{event.latest_message}[/]")
                         time.sleep(0.5)
 
-                job = beaker.job.get(job.id)
-                job_finalized = job.status.HasField("finalized")
-                job_started = job.status.HasField("started")
-
-                if job_finalized:
-                    break
-                elif job_started and show_logs:
-                    break
-                elif timeout is not None and (time.monotonic() - start_time) > timeout:
+                if timeout is not None and (time.monotonic() - start_time) > timeout:
                     for callback in callbacks or []:
                         callback.on_timeout(job)
-                    if job_started:
+                    if beaker_utils.job_has_started(job):
                         raise BeakerJobTimeoutError(
                             f"Timed out while waiting for job '{job.id}' to finish"
                         )
@@ -750,7 +749,7 @@ def follow_workload(
                         )
                 elif (
                     start_timeout is not None
-                    and not job_started
+                    and not beaker_utils.job_has_started(job)
                     and (time.monotonic() - start_time) > start_timeout
                 ):
                     for callback in callbacks or []:
@@ -760,6 +759,7 @@ def follow_workload(
                     )
                 else:
                     time.sleep(0.5)
+                    job = beaker.job.get(job.id)
 
         assert job is not None
 
@@ -767,7 +767,7 @@ def follow_workload(
             callback.on_start(job)
 
         # Stream logs...
-        if show_logs and job.status.HasField("started"):
+        if show_logs and beaker_utils.job_has_started(job):
             queue: Queue = Queue()
             sentinel = object()
 
@@ -841,7 +841,7 @@ def follow_workload(
             rich.get_console().rule("End logs")
 
         # Wait for job to finalize...
-        while not job.status.HasField("finalized"):
+        while not beaker_utils.job_has_finalized(job):
             time.sleep(0.5)
             job = beaker.job.get(job.id)
 
@@ -853,6 +853,7 @@ def follow_workload(
             preempted_job_ids.add(job.id)
             for callback in callbacks or []:
                 callback.on_preemption(job)
+            job = None
             continue
 
         return job

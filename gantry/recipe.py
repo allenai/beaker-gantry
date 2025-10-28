@@ -137,6 +137,7 @@ class Recipe:
 
     def _get_launch_kwargs(self) -> dict[str, Any]:
         kwargs = dataclasses.asdict(self)
+        kwargs["callbacks"] = self.callbacks
         kwargs.pop("args")
         return kwargs
 
