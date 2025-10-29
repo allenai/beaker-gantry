@@ -26,5 +26,5 @@ runs:
       shell: bash
       run: |
         # Show environment info.
-        echo "✓ Installed $(python --version) virtual environment to $(which python)"
+        echo "✓ Using $(python --version) @ $(which python)"
         pip freeze
