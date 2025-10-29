@@ -126,11 +126,6 @@ jobs:
           name: package
           path: dist
 
-      - name: Clean up
-        if: always()
-        run: |
-          pip uninstall -y gantry
-
   docker:
     name: Docker build
     runs-on: [ubuntu-latest]
