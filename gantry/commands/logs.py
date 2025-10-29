@@ -1,6 +1,6 @@
 import concurrent.futures
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import click
@@ -62,7 +62,7 @@ def logs(
 
     since_dt: datetime | None = None
     if since is not None:
-        since_dt = datetime.fromisoformat(since.replace("Z", "+00:00"))
+        since_dt = datetime.fromisoformat(since.replace("Z", "+00:00")) - timedelta(milliseconds=1)
 
     with beaker_utils.init_client(ensure_workspace=False) as beaker:
         wl = beaker.workload.get(workload)
@@ -102,8 +102,12 @@ def logs(
                     futures.append(future)
 
                 num_log_files_written = 0
+                min_lines_logged: int | None = None
+                file_with_min_lines: Path | None = None
+                max_lines_logged: str | None = None
+                file_with_max_lines: Path | None = None
                 for future in concurrent.futures.as_completed(futures):
-                    task, job = future.result()
+                    task, job, out_path, n_lines = future.result()
                     assert task is not None
                     if job is None:
                         utils.print_stderr(
@@ -111,9 +115,23 @@ def logs(
                         )
                     else:
                         num_log_files_written += 1
+                        if min_lines_logged is None or n_lines < min_lines_logged:
+                            min_lines_logged = n_lines
+                            file_with_min_lines = out_path
+                        if max_lines_logged is None or n_lines > max_lines_logged:
+                            max_lines_logged = n_lines
+                            file_with_max_lines = out_path
 
             if num_log_files_written > 0:
                 utils.print_stdout(f"Logs saved to [cyan]{output}[/]")
+            if min_lines_logged is not None and file_with_min_lines is not None:
+                utils.print_stdout(
+                    f"Log file with fewest lines: [cyan]{file_with_min_lines}[/] ({min_lines_logged:,d} lines)"
+                )
+            if max_lines_logged is not None and file_with_max_lines is not None:
+                utils.print_stdout(
+                    f"Log file with most lines: [cyan]{file_with_max_lines}[/] ({max_lines_logged:,d} lines)"
+                )
         else:
             if replica is not None:
                 for task in tasks:
@@ -173,11 +191,11 @@ def _resolve_job_and_download_logs(
     out_path: Path,
     tail: int | None = None,
     since: datetime | None = None,
-) -> tuple[BeakerTask, BeakerJob | None]:
+) -> tuple[BeakerTask, BeakerJob | None, Path, int]:
     job = beaker_utils.get_job(beaker, wl, task, run=run)
     if job is None:
-        return task, None
-    return task, beaker_utils.download_logs(
+        return task, None, out_path, 0
+    job, n_lines = beaker_utils.download_logs(
         beaker,
         job,
         tail_lines=tail,
@@ -185,3 +203,4 @@ def _resolve_job_and_download_logs(
         since=since,
         out_path=out_path,
     )
+    return task, job, out_path, n_lines

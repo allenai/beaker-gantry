@@ -405,7 +405,7 @@ def download_logs(
     since: datetime | None = None,
     follow: bool = True,
     out_path: PathOrStr | None = None,
-) -> BeakerJob:
+) -> tuple[BeakerJob, int]:
     if out_path is not None:
         out_path = Path(out_path)
         out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -413,12 +413,14 @@ def download_logs(
         utils.print_stdout()
         rich.get_console().rule("Logs")
 
+    n_lines = 0
     with ExitStack() as stack:
         out_file = None
         if out_path is not None:
             out_file = stack.enter_context(open(out_path, "wb"))
 
         for job_log in beaker.job.logs(job, follow=follow, tail_lines=tail_lines, since=since):
+            n_lines += 1
             if out_file is None:
                 utils.print_stdout(job_log.message.decode(), markup=False)
             else:
@@ -429,7 +431,7 @@ def download_logs(
         utils.print_stdout()
         rich.get_console().rule("End logs")
 
-    return beaker.job.get(job.id)
+    return beaker.job.get(job.id), n_lines
 
 
 def display_results(
