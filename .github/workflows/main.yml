@@ -16,7 +16,6 @@ on:
 
 env:
   # Change this to invalidate existing cache.
-  CACHE_PREFIX: v0
   PYTHONPATH: ./
   GANTRY_GITHUB_TESTING: 'true'
 
@@ -115,11 +114,9 @@ jobs:
         uses: ./.github/actions/setup-venv
         with:
           python-version: ${{ matrix.python }}
-          cache-prefix: ${{ env.CACHE_PREFIX }}
 
       - name: ${{ matrix.task.name }}
         run: |
-          . .venv/bin/activate
           ${{ matrix.task.run }}
 
       - name: Upload package distribution files
@@ -132,7 +129,6 @@ jobs:
       - name: Clean up
         if: always()
         run: |
-          . .venv/bin/activate
           pip uninstall -y gantry
 
   docker:
@@ -177,7 +173,6 @@ jobs:
         uses: ./.github/actions/setup-venv
         with:
           python-version: ${{ matrix.python }}
-          cache-prefix: ${{ env.CACHE_PREFIX }}
 
       - name: Prepare environment
         run: |
@@ -192,12 +187,10 @@ jobs:
 
       - name: Generate release notes
         run: |
-          . .venv/bin/activate
           python scripts/release_notes.py > ${{ github.workspace }}-RELEASE_NOTES.md
 
       - name: Publish package to PyPI
         run: |
-          . .venv/bin/activate
           twine upload -u __token__ -p ${{ secrets.PYPI_PASSWORD }} dist/*
 
       - name: Publish GitHub release
@@ -220,5 +213,4 @@ jobs:
       - name: Send Slack notifications about release
         continue-on-error: true
         run: |
-          . .venv/bin/activate
           python ./scripts/slack_notification.py '${{ secrets.SLACK_WEBHOOK_URL}}'
