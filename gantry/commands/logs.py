@@ -124,11 +124,21 @@ def logs(
 
             if num_log_files_written > 0:
                 utils.print_stdout(f"Logs saved to [cyan]{output}[/]")
-            if min_lines_logged is not None and file_with_min_lines is not None:
+
+            if (
+                num_log_files_written > 1
+                and min_lines_logged is not None
+                and file_with_min_lines is not None
+            ):
                 utils.print_stdout(
                     f"Log file with fewest lines: [cyan]{file_with_min_lines}[/] ({min_lines_logged:,d} lines)"
                 )
-            if max_lines_logged is not None and file_with_max_lines is not None:
+
+            if (
+                num_log_files_written > 1
+                and max_lines_logged is not None
+                and file_with_max_lines is not None
+            ):
                 utils.print_stdout(
                     f"Log file with most lines: [cyan]{file_with_max_lines}[/] ({max_lines_logged:,d} lines)"
                 )
