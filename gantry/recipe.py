@@ -6,6 +6,7 @@ from beaker import BeakerWorkload
 
 from . import constants, utils
 from .aliases import PathOrStr
+from .callbacks import Callback
 from .exceptions import *
 from .launch import launch_experiment
 
@@ -30,8 +31,8 @@ class Recipe:
     yes: bool | None = None
     save_spec: PathOrStr | None = None
 
-    # Notifications.
-    slack_webhook_url: str | None = None
+    # Callbacks.
+    callbacks: Sequence[Callback] | None = None
 
     # Constraints.
     clusters: Sequence[str] | None = None
@@ -136,6 +137,7 @@ class Recipe:
 
     def _get_launch_kwargs(self) -> dict[str, Any]:
         kwargs = dataclasses.asdict(self)
+        kwargs["callbacks"] = self.callbacks
         kwargs.pop("args")
         return kwargs
 

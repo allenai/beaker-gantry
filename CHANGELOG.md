@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added `--since` option and `-a/-all` flag to `gantry logs` command.
 - Added `--inactive-timeout` and `--inactive-soft-timeout` options to `gantry run` command.
+- Added a callback API to `gantry run` and corresponding Python functions.
 
 ### Changed
 

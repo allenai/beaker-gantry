@@ -10,6 +10,7 @@ from typing import Any, Literal
 from beaker import Beaker
 
 from . import beaker_utils
+from .callbacks import *
 from .git_utils import GitRepoState
 from .launch import follow_workload, launch_experiment
 from .recipe import Recipe
@@ -17,6 +18,8 @@ from .recipe import Recipe
 __all__ = [
     "Recipe",
     "GitRepoState",
+    "Callback",
+    "SlackCallback",
     "launch_experiment",
     "follow_workload",
     "update_workload_description",

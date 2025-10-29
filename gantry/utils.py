@@ -244,6 +244,12 @@ def check_for_upgrades(force: bool = False):
         pass
 
 
+def import_module(module_name: str):
+    import importlib
+
+    return importlib.import_module(module_name)
+
+
 def highlight_pattern(s: str, pattern: str) -> str:
     match = s.lower()
     pattern = pattern.lower()

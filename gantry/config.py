@@ -15,6 +15,7 @@ class GantryConfig:
     budget: str | None = None
     log_level: Literal["debug", "info", "warning", "error"] | None = None
     quiet: bool | None = None
+    callback_modules: list[str] | None = dataclasses.field(default=None)
     path: str | None = dataclasses.field(repr=False, default=None)
 
     @classmethod
@@ -48,7 +49,9 @@ class GantryConfig:
 
     def get_help_string_for_default(
         self,
-        field: Literal["workspace", "gh_token_secret", "budget", "log_level", "quiet"],
+        field: Literal[
+            "workspace", "gh_token_secret", "budget", "log_level", "quiet", "callback_modules"
+        ],
         default: Any = None,
     ) -> str:
         value = getattr(self, field)

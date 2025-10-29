@@ -69,5 +69,6 @@ def follow(
             )
 
         assert wl is not None
-        job = follow_workload(beaker, wl, tail=tail)
+        job = beaker.workload.get_latest_job(wl)
+        job = follow_workload(beaker, wl, job=job, tail=tail)
         beaker_utils.display_results(beaker, wl, job)

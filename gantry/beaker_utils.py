@@ -9,7 +9,7 @@ from contextlib import ExitStack
 from datetime import datetime
 from fnmatch import fnmatch
 from pathlib import Path
-from typing import Iterable, Literal, Sequence
+from typing import Any, Iterable, Literal, Sequence
 
 import rich
 from beaker import *
@@ -18,9 +18,9 @@ from rich import prompt
 
 from . import constants, utils
 from .aliases import PathOrStr
+from .callbacks import Callback
 from .exceptions import *
 from .git_utils import GitRepoState
-from .notifiers import *
 from .version import VERSION
 
 log = logging.getLogger(__name__)
@@ -62,6 +62,14 @@ def job_was_preempted(job: BeakerJob) -> bool:
         BeakerCancelationCode.system_preemption,
         BeakerCancelationCode.user_preemption,
     )
+
+
+def job_has_started(job: BeakerJob) -> bool:
+    return job.status.HasField("started")
+
+
+def job_has_finalized(job: BeakerJob) -> bool:
+    return job.status.HasField("finalized")
 
 
 def get_latest_workload(
@@ -429,7 +437,7 @@ def display_results(
     workload: BeakerWorkload,
     job: BeakerJob,
     info_header: str | None = None,
-    notifiers: list[Notifier] | None = None,
+    callbacks: Sequence[Callback] | None = None,
 ):
     status = job.status.status
     runtime = job.status.exited - job.status.started  # type: ignore
@@ -448,10 +456,12 @@ def display_results(
         f"[b]Runtime:[/] {utils.format_timedelta(runtime)}"
     )
 
+    metrics: dict[str, Any] | None = None
     if job.metrics:
         from google.protobuf.json_format import MessageToDict
 
-        utils.print_stdout("[b]Metrics:[/]", MessageToDict(job.metrics), highlight=True)
+        metrics = MessageToDict(job.metrics)
+        utils.print_stdout("[b]Metrics:[/]", metrics, highlight=True)
 
     if status in (BeakerWorkloadStatus.canceled, BeakerWorkloadStatus.failed):
         print()
@@ -459,15 +469,15 @@ def display_results(
             show_all_jobs(beaker, workload)
             utils.print_stdout()
 
-        for notifier in notifiers or []:
-            notifier.notify(workload, "failed", job=job)
+        for callback in callbacks or []:
+            callback.on_failure(job, metrics=metrics, results_ds=results_ds)
 
         raise ExperimentFailedError(
             f"Job {get_job_status_str(job)}, see {beaker.workload.url(workload)} for details"
         )
     elif status == BeakerWorkloadStatus.succeeded:
-        for notifier in notifiers or []:
-            notifier.notify(workload, "succeeded", job=job)
+        for callback in callbacks or []:
+            callback.on_success(job, metrics=metrics, results_ds=results_ds)
     else:
         raise ValueError(f"unexpected workload status '{status}'")
 
