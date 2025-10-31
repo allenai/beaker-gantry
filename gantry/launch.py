@@ -71,6 +71,8 @@ def launch_experiment(
     env_secrets: Sequence[str | tuple[str, str]] | None = None,
     dataset_secrets: Sequence[str | tuple[str, str]] | None = None,
     mounts: Sequence[str | tuple[str, str]] | None = None,
+    weka: Sequence[str | tuple[str, str]] | None = None,
+    uploads: Sequence[str | tuple[str, str]] | None = None,
     timeout: int | None = None,
     task_timeout: str | None = None,
     start_timeout: int | None = None,
@@ -90,7 +92,6 @@ def launch_experiment(
     propagate_failure: bool | None = None,
     propagate_preemption: bool | None = None,
     synchronized_start_timeout: str | None = None,
-    weka: Sequence[str | tuple[str, str]] | None = None,
     budget: str | None = None,
     preemptible: bool | None = None,
     retries: int | None = None,
@@ -307,6 +308,17 @@ def launch_experiment(
             tags = list(tags or [])
             tags.append("storage:weka")
 
+        uploads_to_use = []
+        for f in uploads or []:
+            if isinstance(f, tuple):
+                source, target = f
+            else:
+                try:
+                    source, target = f.split(":", 1)
+                except ValueError:
+                    raise ValueError(f"Invalid upload spec: '{f}'")
+            uploads_to_use.append((source, target))
+
         if interconnect is not None:
             tags = list(tags or [])
             tags.append(f"interconnect:{interconnect}")
@@ -447,6 +459,7 @@ def launch_experiment(
 
         # Initialize experiment and task spec.
         spec = beaker_utils.build_experiment_spec(
+            beaker,
             task_name=task_name,
             clusters=list(clusters or []),
             task_resources=task_resources,
@@ -483,6 +496,7 @@ def launch_experiment(
             task_timeout=task_timeout,
             mounts=mounts_to_use,
             weka_buckets=weka_buckets,
+            uploads=uploads_to_use,
             hostnames=None if hostnames is None else list(hostnames),
             preemptible=preemptible,
             retries=retries,

@@ -252,6 +252,17 @@ log = logging.getLogger(__name__)
     e.g. '--weka=oe-training-default:/data'. Multiple allowed.""",
 )
 @optgroup.option(
+    "-u",
+    "--upload",
+    "uploads",
+    type=str,
+    multiple=True,
+    help="""A local file or directory to upload and mount to the Beaker experiment in the form of
+    '/local/path:/mounting/directory'.
+    Multiple allowed.
+    Note it only makes sense to use this for files that aren't committed to your repository.""",
+)
+@optgroup.option(
     "--env",
     "env_vars",
     type=str,

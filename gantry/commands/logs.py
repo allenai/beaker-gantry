@@ -104,7 +104,7 @@ def logs(
                 num_log_files_written = 0
                 min_lines_logged: int | None = None
                 file_with_min_lines: Path | None = None
-                max_lines_logged: str | None = None
+                max_lines_logged: int | None = None
                 file_with_max_lines: Path | None = None
                 for future in concurrent.futures.as_completed(futures):
                     task, job, out_path, n_lines = future.result()

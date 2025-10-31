@@ -56,6 +56,7 @@ class Recipe:
     dataset_secrets: Sequence[str | tuple[str, str]] | None = None
     mounts: Sequence[str | tuple[str, str]] | None = None
     weka: Sequence[str | tuple[str, str]] | None = None
+    uploads: Sequence[str | tuple[str, str]] | None = None
     ref: str | None = None
     branch: str | None = None
     gh_token_secret: str = constants.GITHUB_TOKEN_SECRET

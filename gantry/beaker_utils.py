@@ -134,6 +134,75 @@ def ensure_datasets(beaker: Beaker, *datasets: str) -> list[tuple[str, str | Non
     return out
 
 
+def ensure_source_dataset(
+    beaker: Beaker, *sources: PathOrStr, budget: str | None = None
+) -> BeakerDataset:
+    workspace = beaker.workspace.get()
+
+    # Get hash of the contents of the file to create a unique name.
+    sha256_hash = hashlib.sha256()
+    all_source_files = []
+    for source in sources:
+        source = Path(source)
+        if source.is_dir():
+            for path in source.glob("**/*"):
+                if path.is_file():
+                    all_source_files.append(path)
+        elif source.is_file():
+            all_source_files.append(source)
+        else:
+            raise FileNotFoundError(source)
+
+    for path in all_source_files:
+        sha256_hash.update(str(path.resolve()).encode())
+        with path.open("rb") as f:
+            for byte_block in iter(lambda: f.read(4096), b""):
+                sha256_hash.update(byte_block)
+
+    dataset_name = f"gantry-v{VERSION}-source-{sha256_hash.hexdigest()}"
+
+    def get_dataset() -> BeakerDataset | None:
+        for dataset in beaker.dataset.list(
+            workspace=workspace, name_or_description=dataset_name, results=False
+        ):
+            if dataset.name == dataset_name:
+                return dataset
+        return None
+
+    dataset = get_dataset()
+    if dataset is None:
+        # Create it.
+        log.info(f"Creating dataset {dataset_name} from local source files...")
+        try:
+            dataset = beaker.dataset.create(dataset_name, *sources, budget=budget, strip_paths=True)
+            log.info(f"Dataset created: {beaker.dataset.url(dataset)}")
+        except BeakerDatasetConflict:  # could be in a race with another `gantry` process.
+            time.sleep(1.0)
+            dataset = get_dataset()
+            if dataset is None:
+                raise RuntimeError(f"Failed to resolve dataset '{dataset_name}'. Please try again.")
+            log.info(f"Reusing dataset {beaker.dataset.url(dataset)} for local source files")
+    else:
+        log.info(f"Reusing dataset {beaker.dataset.url(dataset)} for local source files")
+
+    # Verify contents.
+    ds_files = list(beaker.dataset.list_files(dataset))
+    for retry in range(1, 4):
+        ds_files = list(beaker.dataset.list_files(dataset))
+        if len(ds_files) >= len(all_source_files):
+            break
+        else:
+            time.sleep(1.5**retry)
+
+    if len(ds_files) != len(all_source_files):
+        raise EntrypointChecksumError(
+            f"Dataset {beaker.dataset.url(dataset)} for local source files is missing the "
+            f"required files. Please run again."
+        )
+
+    return dataset
+
+
 def ensure_entrypoint_dataset(beaker: Beaker, budget: str | None = None) -> BeakerDataset:
     from importlib.resources import read_binary
 
@@ -149,21 +218,18 @@ def ensure_entrypoint_dataset(beaker: Beaker, budget: str | None = None) -> Beak
     entrypoint_dataset_name = f"gantry-v{VERSION}-{workspace.id}-{sha256_hash.hexdigest()[:6]}"
 
     def get_dataset() -> BeakerDataset | None:
-        matching_datasets = list(
-            beaker.dataset.list(
-                workspace=workspace, name_or_description=entrypoint_dataset_name, results=False
-            )
-        )
-        if matching_datasets:
-            return matching_datasets[0]
-        else:
-            return None
+        for dataset in beaker.dataset.list(
+            workspace=workspace, name_or_description=entrypoint_dataset_name, results=False
+        ):
+            if dataset.name == entrypoint_dataset_name:
+                return dataset
+        return None
 
     # Ensure gantry entrypoint dataset exists.
     gantry_entrypoint_dataset = get_dataset()
     if gantry_entrypoint_dataset is None:
         # Create it.
-        utils.print_stdout(f"Creating entrypoint dataset [cyan]{entrypoint_dataset_name}[/]")
+        log.info(f"Creating entrypoint dataset {entrypoint_dataset_name}...")
         try:
             with tempfile.TemporaryDirectory() as tmpdirname:
                 tmpdir = Path(tmpdirname)
@@ -485,6 +551,7 @@ def display_results(
 
 
 def build_experiment_spec(
+    beaker: Beaker,
     *,
     task_name: str,
     clusters: list[str],
@@ -522,6 +589,7 @@ def build_experiment_spec(
     task_timeout: str | None = None,
     mounts: list[tuple[str, str]] | None = None,
     weka_buckets: list[tuple[str, str]] | None = None,
+    uploads: list[tuple[str, str]] | None = None,
     hostnames: list[str] | None = None,
     preemptible: bool | None = None,
     retries: int | None = None,
@@ -758,6 +826,15 @@ def build_experiment_spec(
     if weka_buckets:
         for source, target in weka_buckets:
             task_spec = task_spec.with_dataset(target, weka=source)
+
+    if uploads:
+        for source, target in uploads:
+            if Path(target).suffix:
+                raise ConfigurationError(
+                    f"The target mount path for uploads must be a directory, not a filename. Got: '{target}'"
+                )
+            source_dataset = ensure_source_dataset(beaker, source, budget=budget)
+            task_spec = task_spec.with_dataset(target, beaker=source_dataset.id)
 
     for name, val in env or []:
         task_spec = task_spec.with_env_var(name=name, value=val)
