@@ -25,6 +25,7 @@ from .main import CLICK_COMMAND_DEFAULTS, main
     help="""Pull logs from all tasks/replicas.
     This requires an output directory (e.g. --output=~/Downloads/).""",
 )
+@click.option("-n", "--head", type=int, help="""Only download the first N lines.""")
 @click.option("-t", "--tail", type=int, help="""Tail this many lines.""")
 @click.option("-s", "--since", type=str, help="""Only pull logs since this time (ISO format).""")
 @click.option(
@@ -37,6 +38,7 @@ def logs(
     task_name: int | None = None,
     run: int | None = None,
     all_tasks: bool = False,
+    head: int | None = None,
     tail: int | None = None,
     since: str | None = None,
     follow: bool = False,
@@ -56,6 +58,9 @@ def logs(
 
     if tail and since:
         raise ConfigurationError("--tail and --since are mutually exclusive")
+
+    if head and tail:
+        raise ConfigurationError("--head and --tail are mutually exclusive")
 
     if output is not None:
         output = Path(output)
@@ -95,6 +100,7 @@ def logs(
                         wl=wl,
                         task=task,
                         run=run,
+                        head=head,
                         tail=tail,
                         since=since_dt,
                         out_path=out_path,
@@ -172,6 +178,7 @@ def logs(
             beaker_utils.download_logs(
                 beaker,
                 job,
+                head_lines=head,
                 tail_lines=tail,
                 follow=follow,
                 since=since_dt,
@@ -199,6 +206,7 @@ def _resolve_job_and_download_logs(
     task: BeakerTask,
     run: int | None,
     out_path: Path,
+    head: int | None = None,
     tail: int | None = None,
     since: datetime | None = None,
 ) -> tuple[BeakerTask, BeakerJob | None, Path, int]:
@@ -208,6 +216,7 @@ def _resolve_job_and_download_logs(
     job, n_lines = beaker_utils.download_logs(
         beaker,
         job,
+        head_lines=head,
         tail_lines=tail,
         follow=False,
         since=since,

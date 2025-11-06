@@ -467,6 +467,7 @@ def filter_clusters_by_gpu_type(
 def download_logs(
     beaker: Beaker,
     job: BeakerJob,
+    head_lines: int | None = None,
     tail_lines: int | None = None,
     since: datetime | None = None,
     follow: bool = True,
@@ -478,6 +479,13 @@ def download_logs(
     else:
         utils.print_stdout()
         rich.get_console().rule("Logs")
+
+    if tail_lines is not None and head_lines is not None:
+        raise ConfigurationError("can't use both 'head_lines' and 'tail_lines' options together")
+    if tail_lines is not None and tail_lines < 0:
+        raise ConfigurationError("'tail_lines' must be non-negative")
+    if head_lines is not None and head_lines < 0:
+        raise ConfigurationError("'head_lines' must be non-negative")
 
     n_lines = 0
     with ExitStack() as stack:
@@ -492,6 +500,8 @@ def download_logs(
             else:
                 out_file.write(job_log.message)
                 out_file.write(b"\n")
+            if head_lines is not None and n_lines >= head_lines:
+                break
 
     if out_path is None:
         utils.print_stdout()
