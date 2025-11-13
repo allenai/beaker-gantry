@@ -521,7 +521,7 @@ fi
 
 log_info "Shell is $(bash --version | head -n 1)."
 log_info "Running on Beaker node '${BEAKER_NODE_HOSTNAME}' (${BEAKER_NODE_ID})"
-log_physical_host_topology
+log_physical_host_topology || log_warning "Failed to get physical host topology"
 log_info "Results dataset ${RESULTS_DATASET_URL} mounted to '${RESULTS_DIR}'."
 
 log_info "Checking for required tools..."
