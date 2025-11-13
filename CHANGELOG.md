@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `--inactive-timeout` and `--inactive-soft-timeout` options to `gantry run` command.
 - Added a callback API to `gantry run` and corresponding Python functions.
 - Added `-u/--upload` option to `gantry run` for uploading local (untracked) files/directories and mounting as a dataset. 
+- Log physical host topology at start of job when running on Augusta.
 
 ### Changed
 

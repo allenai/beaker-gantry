@@ -69,6 +69,19 @@ function has_infiniband {
     fi
 }
 
+function log_physical_host_topology {
+    if [[ $BEAKER_NODE_HOSTNAME == "augusta"* ]]; then
+        local instance_id
+        local topology
+        local metadata
+        instance_id=$(curl -s -H Metadata-Flavor:Google http://metadata.google.internal/computeMetadata/v1/instance/id) || return 1
+        topology=$(curl -s -H Metadata-Flavor:Google http://metadata.google.internal/computeMetadata/v1/instance/attributes/physical_host_topology | tr -d '[:space:]') || return 1
+        metadata=$(printf 'GoogleInstanceMetadata: {"id":"%s","physical_host_topology":%s}\n' "$instance_id" "$topology")
+        log_info "$metadata"
+    fi
+    return 0
+}
+
 function is_multi_node_gpu_job {
     if [[ -n "$BEAKER_REPLICA_COUNT" ]] &&
        ((BEAKER_REPLICA_COUNT > 1)) &&
@@ -508,6 +521,7 @@ fi
 
 log_info "Shell is $(bash --version | head -n 1)."
 log_info "Running on Beaker node '${BEAKER_NODE_HOSTNAME}' (${BEAKER_NODE_ID})"
+log_physical_host_topology
 log_info "Results dataset ${RESULTS_DATASET_URL} mounted to '${RESULTS_DIR}'."
 
 log_info "Checking for required tools..."
