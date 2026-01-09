@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- Automatically create PyTorch kernel cache directory if `PYTORCH_KERNEL_CACHE_PATH` env var is set.
+- Added callback methods `Callback.on_no_new_logs()` and `Callback.interrupt_workload()`.
+
 ## [v3.3.1](https://github.com/allenai/beaker-gantry/releases/tag/v3.3.1) - 2025-12-12
 
 ### Added

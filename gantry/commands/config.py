@@ -18,7 +18,7 @@ def config():
     "-w",
     "--workspace",
     type=str,
-    help=f"""The Beaker workspace to pull experiments from. {get_global_config().get_help_string_for_default('workspace')}""",
+    help=f"""The Beaker workspace to set the secret in. {get_global_config().get_help_string_for_default('workspace')}""",
     default=get_global_config().workspace,
 )
 @click.option(

@@ -570,6 +570,11 @@ if [[ -n "$GANTRY_GOOGLE_CREDENTIALS" ]]; then
     fi
     log_info "Done."
 fi
+if [[ -n "$PYTORCH_KERNEL_CACHE_PATH" ]]; then
+    log_info "Creating PyTorch kernel cache directory..."
+    mkdir -p "$PYTORCH_KERNEL_CACHE_PATH"
+    log_info "Done."
+fi
 
 # Configure NCCL variables for the given hardware.
 # See https://beaker-docs.apps.allenai.org/experiments/distributed-training.html
