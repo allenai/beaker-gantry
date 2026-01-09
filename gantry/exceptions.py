@@ -54,3 +54,7 @@ class NotFoundError(GantryError):
 
 class BeakerJobTimeoutError(GantryError, TimeoutError):
     pass
+
+
+class GantryInterruptWorkload(GantryError):
+    """Raised by callbacks to forcefully interrupt a workload."""

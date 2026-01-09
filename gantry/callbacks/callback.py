@@ -11,6 +11,7 @@ from beaker import (
 )
 from dataclass_extensions import Registrable
 
+from ..exceptions import GantryInterruptWorkload
 from ..git_utils import GitRepoState
 
 
@@ -62,6 +63,10 @@ class Callback(Registrable):
             raise RuntimeError("Callback has not been attached to a gantry workload yet")
         return self._workload
 
+    def interrupt_workload(self):
+        """Cancels the active workload."""
+        raise GantryInterruptWorkload(f"workload interrupted by callback {self.__class__.__name__}")
+
     def attach(
         self,
         *,
@@ -98,6 +103,12 @@ class Callback(Registrable):
         Runs when a new log event is received from the workload.
         """
         del job, log_line, log_time
+
+    def on_no_new_logs(self, job: BeakerJob):
+        """
+        Periodically runs when no new logs have been received from the workload recently.
+        """
+        del job
 
     def on_start_timeout(self, job: BeakerJob):
         """

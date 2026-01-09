@@ -8,6 +8,7 @@ from . import constants, utils
 from .aliases import PathOrStr
 from .callbacks import Callback
 from .exceptions import *
+from .git_utils import GitRepoState
 from .launch import launch_experiment
 
 
@@ -59,6 +60,7 @@ class Recipe:
     uploads: Sequence[str | tuple[str, str]] | None = None
     ref: str | None = None
     branch: str | None = None
+    git_repo: GitRepoState | None = None
     gh_token_secret: str = constants.GITHUB_TOKEN_SECRET
     aws_config_secret: str | None = None
     aws_credentials_secret: str | None = None
@@ -139,6 +141,7 @@ class Recipe:
     def _get_launch_kwargs(self) -> dict[str, Any]:
         kwargs = dataclasses.asdict(self)
         kwargs["callbacks"] = self.callbacks
+        kwargs["git_repo"] = self.git_repo
         kwargs.pop("args")
         return kwargs
 

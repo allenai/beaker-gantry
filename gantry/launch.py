@@ -108,6 +108,7 @@ def launch_experiment(
     aws_credentials_secret: str | None = None,
     google_credentials_secret: str | None = None,
     callbacks: Sequence[Callback] | None = None,
+    git_repo: GitRepoState | None = None,
 ) -> BeakerWorkload | None:
     """
     Launch an experiment on Beaker. Same as the ``gantry run`` command.
@@ -155,7 +156,7 @@ def launch_experiment(
     )
 
     # Get git information.
-    git_repo = GitRepoState.from_env(ref=ref, branch=branch)
+    git_repo = git_repo if git_repo is not None else GitRepoState.from_env(ref=ref, branch=branch)
 
     # Validate repo state.
     if ref is None and not allow_dirty and git_repo.is_dirty:
@@ -615,7 +616,7 @@ def launch_experiment(
                 show_logs=show_logs,
                 callbacks=callbacks,
             )
-        except (TermInterrupt, BeakerJobTimeoutError) as exc:
+        except (TermInterrupt, BeakerJobTimeoutError, GantryInterruptWorkload) as exc:
             utils.print_stderr(f"[red][bold]{exc.__class__.__name__}:[/] [i]{exc}[/][/]")
             beaker.workload.cancel(workload)
             utils.print_stderr("[yellow]Experiment cancelled.[/]")
