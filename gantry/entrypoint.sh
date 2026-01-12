@@ -660,29 +660,32 @@ end_time=$(date +%s)
 log_header "Setup complete" "(finished in $((end_time-start_time)) seconds)"
 ##############################################################################
 
-if is_multi_node_gpu_job && [[ -n "$GANTRY_USE_TORCHRUN" ]]; then
-    cmd=(
-        torchrun
-        --no-python
-        --nnodes="$BEAKER_REPLICA_COUNT:$BEAKER_REPLICA_COUNT"
-        --nproc-per-node="$BEAKER_ASSIGNED_GPU_COUNT"
-        --rdzv-id="$GANTRY_RDZV_ID"
-        --rdzv-backend=static
-        --rdzv-endpoint="$BEAKER_LEADER_REPLICA_HOSTNAME:$GANTRY_RDZV_PORT"
-        --node-rank="$BEAKER_REPLICA_RANK"
-        --rdzv-conf="read_timeout=420"
-        "$@"
-    )
-elif [[ -n "$GANTRY_USE_TORCHRUN" ]]; then
-    cmd=(
-        torchrun
-        --no-python
-        --nproc-per-node="$BEAKER_ASSIGNED_GPU_COUNT"
-        "$@"
-    )
-else
-    cmd=("$@")
+cmd=()
+if [[ -n "$GANTRY_USE_TORCHRUN" ]]; then
+    if is_multi_node_gpu_job; then
+        cmd+=(
+            torchrun
+            --nnodes="$BEAKER_REPLICA_COUNT:$BEAKER_REPLICA_COUNT"
+            --nproc-per-node="$BEAKER_ASSIGNED_GPU_COUNT"
+            --rdzv-id="$GANTRY_RDZV_ID"
+            --rdzv-backend=static
+            --rdzv-endpoint="$BEAKER_LEADER_REPLICA_HOSTNAME:$GANTRY_RDZV_PORT"
+            --node-rank="$BEAKER_REPLICA_RANK"
+            --rdzv-conf="read_timeout=420"
+        )
+    else
+        cmd+=(
+            torchrun
+            --nproc-per-node="$BEAKER_ASSIGNED_GPU_COUNT"
+        )
+    fi
+
+    # If script isn't a Python file, append `--no-python` option to torchrun command.
+    if [[ "$1" != *.py ]]; then
+        cmd+=("--no-python")
+    fi
 fi
+cmd+=("$@")
 
 if [[ "$GANTRY_EXEC_METHOD" == "exec" ]]; then
     # exec "$@"

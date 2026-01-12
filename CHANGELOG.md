@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Fixed
+
+- Fixed entrypoint when using `torchrun` to handle Python files directly.
+
 ## [v3.4.0](https://github.com/allenai/beaker-gantry/releases/tag/v3.4.0) - 2026-01-09
 
 ### Added

@@ -556,7 +556,7 @@ def launch_experiment(
             + (("[b]Groups:[/]\n ❯ " + groups_str + "\n") if groups else "")
             + f"[b]Commit:[/] [cyan]{git_repo.short_ref}[/] {git_repo.short_commit_message() or ''} → [blue u]{git_repo.ref_url}[/]\n"
             + f"[b]Branch:[/] [cyan]{git_repo.branch}[/]"
-            + (f"→ [blue u]{git_repo.branch_url}[/]" if git_repo.branch_url else "")
+            + (f" → [blue u]{git_repo.branch_url}[/]" if git_repo.branch_url else "")
         )
 
         if dry_run:
