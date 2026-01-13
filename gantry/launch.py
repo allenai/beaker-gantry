@@ -119,7 +119,7 @@ def launch_experiment(
     if not args:
         if utils.is_cli_mode():
             raise ConfigurationError(
-                "[ARGS]... are required! For example:\n$ gantry run -- python -c 'print(\"Hello, World!\")'"
+                "[ARGS]... are required! For example:\n  $ gantry run -- python -c 'print(\"Hello, World!\")'"
             )
         else:
             raise ConfigurationError("'args' are required!")
@@ -649,7 +649,10 @@ def launch_experiment(
                     f"See the experiment at [blue u]{beaker.workload.url(workload)}[/]"
                 )
                 utils.print_stderr(
-                    f"[yellow]To cancel the experiment manually, run:\n[i]$ gantry stop {workload.experiment.id}[/][/]"
+                    f"To [yellow b]cancel[/] the workload manually, run:\n\n"
+                    f"  $ gantry stop {workload.experiment.id}\n\n"
+                    f"To [green b]resume following[/] the workload, run:\n\n"
+                    f"  $ gantry follow --tail {workload.experiment.id}"
                 )
                 if utils.is_cli_mode():
                     sys.exit(1)
