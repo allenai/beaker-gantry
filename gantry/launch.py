@@ -172,9 +172,9 @@ def launch_experiment(
                 beaker_image = constants.VERSIONED_DEFAULT_IMAGE
             except BeakerImageNotFound:
                 beaker_image = constants.DEFAULT_IMAGE
-        elif (beaker_image is None) == (docker_image is None):
+        elif beaker_image is not None and docker_image is not None:
             raise ConfigurationError(
-                f"Either {utils.fmt_opt('--beaker-image')} or {utils.fmt_opt('--docker-image')} must be specified, but not both."
+                f"{utils.fmt_opt('--beaker-image')} and {utils.fmt_opt('--docker-image')} are mutually exclusive."
             )
         elif beaker_image is not None and beaker_image != constants.DEFAULT_IMAGE:
             try:
@@ -213,6 +213,7 @@ def launch_experiment(
                         utils.print_stderr("[yellow]canceled[/]")
                         sys.exit(1)
 
+                assert group is not None
                 groups.append(group)
 
         # Get the entrypoint dataset.
@@ -738,6 +739,7 @@ def follow_workload(
                     status.update("[i]waiting for job to launch...[/]")
 
             # Pull events until job is running or fails (whichever happens first)...
+            assert job is not None
             events = set()
             while not (
                 beaker_utils.job_has_finalized(job)
