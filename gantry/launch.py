@@ -614,58 +614,69 @@ def launch_experiment(
             return workload
 
         job: BeakerJob | None = None
-        try:
-            job = follow_workload(
-                beaker,
-                workload,
-                timeout=timeout if timeout > 0 else None,
-                start_timeout=start_timeout,
-                inactive_timeout=inactive_timeout,
-                inactive_soft_timeout=inactive_soft_timeout,
-                show_logs=show_logs,
-                callbacks=callbacks,
-            )
-        except (TermInterrupt, BeakerJobTimeoutError, GantryInterruptWorkload) as exc:
-            utils.print_stderr(f"[red][bold]{exc.__class__.__name__}:[/] [i]{exc}[/][/]")
-            beaker.workload.cancel(workload)
-            utils.print_stderr("[yellow]Experiment cancelled.[/]")
-
-            for callback in callbacks:
-                callback.on_cancellation(job)
-
-            if utils.is_cli_mode():
-                sys.exit(1)
-            else:
-                raise
-        except KeyboardInterrupt:
-            utils.print_stderr("[yellow]Caught keyboard interrupt...[/]")
-            if prompt.Confirm.ask("Would you like to cancel the experiment?"):
-                beaker.workload.cancel(workload)
-                utils.print_stderr(
-                    f"[red]Experiment stopped:[/] [blue u]{beaker.workload.url(workload)}[/]"
+        tail = False
+        while True:
+            try:
+                job = follow_workload(
+                    beaker,
+                    workload,
+                    timeout=timeout if timeout > 0 else None,
+                    start_timeout=start_timeout,
+                    inactive_timeout=inactive_timeout,
+                    inactive_soft_timeout=inactive_soft_timeout,
+                    tail=tail,
+                    show_logs=show_logs,
+                    callbacks=callbacks,
                 )
+                break
+            except (TermInterrupt, BeakerJobTimeoutError, GantryInterruptWorkload) as exc:
+                utils.print_stderr(f"[red][bold]{exc.__class__.__name__}:[/] [i]{exc}[/][/]")
+                beaker.workload.cancel(workload)
+                utils.print_stderr("[yellow]Experiment cancelled.[/]")
 
                 for callback in callbacks:
                     callback.on_cancellation(job)
 
                 if utils.is_cli_mode():
-                    return None
-                else:
-                    raise
-            else:
-                utils.print_stdout(
-                    f"See the experiment at [blue u]{beaker.workload.url(workload)}[/]"
-                )
-                utils.print_stderr(
-                    f"To [yellow b]cancel[/] the workload manually, run:\n\n"
-                    f"  $ gantry stop {workload.experiment.id}\n\n"
-                    f"To [green b]resume following[/] the workload, run:\n\n"
-                    f"  $ gantry follow --tail {workload.experiment.id}"
-                )
-                if utils.is_cli_mode():
                     sys.exit(1)
                 else:
                     raise
+            except KeyboardInterrupt:
+                utils.print_stderr("[yellow]Caught keyboard interrupt...[/]")
+                action = prompt.Prompt.ask(
+                    "Press 'c' to cancel the workload, 'r' to resume following, or 'q' to quit",
+                    choices=["c", "r", "q"],
+                )
+                if action == "c":
+                    if prompt.Confirm.ask("Are you sure you'd like to cancel the experiment?"):
+                        beaker.workload.cancel(workload)
+                        utils.print_stderr(
+                            f"[red]Experiment stopped:[/] [blue u]{beaker.workload.url(workload)}[/]"
+                        )
+
+                        for callback in callbacks:
+                            callback.on_cancellation(job)
+
+                        if utils.is_cli_mode():
+                            return None
+                        else:
+                            raise
+                elif action == "q":
+                    utils.print_stdout(
+                        f"See the experiment at [blue u]{beaker.workload.url(workload)}[/]"
+                    )
+                    utils.print_stderr(
+                        f"To [yellow b]cancel[/] the workload manually, run:\n\n"
+                        f"  $ gantry stop {workload.experiment.id}\n\n"
+                        f"To [green b]resume following[/] the workload, run:\n\n"
+                        f"  $ gantry follow --tail {workload.experiment.id}"
+                    )
+                    if utils.is_cli_mode():
+                        sys.exit(1)
+                    else:
+                        raise
+                else:
+                    tail = True
 
         try:
             beaker_utils.display_results(
@@ -757,7 +768,7 @@ def follow_workload(
                 or (beaker_utils.job_has_started(job) and show_logs)
             ):
                 for event in beaker.job.list_summarized_events(
-                    job, sort_order=BeakerSortOrder.descending, sort_field="latest_occurrence"
+                    job, sort_order=BeakerSortOrder.ascending, sort_field="latest_occurrence"
                 ):
                     event_hashable = (event.latest_occurrence.ToSeconds(), event.latest_message)
                     if event_hashable not in events:
