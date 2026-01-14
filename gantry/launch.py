@@ -675,8 +675,8 @@ def launch_experiment(
                         sys.exit(1)
                     else:
                         raise
-                else:
-                    tail = True
+
+            tail = True
 
         try:
             beaker_utils.display_results(
