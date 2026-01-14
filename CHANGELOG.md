@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- Added `client` option to `Recipe.dry_run()` for providing an existing Beaker client.
+
 ### Changed
 
 - When following a live experiment (e.g. via `gantry run`), pressing CTRL-C will now give you 3 options: 'c' to cancel the workload, 'r' to resume following, and 'q' to quit following. Further, after pressing 'c' you'll be asked for confirmation before the workload is canceled.

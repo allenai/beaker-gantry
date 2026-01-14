@@ -145,13 +145,14 @@ class Recipe:
         kwargs.pop("args")
         return kwargs
 
-    def dry_run(self) -> None:
+    def dry_run(self, client: Beaker | None = None) -> None:
         """
         Do a dry-run to validate options.
         """
         launch_experiment(
             self._get_launch_args(),
             **self._get_launch_kwargs(),
+            client=client,
             dry_run=True,
         )
 
