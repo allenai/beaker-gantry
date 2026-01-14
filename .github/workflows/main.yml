@@ -208,4 +208,4 @@ jobs:
       - name: Send Slack notifications about release
         continue-on-error: true
         run: |
-          python ./scripts/slack_notification.py '${{ secrets.SLACK_WEBHOOK_URL}}'
+          python ./scripts/slack_notification.py '${{ secrets.SLACK_WEBHOOK_URL}}' --ignore-patch-release
