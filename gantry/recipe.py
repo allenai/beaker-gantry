@@ -2,7 +2,7 @@ import dataclasses
 from dataclasses import dataclass
 from typing import Any, Literal, Sequence
 
-from beaker import BeakerWorkload
+from beaker import Beaker, BeakerWorkload
 
 from . import constants, utils
 from .aliases import PathOrStr
@@ -162,6 +162,7 @@ class Recipe:
         start_timeout: int | None = None,
         inactive_timeout: int | None = None,
         inactive_soft_timeout: int | None = None,
+        client: Beaker | None = None,
     ) -> BeakerWorkload:
         """
         Launch an experiment on Beaker. Same as the ``gantry run`` command.
@@ -176,6 +177,7 @@ class Recipe:
             start_timeout=start_timeout,
             inactive_timeout=inactive_timeout,
             inactive_soft_timeout=inactive_soft_timeout,
+            client=client,
         )
         assert workload is not None
         return workload

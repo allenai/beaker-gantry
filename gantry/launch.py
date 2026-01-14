@@ -109,6 +109,7 @@ def launch_experiment(
     google_credentials_secret: str | None = None,
     callbacks: Sequence[Callback] | None = None,
     git_repo: GitRepoState | None = None,
+    client: Beaker | None = None,
 ) -> BeakerWorkload | None:
     """
     Launch an experiment on Beaker. Same as the ``gantry run`` command.
@@ -165,7 +166,14 @@ def launch_experiment(
         )
 
     # Initialize Beaker client and validate workspace.
-    with beaker_utils.init_client(workspace=workspace, yes=yes) as beaker:
+    with ExitStack() as stack:
+        if client is None:
+            beaker: Beaker = stack.enter_context(
+                beaker_utils.init_client(workspace=workspace, yes=yes)
+            )
+        else:
+            beaker = client
+
         if beaker_image is None and docker_image is None:
             try:
                 beaker.image.get(constants.VERSIONED_DEFAULT_IMAGE)

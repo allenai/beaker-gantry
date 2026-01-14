@@ -36,7 +36,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "ruff",
-    "mypy>=1.0,<1.6",
+    "mypy>=1.19.1,<2.0",
     "types-requests",
     "types-protobuf",
     "types-PyYAML",
