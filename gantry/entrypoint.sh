@@ -518,6 +518,10 @@ if [[ -n "$GANTRY_USE_TORCHRUN" ]]; then
     fi
 fi
 
+# Set PYTHONUNBUFFERED to ensure real-time logging from Python processes.
+if [[ -z "$PYTHONUNBUFFERED" ]]; then
+    export PYTHONUNBUFFERED=1
+fi
 
 log_info "Shell is $(bash --version | head -n 1)."
 log_info "Running on Beaker node '${BEAKER_NODE_HOSTNAME}' (${BEAKER_NODE_ID})"
