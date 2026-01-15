@@ -5,8 +5,8 @@ import time
 from contextlib import ExitStack
 from pathlib import Path
 from queue import Empty, Queue
-from threading import Thread
-from typing import Literal, Sequence
+from threading import Event, Thread
+from typing import Literal, Sequence, Type
 
 import rich
 from beaker import (
@@ -613,77 +613,24 @@ def launch_experiment(
         if timeout == 0:
             return workload
 
-        job: BeakerJob | None = None
-        tail = False
-        while True:
-            try:
-                job = follow_workload(
-                    beaker,
-                    workload,
-                    timeout=timeout if timeout > 0 else None,
-                    start_timeout=start_timeout,
-                    inactive_timeout=inactive_timeout,
-                    inactive_soft_timeout=inactive_soft_timeout,
-                    tail=tail,
-                    show_logs=show_logs,
-                    callbacks=callbacks,
-                )
-                break
-            except (TermInterrupt, BeakerJobTimeoutError, GantryInterruptWorkload) as exc:
-                utils.print_stderr(f"[red][bold]{exc.__class__.__name__}:[/] [i]{exc}[/][/]")
-                beaker.workload.cancel(workload)
-                utils.print_stderr("[yellow]Experiment cancelled.[/]")
-
-                for callback in callbacks:
-                    callback.on_cancellation(job)
-
-                if utils.is_cli_mode():
-                    sys.exit(1)
-                else:
-                    raise
-            except KeyboardInterrupt:
-                utils.print_stderr("[yellow]Caught keyboard interrupt...[/]")
-                action = prompt.Prompt.ask(
-                    "Press 'c' to cancel the workload, 'r' to resume following, or 'q' to quit",
-                    choices=["c", "r", "q"],
-                )
-                if action == "c":
-                    if prompt.Confirm.ask("Are you sure you'd like to cancel the experiment?"):
-                        beaker.workload.cancel(workload)
-                        utils.print_stderr(
-                            f"[red]Experiment stopped:[/] [blue u]{beaker.workload.url(workload)}[/]"
-                        )
-
-                        for callback in callbacks:
-                            callback.on_cancellation(job)
-
-                        if utils.is_cli_mode():
-                            return None
-                        else:
-                            raise
-                elif action == "q":
-                    utils.print_stdout(
-                        f"See the experiment at [blue u]{beaker.workload.url(workload)}[/]"
-                    )
-                    utils.print_stderr(
-                        f"To [yellow b]cancel[/] the workload manually, run:\n\n"
-                        f"  $ gantry stop {workload.experiment.id}\n\n"
-                        f"To [green b]resume following[/] the workload, run:\n\n"
-                        f"  $ gantry follow --tail {workload.experiment.id}"
-                    )
-                    if utils.is_cli_mode():
-                        sys.exit(1)
-                    else:
-                        raise
-
-            tail = True
+        job = follow_workload(
+            beaker,
+            workload,
+            timeout=timeout if timeout > 0 else None,
+            start_timeout=start_timeout,
+            inactive_timeout=inactive_timeout,
+            inactive_soft_timeout=inactive_soft_timeout,
+            show_logs=show_logs,
+            auto_cancel=True,
+            callbacks=callbacks,
+        )
 
         try:
             beaker_utils.display_results(
                 beaker,
                 workload,
                 job,
-                info_header if show_logs else None,
+                info_header=info_header if show_logs else None,
                 callbacks=callbacks,
             )
         finally:
@@ -705,6 +652,7 @@ def follow_workload(
     inactive_soft_timeout: int | None = None,
     tail: bool = False,
     show_logs: bool = True,
+    auto_cancel: bool = False,
     callbacks: Sequence[Callback] | None = None,
 ) -> BeakerJob:
     """
@@ -721,6 +669,8 @@ def follow_workload(
         Issues a warning notification if no new logs are produced in time.
     :param tail: Start tailing the logs if a job is already running. Otherwise shows all logs.
     :param show_logs: Set to ``False`` to avoid streaming the logs.
+    :param auto_cancel: Set to ``True`` to automatically cancel the workload on timeout or
+        or SIGTERM.
 
     :returns: The finalized :class:`~beaker.types.BeakerJob` from the task being followed.
 
@@ -730,170 +680,247 @@ def follow_workload(
     console = rich.get_console()
     start_time = time.monotonic()
     preempted_job_ids = set()
+    on_start_called = set()
+    stopped: Event | None = None
+    sentinel = object()
+    exceptions_to_cancel_on: tuple[Type[BaseException], ...] = (GantryInterruptWorkload,)
+    if auto_cancel:
+        exceptions_to_cancel_on = exceptions_to_cancel_on + (TermInterrupt, BeakerJobTimeoutError)
+
+    def get_latest_job() -> BeakerJob | None:
+        job = beaker.workload.get_latest_job(workload, task=task)
+        if job is not None and job.id not in preempted_job_ids:
+            return job
+        else:
+            return None
+
+    def fill_queue(job: BeakerJob, queue: Queue, stopped: Event):
+        try:
+            for job_log in beaker.job.logs(job, tail_lines=10 if tail else None, follow=True):
+                if stopped.is_set():
+                    return
+                queue.put(job_log)
+        except Exception as e:
+            queue.put(e)
+        finally:
+            queue.put(sentinel)
 
     while True:
-        with ExitStack() as stack:
-            if job is None:
+        try:
+            job = get_latest_job()
+
+            # Wait for job to be created...
+            with ExitStack() as stack:
                 msg = "[i]waiting on job...[/]"
                 status: Status | None = None
                 if not os.environ.get("GANTRY_GITHUB_TESTING"):
                     status = stack.enter_context(console.status(msg, spinner="point", speed=0.8))
                 else:
                     utils.print_stdout(msg)
+                if job is None:
+                    while job is None:
+                        if (j := get_latest_job()) is not None:
+                            job = j
+                        elif timeout is not None and (time.monotonic() - start_time) > timeout:
+                            raise BeakerJobTimeoutError(
+                                "Timed out while waiting for job to be created"
+                            )
+                        elif (
+                            start_timeout is not None
+                            and (time.monotonic() - start_time) > start_timeout
+                        ):
+                            raise BeakerJobTimeoutError(
+                                "Timed out while waiting for job to be created"
+                            )
+                        else:
+                            time.sleep(1.0)
 
-                # Wait for job to be created...
-                while job is None:
-                    if (
-                        j := beaker.workload.get_latest_job(workload, task=task)
-                    ) is not None and j.id not in preempted_job_ids:
-                        job = j
-                    elif timeout is not None and (time.monotonic() - start_time) > timeout:
-                        raise BeakerJobTimeoutError("Timed out while waiting for job to be created")
+                    if status is not None:
+                        status.update("[i]waiting for job to launch...[/]")
+
+                assert job is not None
+
+                # Pull events until job is running or fails (whichever happens first)...
+                events = set()
+                while not (
+                    beaker_utils.job_has_finalized(job)
+                    or (beaker_utils.job_has_started(job) and show_logs)
+                ):
+                    for event in beaker.job.list_summarized_events(
+                        job, sort_order=BeakerSortOrder.ascending, sort_field="latest_occurrence"
+                    ):
+                        event_hashable = (event.latest_occurrence.ToSeconds(), event.latest_message)
+                        if event_hashable not in events:
+                            events.add(event_hashable)
+                            utils.print_stdout(f"✓ [i]{event.latest_message}[/]")
+                            time.sleep(0.5)
+
+                    if timeout is not None and (time.monotonic() - start_time) > timeout:
+                        for callback in callbacks or []:
+                            callback.on_timeout(job)
+                        if beaker_utils.job_has_started(job):
+                            raise BeakerJobTimeoutError(
+                                f"Timed out while waiting for job '{job.id}' to finish"
+                            )
+                        else:
+                            raise BeakerJobTimeoutError(
+                                f"Timed out while waiting for job '{job.id}' to start"
+                            )
                     elif (
                         start_timeout is not None
+                        and not beaker_utils.job_has_started(job)
                         and (time.monotonic() - start_time) > start_timeout
                     ):
-                        raise BeakerJobTimeoutError("Timed out while waiting for job to be created")
-                    else:
-                        time.sleep(1.0)
-
-                if status is not None:
-                    status.update("[i]waiting for job to launch...[/]")
-
-            # Pull events until job is running or fails (whichever happens first)...
-            assert job is not None
-            events = set()
-            while not (
-                beaker_utils.job_has_finalized(job)
-                or (beaker_utils.job_has_started(job) and show_logs)
-            ):
-                for event in beaker.job.list_summarized_events(
-                    job, sort_order=BeakerSortOrder.ascending, sort_field="latest_occurrence"
-                ):
-                    event_hashable = (event.latest_occurrence.ToSeconds(), event.latest_message)
-                    if event_hashable not in events:
-                        events.add(event_hashable)
-                        utils.print_stdout(f"✓ [i]{event.latest_message}[/]")
-                        time.sleep(0.5)
-
-                if timeout is not None and (time.monotonic() - start_time) > timeout:
-                    for callback in callbacks or []:
-                        callback.on_timeout(job)
-                    if beaker_utils.job_has_started(job):
-                        raise BeakerJobTimeoutError(
-                            f"Timed out while waiting for job '{job.id}' to finish"
-                        )
-                    else:
+                        for callback in callbacks or []:
+                            callback.on_start_timeout(job)
                         raise BeakerJobTimeoutError(
                             f"Timed out while waiting for job '{job.id}' to start"
                         )
-                elif (
-                    start_timeout is not None
-                    and not beaker_utils.job_has_started(job)
-                    and (time.monotonic() - start_time) > start_timeout
-                ):
-                    for callback in callbacks or []:
-                        callback.on_start_timeout(job)
-                    raise BeakerJobTimeoutError(
-                        f"Timed out while waiting for job '{job.id}' to start"
-                    )
-                else:
-                    time.sleep(0.5)
-                    job = beaker.job.get(job.id)
-
-        assert job is not None
-
-        for callback in callbacks or []:
-            callback.on_start(job)
-
-        # Stream logs...
-        if show_logs and beaker_utils.job_has_started(job):
-            queue: Queue = Queue()
-            sentinel = object()
-
-            def fill_queue():
-                assert job is not None
-                try:
-                    for job_log in beaker.job.logs(
-                        job, tail_lines=10 if tail else None, follow=True
-                    ):
-                        queue.put(job_log)
-                except Exception as e:
-                    queue.put(e)
-                finally:
-                    queue.put(sentinel)
-
-            thread = Thread(target=fill_queue, daemon=True)
-            thread.start()
-
-            utils.print_stdout()
-            rich.get_console().rule("Logs")
-
-            last_event = time.monotonic()
-            last_inactive_warning = 0.0
-            while True:
-                try:
-                    job_log = queue.get(timeout=1.0)
-                    last_event = time.monotonic()
-                    if job_log is sentinel:
-                        break
-                    elif isinstance(job_log, Exception):
-                        raise job_log
                     else:
-                        log_line = job_log.message.decode()
-                        log_time = job_log.timestamp.seconds + job_log.timestamp.nanos / 1e9
-                        utils.print_stdout(log_line, markup=False)
+                        time.sleep(0.5)
+                        job = beaker.job.get(job.id)
+
+            assert job is not None
+
+            if job.id not in on_start_called:
+                for callback in callbacks or []:
+                    callback.on_start(job)
+                on_start_called.add(job.id)
+
+            # Stream logs...
+            if show_logs and beaker_utils.job_has_started(job):
+                queue: Queue = Queue()
+                stopped = Event()
+
+                thread = Thread(target=fill_queue, args=(job, queue, stopped), daemon=True)
+                thread.start()
+
+                utils.print_stdout()
+                rich.get_console().rule("Logs")
+
+                last_event = time.monotonic()
+                last_inactive_warning = 0.0
+                while True:
+                    try:
+                        job_log = queue.get(timeout=1.0)
+                        last_event = time.monotonic()
+                        if job_log is sentinel:
+                            break
+                        elif isinstance(job_log, Exception):
+                            raise job_log
+                        else:
+                            log_line = job_log.message.decode()
+                            log_time = job_log.timestamp.seconds + job_log.timestamp.nanos / 1e9
+                            utils.print_stdout(log_line, markup=False)
+                            for callback in callbacks or []:
+                                callback.on_log(job, log_line, log_time)
+                    except Empty:
+                        cur_time = time.monotonic()
+                        if (
+                            inactive_timeout is not None
+                            and (cur_time - last_event) > inactive_timeout
+                        ):
+                            for callback in callbacks or []:
+                                callback.on_inactive_timeout(job)
+                            raise BeakerJobTimeoutError(
+                                f"Timed out while waiting for job '{job.id}' to produce more logs"
+                            )
+
+                        if (
+                            inactive_soft_timeout is not None
+                            and (cur_time - last_event) > inactive_soft_timeout
+                            and (cur_time - last_inactive_warning)
+                            > max(inactive_soft_timeout, 3600)
+                        ):
+                            last_inactive_warning = cur_time
+                            formatted_duration = utils.format_timedelta(
+                                cur_time - last_event,
+                                resolution="minutes"
+                                if inactive_soft_timeout % 60 == 0
+                                else "seconds",
+                            )
+                            log.warning(
+                                f"Job appears to be inactive! No new logs within the past {formatted_duration}."
+                            )
+                            for callback in callbacks or []:
+                                callback.on_inactive_soft_timeout(job)
+
+                    if timeout is not None and (time.monotonic() - start_time) > timeout:
                         for callback in callbacks or []:
-                            callback.on_log(job, log_line, log_time)
-                except Empty:
-                    cur_time = time.monotonic()
-                    if inactive_timeout is not None and (cur_time - last_event) > inactive_timeout:
-                        for callback in callbacks or []:
-                            callback.on_inactive_timeout(job)
+                            callback.on_timeout(job)
                         raise BeakerJobTimeoutError(
-                            f"Timed out while waiting for job '{job.id}' to produce more logs"
+                            f"Timed out while waiting for job '{job.id}' to finish"
                         )
 
-                    if (
-                        inactive_soft_timeout is not None
-                        and (cur_time - last_event) > inactive_soft_timeout
-                        and (cur_time - last_inactive_warning) > max(inactive_soft_timeout, 3600)
-                    ):
-                        last_inactive_warning = cur_time
-                        formatted_duration = utils.format_timedelta(
-                            cur_time - last_event,
-                            resolution="minutes" if inactive_soft_timeout % 60 == 0 else "seconds",
-                        )
-                        log.warning(
-                            f"Job appears to be inactive! No new logs within the past {formatted_duration}."
-                        )
-                        for callback in callbacks or []:
-                            callback.on_inactive_soft_timeout(job)
+                utils.print_stdout()
+                rich.get_console().rule("End logs")
 
-                if timeout is not None and (time.monotonic() - start_time) > timeout:
-                    for callback in callbacks or []:
-                        callback.on_timeout(job)
-                    raise BeakerJobTimeoutError(
-                        f"Timed out while waiting for job '{job.id}' to finish"
-                    )
+            # Wait for job to finalize...
+            while not beaker_utils.job_has_finalized(job):
+                time.sleep(0.5)
+                job = beaker.job.get(job.id)
 
             utils.print_stdout()
-            rich.get_console().rule("End logs")
 
-        # Wait for job to finalize...
-        while not beaker_utils.job_has_finalized(job):
-            time.sleep(0.5)
-            job = beaker.job.get(job.id)
+            # If job was preempted, we start over...
+            if beaker_utils.job_was_preempted(job):
+                utils.print_stdout(f"[yellow]Job '{job.id}' preempted.[/] ")
+                preempted_job_ids.add(job.id)
+                for callback in callbacks or []:
+                    callback.on_preemption(job)
+                job = None
+                continue
 
-        utils.print_stdout()
+            return job
+        except exceptions_to_cancel_on as exc:
+            utils.print_stderr(f"[red][bold]{exc.__class__.__name__}:[/] [i]{exc}[/][/]")
+            beaker.workload.cancel(workload)
+            utils.print_stderr("[yellow]Experiment cancelled.[/]")
 
-        # If job was preempted, we start over...
-        if beaker_utils.job_was_preempted(job):
-            utils.print_stdout(f"[yellow]Job '{job.id}' preempted.[/] ")
-            preempted_job_ids.add(job.id)
             for callback in callbacks or []:
-                callback.on_preemption(job)
-            job = None
-            continue
+                callback.on_cancellation(job)
 
-        return job
+            if utils.is_cli_mode():
+                sys.exit(1)
+            else:
+                raise
+        except KeyboardInterrupt:
+            utils.print_stderr("[yellow]Caught keyboard interrupt...[/]")
+            action = prompt.Prompt.ask(
+                "Press 'c' to cancel the workload, 'r' to resume following, or 'q' to quit",
+                choices=["c", "r", "q"],
+            )
+            if action == "c":
+                if prompt.Confirm.ask("Are you sure you'd like to cancel the experiment?"):
+                    beaker.workload.cancel(workload)
+                    utils.print_stderr(
+                        f"[red]Experiment stopped:[/] [blue u]{beaker.workload.url(workload)}[/]"
+                    )
+
+                    for callback in callbacks or []:
+                        callback.on_cancellation(job)
+
+                    if utils.is_cli_mode():
+                        sys.exit(0)
+                    else:
+                        raise
+            elif action == "q":
+                utils.print_stdout(
+                    f"See the experiment at [blue u]{beaker.workload.url(workload)}[/]"
+                )
+                utils.print_stderr(
+                    f"To [yellow b]cancel[/] the workload manually, run:\n\n"
+                    f"  $ gantry stop {workload.experiment.id}\n\n"
+                    f"To [green b]resume following[/] the workload, run:\n\n"
+                    f"  $ gantry follow --tail {workload.experiment.id}"
+                )
+
+                if utils.is_cli_mode():
+                    sys.exit(1)
+                else:
+                    raise
+        finally:
+            tail = True
+            if stopped is not None:
+                stopped.set()
+                stopped = None
