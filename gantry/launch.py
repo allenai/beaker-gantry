@@ -912,7 +912,7 @@ def follow_workload(
                     f"To [yellow b]cancel[/] the workload manually, run:\n\n"
                     f"  $ gantry stop {workload.experiment.id}\n\n"
                     f"To [green b]resume following[/] the workload, run:\n\n"
-                    f"  $ gantry follow --tail {workload.experiment.id}"
+                    f"  $ gantry follow --tail {workload.experiment.id}\n"
                 )
 
                 if utils.is_cli_mode():
