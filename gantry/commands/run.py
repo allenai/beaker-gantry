@@ -565,7 +565,7 @@ def run(
     **kwargs,
 ):
     """
-    Run an experiment on Beaker.
+    Run a workload on Beaker.
 
     Example:
 

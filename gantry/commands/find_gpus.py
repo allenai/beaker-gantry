@@ -34,7 +34,7 @@ def find_gpus_cmd(show_all: bool = False, gpu_types: tuple[str, ...] = tuple()):
         table.add_column("Name", justify="left", no_wrap=True)
         table.add_column("Free GPUs", justify="left", no_wrap=True)
         table.add_column("GPU Type", justify="left", no_wrap=True)
-        table.add_column("Slots", justify="left", no_wrap=True)
+        table.add_column("Slots (used/total)", justify="left", no_wrap=True)
 
         with rich.get_console().status(
             "[i]collecting clusters...[/]", spinner="point", speed=0.8
@@ -46,7 +46,8 @@ def find_gpus_cmd(show_all: bool = False, gpu_types: tuple[str, ...] = tuple()):
             ):
                 status.update(f"[i]collecting clusters...[/] {cluster.name}")
 
-                if not show_all and cluster.cluster_occupancy.slot_counts.available == 0:
+                slot_counts = cluster.cluster_occupancy.slot_counts
+                if not show_all and slot_counts.available == 0:
                     break
 
                 gpu_type = beaker_utils.get_gpu_type(beaker, cluster)
@@ -62,7 +63,7 @@ def find_gpus_cmd(show_all: bool = False, gpu_types: tuple[str, ...] = tuple()):
                     else:
                         continue
 
-                gpus_available = cluster.cluster_occupancy.slot_counts.available
+                gpus_available = slot_counts.available
                 gpus_available_style: str
                 if gpus_available == 0:
                     gpus_available_style = "red"
@@ -75,7 +76,8 @@ def find_gpus_cmd(show_all: bool = False, gpu_types: tuple[str, ...] = tuple()):
                     f"[b cyan]{beaker.org_name}/{cluster.name}[/]\n[blue u]{beaker.cluster.url(cluster)}[/]",
                     f"[{gpus_available_style}]{gpus_available}[/]",
                     f"{gpu_type or 'UNKNOWN'}",
-                    f"{cluster.cluster_occupancy.slot_counts.assigned}/{cluster.cluster_occupancy.slot_counts.total}",
+                    f"{slot_counts.assigned}/{slot_counts.total - slot_counts.cordoned}"
+                    + f" (cordoned: {slot_counts.cordoned})",
                 )
 
         utils.print_stdout(table)

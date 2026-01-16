@@ -45,7 +45,7 @@ def logs(
     output: PathOrStr | None = None,
 ):
     """
-    Display the logs for an experiment workload.
+    Download the logs from a workload.
     """
     if sum([replica is not None, task_name is not None, all_tasks]) > 1:
         raise ConfigurationError("--replica, --task, and --all are mutually exclusive")

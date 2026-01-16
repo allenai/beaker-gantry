@@ -95,8 +95,8 @@ def list_cmd(
     show_all: bool = False,
 ):
     """
-    List recent experiments within a workspace or group.
-    This will only show experiments launched with Gantry by default, unless '--all' is specified.
+    List workloads within a workspace or group.
+    This will only show workloads launched with Gantry by default, unless '--all' is specified.
     """
     max_age: timedelta
     try:

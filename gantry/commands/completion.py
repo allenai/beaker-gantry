@@ -6,7 +6,7 @@ from .main import CLICK_COMMAND_DEFAULTS, CLICK_GROUP_DEFAULTS, main
 @main.group(**CLICK_GROUP_DEFAULTS)
 def completion():
     """
-    Generate the autocompletion script for gantry for the specified shell.
+    Generate the gantry CLI autocompletion script for the specified shell.
 
     See each sub-command's help for details on how to use the generated script.
     """

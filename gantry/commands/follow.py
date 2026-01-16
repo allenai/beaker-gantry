@@ -39,7 +39,7 @@ def follow(
     author: str | None = None,
 ):
     """
-    Follow the logs for a running experiment.
+    Follow a workload.
     """
     with beaker_utils.init_client(ensure_workspace=False) as beaker:
         wl: BeakerWorkload | None = None
