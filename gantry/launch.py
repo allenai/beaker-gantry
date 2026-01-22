@@ -694,7 +694,7 @@ def follow_workload(
         else:
             return None
 
-    def fill_queue(job: BeakerJob, queue: Queue, stopped: Event):
+    def fill_log_queue(job: BeakerJob, queue: Queue, stopped: Event):
         try:
             for job_log in beaker.job.logs(job, tail_lines=10 if tail else None, follow=True):
                 if stopped.is_set():
@@ -792,7 +792,7 @@ def follow_workload(
                 queue: Queue = Queue()
                 stopped = Event()
 
-                thread = Thread(target=fill_queue, args=(job, queue, stopped), daemon=True)
+                thread = Thread(target=fill_log_queue, args=(job, queue, stopped), daemon=True)
                 thread.start()
 
                 utils.print_stdout()
