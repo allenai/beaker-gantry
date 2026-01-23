@@ -204,6 +204,8 @@ function ensure_gh {
         fi
         path_prepend ~/.local/bin
         log_info "Done. Installed $(gh --version | head -n 1)."
+    else
+        log_info "Using $(gh --version | head -n 1)."
     fi
 }
 
@@ -249,6 +251,8 @@ function ensure_uv {
         with_retries 5 capture_logs "bootstrap_uv" bootstrap_uv || return 1
         path_prepend ~/.cargo/bin ~/.local/bin
         log_info "Done. Installed $(uv --version)."
+    else
+        log_info "Using $(uv --version)."
     fi
 }
 
