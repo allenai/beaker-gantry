@@ -548,7 +548,9 @@ if [[ -n "$GITHUB_TOKEN" ]]; then
     # Configure git to use the GitHub CLI as a credential helper so that we can clone private repos.
     # NOTE: this could fail due to race conditions if the user has mounted a host path to the container's '$HOME' directory
     # (it's happened before).
+    log_info "Configuring git to use GitHub token for authentication..."
     with_retries 3 capture_logs "setup_gh_auth" gh auth setup-git
+    log_info "Done."
 fi
 
 # Install cloud credentials if given.
