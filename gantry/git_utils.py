@@ -176,10 +176,16 @@ class GitRepoState:
             try:
                 active_branch = repo.active_branch
             except TypeError:
-                utils.print_stderr(
-                    "[yellow]Repo is in 'detached HEAD' state which will result in cloning the entire repo at runtime.\n"
-                    "It's recommended to run gantry from a branch instead.[/]"
+                from .beaker_utils import is_running_in_gantry_batch_job
+
+                msg = (
+                    "Repo is in 'detached HEAD' state which will result in cloning the entire repo at runtime.\n"
+                    "It's recommended to run gantry from a branch instead."
                 )
+                if utils.is_cli_mode():
+                    utils.print_stderr(f"[yellow]{msg}[/]")
+                elif not is_running_in_gantry_batch_job():
+                    log.warning(msg)
 
             remote_branch: RemoteReference | None = None
             if active_branch is not None:

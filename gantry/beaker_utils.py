@@ -1,6 +1,7 @@
 import binascii
 import hashlib
 import logging
+import os
 import random
 import tempfile
 import time
@@ -55,6 +56,30 @@ def init_client(
                 f"{utils.fmt_opt('--workspace')} option is required since you don't have a default workspace set"
             )
     return beaker
+
+
+def is_running_in_beaker() -> bool:
+    """
+    Check if the current process is running inside of a Beaker job (batch or session).
+    """
+    # There's a number of different environment variables set by the Beaker executor.
+    # Checking any one of these would suffice, but we check a couple to reduce the
+    # risk of false positives.
+    return "BEAKER_JOB_ID" in os.environ and "BEAKER_NODE_ID" in os.environ
+
+
+def is_running_in_beaker_batch_job() -> bool:
+    """
+    Check if the current process is running inside a Beaker batch job (as opposed to a session).
+    """
+    return is_running_in_beaker() and os.environ.get("BEAKER_JOB_KIND") == "batch"
+
+
+def is_running_in_gantry_batch_job() -> bool:
+    """
+    Check if the current process is running inside a Beaker batch job launched by Gantry.
+    """
+    return is_running_in_beaker_batch_job() and "GANTRY_VERSION" in os.environ
 
 
 def job_was_preempted(job: BeakerJob) -> bool:
