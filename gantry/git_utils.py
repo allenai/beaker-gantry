@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import warnings
 from dataclasses import dataclass
 from functools import cache, cached_property
 from pathlib import Path
@@ -180,12 +181,12 @@ class GitRepoState:
 
                 msg = (
                     "Repo is in 'detached HEAD' state which will result in cloning the entire repo at runtime.\n"
-                    "It's recommended to run gantry from a branch instead."
+                    "It's recommended to use gantry from a branch instead."
                 )
                 if utils.is_cli_mode():
                     utils.print_stderr(f"[yellow]{msg}[/]")
                 elif not is_running_in_gantry_batch_job():
-                    log.warning(msg)
+                    warnings.warn(msg, UserWarning)
 
             remote_branch: RemoteReference | None = None
             if active_branch is not None:
