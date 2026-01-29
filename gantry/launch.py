@@ -886,8 +886,13 @@ def follow_workload(
                 raise
         except KeyboardInterrupt:
             utils.print_stderr("[yellow]Caught keyboard interrupt...[/]")
+            utils.print_stderr(
+                f"You are currently following [blue u]{beaker.workload.url(workload)}[/]"
+            )
             action = prompt.Prompt.ask(
-                "Press 'c' to cancel the workload, 'r' to resume following, or 'q' to quit",
+                "Press [red b]c[/] to [red]cancel[/] the workload, "
+                "[green b]r[/] to [green]resume[/] following, "
+                "or [yellow b]q[/] to [yellow]quit[/]",
                 choices=["c", "r", "q"],
             )
             if action == "c":
