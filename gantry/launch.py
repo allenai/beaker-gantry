@@ -892,45 +892,51 @@ def follow_workload(
             else:
                 raise
         except KeyboardInterrupt:
-            utils.print_stderr("[yellow]Caught keyboard interrupt...[/]")
-            utils.print_stderr(
-                f"You are currently following [blue u]{beaker.workload.url(workload)}[/]"
-            )
-            action = prompt.Prompt.ask(
-                "Press [red b]c[/] to [red]cancel[/] the workload, "
-                "[green b]r[/] to [green]resume[/] following, "
-                "or [yellow b]q[/] to [yellow]quit[/]",
-                choices=["c", "r", "q"],
-            )
-            if action == "c":
-                if prompt.Confirm.ask("Are you sure you'd like to cancel the experiment?"):
-                    beaker.workload.cancel(workload)
-                    utils.print_stderr(
-                        f"[red]Experiment stopped:[/] [blue u]{beaker.workload.url(workload)}[/]"
-                    )
-
-                    for callback in callbacks or []:
-                        callback.on_cancellation(job)
-
-                    if utils.is_cli_mode():
-                        sys.exit(0)
-                    else:
-                        raise
-            elif action == "q":
-                utils.print_stdout(
-                    f"See the experiment at [blue u]{beaker.workload.url(workload)}[/]"
-                )
+            if utils.is_interactive_terminal():
+                utils.print_stderr("[yellow]Caught keyboard interrupt...[/]")
                 utils.print_stderr(
-                    f"To [yellow b]cancel[/] the workload manually, run:\n\n"
-                    f"  $ gantry stop {workload.experiment.id}\n\n"
-                    f"To [green b]resume following[/] the workload, run:\n\n"
-                    f"  $ gantry follow --tail {workload.experiment.id}\n"
+                    f"You are currently following [blue u]{beaker.workload.url(workload)}[/]"
                 )
+                action = prompt.Prompt.ask(
+                    "Press [red b]c[/] to [red]cancel[/] the workload, "
+                    "[green b]r[/] to [green]resume[/] following, "
+                    "or [yellow b]q[/] to [yellow]quit[/]",
+                    choices=["c", "r", "q"],
+                )
+                if action == "c":
+                    if prompt.Confirm.ask("Are you sure you'd like to cancel the experiment?"):
+                        beaker.workload.cancel(workload)
+                        utils.print_stderr(
+                            f"[red]Experiment stopped:[/] [blue u]{beaker.workload.url(workload)}[/]"
+                        )
 
-                if utils.is_cli_mode():
-                    sys.exit(1)
-                else:
-                    raise
+                        for callback in callbacks or []:
+                            callback.on_cancellation(job)
+
+                        if utils.is_cli_mode():
+                            sys.exit(0)
+                        else:
+                            raise
+                elif action == "q":
+                    utils.print_stdout(
+                        f"See the experiment at [blue u]{beaker.workload.url(workload)}[/]"
+                    )
+                    utils.print_stderr(
+                        f"To [yellow b]cancel[/] the workload manually, run:\n\n"
+                        f"  $ gantry stop {workload.experiment.id}\n\n"
+                        f"To [green b]resume following[/] the workload, run:\n\n"
+                        f"  $ gantry follow --tail {workload.experiment.id}\n"
+                    )
+            else:
+                utils.print_stderr("[yellow]Caught SIGINT...[/]")
+                if auto_cancel:
+                    beaker.workload.cancel(workload)
+                    utils.print_stderr("[yellow]Experiment cancelled.[/]")
+
+            if utils.is_cli_mode():
+                sys.exit(1)
+            else:
+                raise
         finally:
             tail = True
             if stopped is not None:

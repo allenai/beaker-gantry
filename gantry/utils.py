@@ -41,6 +41,10 @@ def is_cli_mode() -> bool:
     return CLI_MODE
 
 
+def is_interactive_terminal() -> bool:
+    return rich.get_console().is_interactive and rich.get_console().is_terminal
+
+
 @dataclass
 class InternalConfig:
     version_checked: float | None = None
