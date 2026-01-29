@@ -437,7 +437,7 @@ jobs:
 
       - name: launch job
         run: |
-          gantry run \
+          exec gantry run \
             --show-logs \
             --yes \
             --workspace ${{ env.BEAKER_WORKSPACE }} \
@@ -451,6 +451,8 @@ jobs:
             --gpu-type a100 \
             -- pytest -v tests/cuda_tests/  # TODO: change to your own command
 ```
+
+Note that we use `exec gantry run ...` instead of just `gantry run`. This ensures that if GitHub Actions cancels the job, the SIGINT and SIGTERM signals will propagate to `gantry`, allowing it to clean up gracefully and cancel the running job on Beaker.
 </details>
 
 ### Why "Gantry"?

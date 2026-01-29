@@ -163,6 +163,7 @@ class Recipe:
         start_timeout: int | None = None,
         inactive_timeout: int | None = None,
         inactive_soft_timeout: int | None = None,
+        auto_cancel: bool = False,
         client: Beaker | None = None,
     ) -> BeakerWorkload:
         """
@@ -178,6 +179,7 @@ class Recipe:
             start_timeout=start_timeout,
             inactive_timeout=inactive_timeout,
             inactive_soft_timeout=inactive_soft_timeout,
+            auto_cancel=auto_cancel,
             client=client,
         )
         assert workload is not None
