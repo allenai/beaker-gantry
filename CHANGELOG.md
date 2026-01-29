@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Fixed
+
+- Make automatic job cancellation more robust.
+
 ## [v3.4.4](https://github.com/allenai/beaker-gantry/releases/tag/v3.4.4) - 2026-01-28
 
 ### Fixed
