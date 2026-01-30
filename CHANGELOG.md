@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [v3.4.6](https://github.com/allenai/beaker-gantry/releases/tag/v3.4.6) - 2026-01-30
+
 ### Fixed
 
 - Actually run `on_no_new_logs()` callback method.
