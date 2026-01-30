@@ -851,6 +851,9 @@ def follow_workload(
                             )
                             for callback in callbacks or []:
                                 callback.on_inactive_soft_timeout(job)
+                        else:
+                            for callback in callbacks or []:
+                                callback.on_no_new_logs(job)
 
                     if timeout is not None and (time.monotonic() - start_time) > timeout:
                         for callback in callbacks or []:

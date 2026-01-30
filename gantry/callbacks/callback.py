@@ -107,6 +107,7 @@ class Callback(Registrable):
     def on_no_new_logs(self, job: BeakerJob):
         """
         Periodically runs when no new logs have been received from the workload recently.
+        Runs at most once per second.
         """
         del job
 
