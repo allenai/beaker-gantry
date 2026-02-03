@@ -718,7 +718,7 @@ def follow_workload(
 
             # Wait for job to be created...
             with ExitStack() as stack:
-                msg = "[i]waiting on job...[/]"
+                msg = "[i]waiting for job...[/]"
                 status: Status | None = None
                 if not os.environ.get("GANTRY_GITHUB_TESTING"):
                     status = stack.enter_context(console.status(msg, spinner="point", speed=0.8))
