@@ -60,6 +60,7 @@ class Recipe:
     uploads: Sequence[str | tuple[str, str]] | None = None
     ref: str | None = None
     branch: str | None = None
+    remote: str | None = None
     git_repo: GitRepoState | None = None
     gh_token_secret: str = constants.GITHUB_TOKEN_SECRET
     aws_config_secret: str | None = None

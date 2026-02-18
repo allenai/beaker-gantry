@@ -1,4 +1,5 @@
 import binascii
+import functools as ft
 import hashlib
 import logging
 import os
@@ -713,11 +714,14 @@ def build_experiment_spec(
                 f"other python options can't be used with {utils.fmt_opt('--no-python')}"
             )
     else:
-        has_project_file = (
-            git_repo.is_in_tree("pyproject.toml")
-            or git_repo.is_in_tree("setup.py")
-            or git_repo.is_in_tree("setup.cfg")
-        )
+
+        @ft.cache
+        def has_project_file() -> bool:
+            return (
+                git_repo.is_in_tree("pyproject.toml")
+                or git_repo.is_in_tree("setup.py")
+                or git_repo.is_in_tree("setup.cfg")
+            )
 
         task_spec = task_spec.with_env_var(
             name="GANTRY_DEFAULT_PYTHON_VERSION",
@@ -770,7 +774,7 @@ def build_experiment_spec(
                 )
 
             if uv_all_extras is None:
-                if not uv_extras and has_project_file:
+                if not uv_extras and has_project_file():
                     uv_all_extras = True
                 else:
                     uv_all_extras = False
@@ -781,7 +785,7 @@ def build_experiment_spec(
                 )
 
             if uv_all_extras:
-                if not has_project_file:
+                if not has_project_file():
                     raise ConfigurationError(
                         f"{utils.fmt_opt('--uv-all-extras')} is only valid when you have a pyproject.toml, setup.py, or setup.cfg file."
                     )
@@ -789,7 +793,7 @@ def build_experiment_spec(
                 task_spec = task_spec.with_env_var(name="GANTRY_UV_ALL_EXTRAS", value="1")
 
             if uv_extras:
-                if not has_project_file:
+                if not has_project_file():
                     raise ConfigurationError(
                         f"{utils.fmt_opt('--uv-extra')} is only valid when you have a pyproject.toml, setup.py, or setup.cfg file."
                     )

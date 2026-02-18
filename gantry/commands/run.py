@@ -301,6 +301,12 @@ log = logging.getLogger(__name__)
     help="""The target git branch to use. Defaults to the active branch.""",
 )
 @optgroup.option(
+    "--remote",
+    type=str,
+    help="""The URL of a remote repository to use.
+    This can be used to run gantry outside of a GitHub repo.""",
+)
+@optgroup.option(
     "--gh-token-secret",
     type=str,
     help=f"""The name of the Beaker secret that contains your GitHub token.
