@@ -91,7 +91,7 @@ class GitRepoState:
         """
         if self._is_remote:
             return False
-        repo = _resolve_repo(strict=False)
+        repo = _resolve_repo()
         return repo.is_dirty()
 
     @cached_property
