@@ -455,6 +455,14 @@ jobs:
 Note that we use `exec gantry run ...` instead of just `gantry run`. This ensures that if GitHub Actions cancels the job, the SIGINT and SIGTERM signals will propagate to `gantry`, allowing it to clean up gracefully and cancel the running job on Beaker.
 </details>
 
+### Can I use gantry outside of a git repository?
+<details>
+<summary>Click to expand 💬</summary>
+
+Yes, you'll just need to provide the `--remote` option along with `--ref` and/or `--branch`.
+For example: `gantry run --show-logs --yes --dry-run --remote allenai/beaker-gantry --branch main -- echo 'hello, world!'`
+</details>
+
 ### Why "Gantry"?
 <details>
 <summary>Click to expand 💬</summary>
