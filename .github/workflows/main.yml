@@ -66,6 +66,7 @@ jobs:
                 --show-logs \
                 --yes \
                 --dry-run \
+                --workspace ai2/gantry-testing \
                 --remote allenai/beaker-gantry \
                 --branch main \
                 -- echo 'Hello, World!'
