@@ -3,6 +3,7 @@ from __future__ import annotations
 import dataclasses
 import json
 import logging
+import re
 import subprocess
 import warnings
 from dataclasses import dataclass
@@ -24,6 +25,8 @@ __all__ = ["GitRepoState"]
 
 log = logging.getLogger(__name__)
 
+_GITHUB_NAME_RE = re.compile(r"^[a-zA-Z0-9._-]+$")
+
 
 def _parse_git_remote_url(url: str) -> tuple[str, str]:
     """
@@ -34,7 +37,7 @@ def _parse_git_remote_url(url: str) -> tuple[str, str]:
     if "github.com" not in url:
         if url.count("/") == 1:
             account, repo = url.split("/")
-            if account and repo and account.isalnum() and repo.isalnum():
+            if _GITHUB_NAME_RE.match(account) and _GITHUB_NAME_RE.match(repo):
                 return account, repo
 
         raise InvalidRemoteError(f"Remote ('{url}') must point to a GitHub repo")

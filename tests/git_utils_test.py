@@ -11,6 +11,10 @@ def test_parse_git_remote_url_ssh():
     )
 
 
+def test_parse_git_remote_from_shorthand():
+    assert _parse_git_remote_url("allenai/beaker-gantry") == ("allenai", "beaker-gantry")
+
+
 def test_parse_git_remote_url_https():
     assert _parse_git_remote_url("https://github.com/allenai/beaker-gantry.git") == (
         "allenai",
