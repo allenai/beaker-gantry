@@ -303,8 +303,8 @@ log = logging.getLogger(__name__)
 @optgroup.option(
     "--remote",
     type=str,
-    help="""The URL of a remote repository to use.
-    This can be used to run gantry outside of a GitHub repo.""",
+    help="""A GitHub repo URL to use or 'account/repo' shorthand.
+    This can be used to run gantry outside of a GitHub repo, otherwise it shouldn't be provided.""",
 )
 @optgroup.option(
     "--gh-token-secret",

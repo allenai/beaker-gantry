@@ -34,7 +34,8 @@ def _parse_git_remote_url(url: str) -> tuple[str, str]:
     if "github.com" not in url:
         if url.count("/") == 1:
             account, repo = url.split("/")
-            return account, repo
+            if account and repo and account.isalnum() and repo.isalnum():
+                return account, repo
 
         raise InvalidRemoteError(f"Remote ('{url}') must point to a GitHub repo")
 
@@ -171,7 +172,7 @@ class GitRepoState:
                 [
                     "gh",
                     "api",
-                    f"repos/{self.repo}/contents/{path}",
+                    f"repos/{self.repo}/contents/{path}?ref={self.ref}",
                     "--jq",
                     ".name",
                 ],
@@ -209,7 +210,7 @@ class GitRepoState:
         if ref is None:
             if branch is None:
                 raise ConfigurationError(
-                    f"Either {utils.fmt_opt('--ref')} or {utils.fmt_opt('branch')} is required "
+                    f"Either {utils.fmt_opt('--ref')} or {utils.fmt_opt('--branch')} is required "
                     f"when using remote repositories."
                 )
 
