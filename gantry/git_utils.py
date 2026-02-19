@@ -1,6 +1,10 @@
 from __future__ import annotations
 
+import dataclasses
+import json
 import logging
+import re
+import subprocess
 import warnings
 from dataclasses import dataclass
 from functools import cache, cached_property
@@ -21,6 +25,8 @@ __all__ = ["GitRepoState"]
 
 log = logging.getLogger(__name__)
 
+_GITHUB_NAME_RE = re.compile(r"^[a-zA-Z0-9._-]+$")
+
 
 def _parse_git_remote_url(url: str) -> tuple[str, str]:
     """
@@ -29,6 +35,11 @@ def _parse_git_remote_url(url: str) -> tuple[str, str]:
     :raises InvalidRemoteError: If the URL can't be parsed correctly.
     """
     if "github.com" not in url:
+        if url.count("/") == 1:
+            account, repo = url.split("/")
+            if _GITHUB_NAME_RE.match(account) and _GITHUB_NAME_RE.match(repo):
+                return account, repo
+
         raise InvalidRemoteError(f"Remote ('{url}') must point to a GitHub repo")
 
     try:
@@ -44,7 +55,10 @@ def _resolve_repo() -> Repo:
     try:
         return Repo(".")
     except InvalidGitRepositoryError as e:
-        raise GitError("gantry must be run from the ROOT of a valid git repository!") from e
+        raise GitError(
+            f"gantry must be run from the ROOT of a valid git repository "
+            f"unless {utils.fmt_opt('--remote')} is provided to use a remote repository."
+        ) from e
 
 
 @dataclass
@@ -72,12 +86,15 @@ class GitRepoState:
     """
     The current active branch, if any.
     """
+    _is_remote: bool = dataclasses.field(repr=False, default=False)
 
     @property
     def is_dirty(self) -> bool:
         """
         If the local repository state is dirty (uncommitted changes).
         """
+        if self._is_remote:
+            return False
         repo = _resolve_repo()
         return repo.is_dirty()
 
@@ -123,6 +140,8 @@ class GitRepoState:
         """
         Full commit message.
         """
+        if self._is_remote:
+            return None
         repo = _resolve_repo()
         try:
             return str(repo.commit(self.ref).message)
@@ -145,14 +164,101 @@ class GitRepoState:
         """
         Check if a file is in the tree.
         """
-        try:
+        if not self._is_remote:
             path = Path(path).resolve().relative_to(Path("./").resolve())
-        except ValueError:
-            return False
+            repo = _resolve_repo()
+            tree = repo.commit(self.ref).tree
+            return str(path) in tree
 
-        repo = _resolve_repo()
-        tree = repo.commit(self.ref).tree
-        return str(path) in tree
+        try:
+            res = subprocess.run(
+                [
+                    "gh",
+                    "api",
+                    f"repos/{self.repo}/contents/{path}?ref={self.ref}",
+                    "--jq",
+                    ".name",
+                ],
+                capture_output=True,
+                text=True,
+            )
+        except FileNotFoundError:
+            raise ConfigurationError(
+                f"Attempted to use the GitHub CLI to pull metadata about the remote repo '{self.repo}', "
+                f"however it appears that it's not installed. "
+                f"Please ensure the GitHub CLI is installed and try again."
+            )
+
+        try:
+            res.check_returncode()
+            return True
+        except Exception:
+            try:
+                status = int(json.loads(res.stdout)["status"])
+                if status == 404:
+                    return False
+            except Exception:
+                pass
+
+            raise
+
+    @classmethod
+    def from_remote(
+        cls, remote_url: str, ref: str | None = None, branch: str | None = None
+    ) -> GitRepoState:
+        """
+        Instantiate this class from a remote repository.
+        """
+        account, repo_name = _parse_git_remote_url(remote_url)
+        if ref is None:
+            if branch is None:
+                raise ConfigurationError(
+                    f"Either {utils.fmt_opt('--ref')} or {utils.fmt_opt('--branch')} is required "
+                    f"when using remote repositories."
+                )
+
+            try:
+                res = subprocess.run(
+                    [
+                        "gh",
+                        "api",
+                        f"repos/{account}/{repo_name}/commits",
+                        "-f",
+                        f"sha={branch}",
+                        "--method",
+                        "GET",
+                        "--jq",
+                        ".[0].sha",
+                    ],
+                    capture_output=True,
+                    text=True,
+                )
+            except FileNotFoundError:
+                raise ConfigurationError(
+                    f"Since {utils.fmt_opt('--ref')} was not provided, attempted to determine the SHA of the latest "
+                    f"commit automatically using the GitHub CLI, however it appears that it's not installed. "
+                    f"Please provide a {utils.fmt_opt('--ref')} (SHA of a commit to use) or ensure the GitHub CLI is installed."
+                )
+
+            try:
+                res.check_returncode()
+            except Exception:
+                raise ConfigurationError(
+                    f"Since {utils.fmt_opt('--ref')} was not provided, attempted to determine the SHA of the latest "
+                    f"commit automatically using the GitHub CLI, however this failed with:\n"
+                    f"{res.stderr}\n"
+                    f"You can avoid this issue by providing a {utils.fmt_opt('--ref')} (SHA of a commit to use)."
+                )
+
+            ref = res.stdout.strip()
+
+        return cls(
+            repo=f"{account}/{repo_name}",
+            repo_url=f"https://github.com/{account}/{repo_name}",
+            ref=ref,
+            branch=branch,
+            _is_remote=True,
+        )
 
     @classmethod
     def from_env(cls, ref: str | None = None, branch: str | None = None) -> GitRepoState:

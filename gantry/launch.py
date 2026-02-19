@@ -57,8 +57,6 @@ def launch_experiment(
     shared_memory: str | None = None,
     datasets: Sequence[str] | None = None,
     gh_token_secret: str = constants.GITHUB_TOKEN_SECRET,
-    ref: str | None = None,
-    branch: str | None = None,
     conda_file: PathOrStr | None = None,
     conda_env: str | None = None,
     python_manager: Literal["uv", "conda"] | None = None,
@@ -108,6 +106,9 @@ def launch_experiment(
     aws_credentials_secret: str | None = None,
     google_credentials_secret: str | None = None,
     callbacks: Sequence[Callback] | None = None,
+    ref: str | None = None,
+    branch: str | None = None,
+    remote: str | None = None,
     git_repo: GitRepoState | None = None,
     auto_cancel: bool = False,
     client: Beaker | None = None,
@@ -157,10 +158,12 @@ def launch_experiment(
         cpu_count=cpus, gpu_count=gpus, memory=memory, shared_memory=shared_memory
     )
 
-    # Get git information.
-    git_repo = git_repo if git_repo is not None else GitRepoState.from_env(ref=ref, branch=branch)
-
-    # Validate repo state.
+    # Initialize and validate repo state.
+    if git_repo is None:
+        if remote is not None:
+            git_repo = GitRepoState.from_remote(remote, ref=ref, branch=branch)
+        else:
+            git_repo = GitRepoState.from_env(ref=ref, branch=branch)
     if ref is None and not allow_dirty and git_repo.is_dirty:
         raise DirtyRepoError(
             f"You have uncommitted changes! Use {utils.fmt_opt('--allow-dirty')} to force."

@@ -59,6 +59,18 @@ jobs:
                 --no-python \
                 -- echo "Hello, World!"
 
+          - name: Example - outside repo (dry-run)
+            run: |
+              mkdir tmp && cd tmp
+              exec gantry run \
+                --show-logs \
+                --yes \
+                --dry-run \
+                --workspace ai2/gantry-testing \
+                --remote allenai/beaker-gantry \
+                --branch main \
+                -- echo 'Hello, World!'
+
           - name: Example - metrics 
             run: |
               exec gantry run \
