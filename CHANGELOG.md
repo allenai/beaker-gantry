@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [v3.5.0](https://github.com/allenai/beaker-gantry/releases/tag/v3.5.0) - 2026-02-18
+
 ### Added
 
 - Added the ability to use gantry from outside of a git repository by providing the `--remote` option (along with `--branch` or `--ref`). For example: `gantry run --show-logs --yes --dry-run --remote allenai/beaker-gantry --branch main -- echo 'hello, world!'`.
