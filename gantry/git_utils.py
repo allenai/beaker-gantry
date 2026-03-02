@@ -300,7 +300,7 @@ class GitRepoState:
                 if remote_branch is None:
                     raise RemoteBranchNotFoundError(
                         f"Failed to resolve remote tracking branch for local branch '{active_branch.name}'.\n"
-                        f"Please make sure your branch exists on the remote, e.g. 'git push --set-upstream {remote.name}'."
+                        f"Please make sure your branch exists on the remote, e.g. 'git push --set-upstream {remote.name} {active_branch.name}'."
                     )
 
             remote_branches_containing_ref = {
