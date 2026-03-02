@@ -302,7 +302,7 @@ class GitRepoState:
             except json.JSONDecodeError:
                 output = {}
 
-            if not output.get("sha", "").startswith(git_ref):  # in case the ref is abbreviated
+            if not (output.get("sha") or "").startswith(git_ref):  # in case the ref is abbreviated
                 if str(output.get("status")) in {"404", "422"}:
                     raise UnpushedChangesError(
                         f"Current git ref '{git_ref}' does not appear to exist on the remote!\n"
