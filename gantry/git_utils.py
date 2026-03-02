@@ -281,7 +281,7 @@ class GitRepoState:
                     "gh",
                     "api",
                     f"repos/{account}/{repo_name}/commits/{git_ref}",
-                    "--jq='{sha: .sha}'",
+                    "--jq={sha: .sha}",
                 ],
                 capture_output=True,
                 text=True,
