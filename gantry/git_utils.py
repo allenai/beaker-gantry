@@ -301,22 +301,22 @@ class GitRepoState:
                 output = json.loads(res.stdout)
             except json.JSONDecodeError:
                 output = {}
-            else:
-                if output.get("sha") != git_ref:
-                    if str(output.get("status")) in {"404", "422"}:
-                        raise UnpushedChangesError(
-                            f"Current git ref '{git_ref}' does not appear to exist on the remote!\n"
-                            "Please push your changes and try again."
-                        )
+
+            if output.get("sha") != git_ref:
+                if str(output.get("status")) in {"404", "422"}:
+                    raise UnpushedChangesError(
+                        f"Current git ref '{git_ref}' does not appear to exist on the remote!\n"
+                        "Please push your changes and try again."
+                    )
+                else:
+                    msg = (
+                        f"Unexpected response from the GitHub API while validating git ref '{git_ref}' on remote:\n"
+                        f"{res.stdout}\n{res.stderr}"
+                    )
+                    if is_running_in_gantry_batch_job():
+                        warnings.warn(msg, RuntimeWarning)
                     else:
-                        msg = (
-                            f"Unexpected response from the GitHub API while validating git ref '{git_ref}' on remote:\n"
-                            f"{res.stdout}\n{res.stderr}"
-                        )
-                        if is_running_in_gantry_batch_job():
-                            warnings.warn(msg, RuntimeWarning)
-                        else:
-                            raise RuntimeError(msg)
+                        raise RuntimeError(msg)
 
         # Resolve branch.
         branch_name: str | None = branch
