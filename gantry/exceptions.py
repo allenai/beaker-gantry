@@ -24,10 +24,6 @@ class InvalidSecretError(GantryError):
     pass
 
 
-class RemoteBranchNotFoundError(GitError):
-    pass
-
-
 class ConfigurationError(GantryError):
     pass
 

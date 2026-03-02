@@ -9,12 +9,10 @@ import warnings
 from dataclasses import dataclass
 from functools import cache, cached_property
 from pathlib import Path
-from typing import cast
 
 import requests
 from git import InvalidGitRepositoryError
-from git.cmd import Git
-from git.refs import Head, RemoteReference
+from git.refs import Head
 from git.repo import Repo
 
 from . import utils
@@ -268,70 +266,72 @@ class GitRepoState:
         :raises ~gantry.exceptions.GitError: If this method isn't called from the
             root of a valid git repository.
         :raises ~gantry.exceptions.UnpushedChangesError: If there are unpushed commits.
-        :raises ~gantry.exceptions.RemoteBranchNotFoundError: If the local branch is not tracking
-            a remote branch.
         """
-        repo = _resolve_repo()
-        git = Git(".")
+        from .beaker_utils import is_running_in_gantry_batch_job
 
+        repo = _resolve_repo()
         git_ref = ref or str(repo.commit())
         remote = repo.remote()
+        account, repo_name = _parse_git_remote_url(remote.url)
 
+        # Check if the ref exists on the remote (if not, it's likely that there are unpushed commits).
+        try:
+            res = subprocess.run(
+                [
+                    "gh",
+                    "api",
+                    f"repos/{account}/{repo_name}/commits/{git_ref}",
+                    "--jq={sha: .sha, status: .status}",
+                ],
+                capture_output=True,
+                text=True,
+            )
+        except FileNotFoundError:
+            msg = (
+                "Attempted to use the GitHub CLI to validate that the commit exists on the remote, "
+                "however it appears that it's not installed. "
+                "Please ensure the GitHub CLI is installed to avoid this warning message."
+            )
+            if utils.is_cli_mode():
+                utils.print_stderr(f"[yellow]{msg}[/]")
+            elif not is_running_in_gantry_batch_job():
+                warnings.warn(msg, UserWarning)
+        else:
+            try:
+                output = json.loads(res.stdout)
+            except json.JSONDecodeError:
+                output = {}
+
+            if not (output.get("sha") or "").startswith(git_ref):  # in case the ref is abbreviated
+                if str(output.get("status")) in {"404", "422"}:
+                    raise UnpushedChangesError(
+                        f"Current git ref '{git_ref}' does not appear to exist on the remote!\n"
+                        "Please push your changes and try again."
+                    )
+                else:
+                    msg = (
+                        f"Unexpected response from the GitHub API while validating git ref '{git_ref}' on remote:\n"
+                        f"{res.stdout}\n{res.stderr}"
+                    )
+                    if is_running_in_gantry_batch_job():
+                        warnings.warn(msg, RuntimeWarning)
+                    else:
+                        raise RuntimeError(msg)
+
+        # Resolve branch.
         branch_name: str | None = branch
         if branch_name is None:
             active_branch: Head | None = None
             try:
                 active_branch = repo.active_branch
             except TypeError:
-                from .beaker_utils import is_running_in_gantry_batch_job
-
-                msg = (
-                    "Repo is in 'detached HEAD' state which will result in cloning the entire repo at runtime.\n"
-                    "It's recommended to use gantry from a branch instead."
-                )
-                if utils.is_cli_mode():
-                    utils.print_stderr(f"[yellow]{msg}[/]")
-                elif not is_running_in_gantry_batch_job():
-                    warnings.warn(msg, UserWarning)
-
-            remote_branch: RemoteReference | None = None
-            if active_branch is not None:
-                remote_branch = active_branch.tracking_branch()
-                if remote_branch is None:
-                    raise RemoteBranchNotFoundError(
-                        f"Failed to resolve remote tracking branch for local branch '{active_branch.name}'.\n"
-                        f"Please make sure your branch exists on the remote, e.g. 'git push --set-upstream {remote.name} {active_branch.name}'."
-                    )
-
-            remote_branches_containing_ref = {
-                remote_branch_name.strip()
-                for remote_branch_name in cast(
-                    str,
-                    git.execute(
-                        ["git", "branch", "-r", "--contains", git_ref], stdout_as_string=True
-                    ),
-                )
-                .strip()
-                .split("\n")
-            }
-
-            if remote_branch is not None:
-                assert remote_branch.name.startswith(remote_branch.remote_name + "/")
-                remote = repo.remote(remote_branch.remote_name)
-                branch_name = remote_branch.name.replace(remote_branch.remote_name + "/", "", 1)
-                if remote_branch.name not in remote_branches_containing_ref:
-                    raise UnpushedChangesError(
-                        f"Current git ref '{git_ref}' does not appear to exist on the remote tracking branch '{remote_branch.name}'!\n"
-                        "Please push your changes and try again."
-                    )
+                pass
             else:
-                if not remote_branches_containing_ref:
-                    raise UnpushedChangesError(
-                        f"Current git ref '{git_ref}' does not appear to exist on the remote!\n"
-                        "Please push your changes and try again."
-                    )
-
-        account, repo_name = _parse_git_remote_url(remote.url)
+                remote_branch = active_branch.tracking_branch()
+                if remote_branch is not None:
+                    assert remote_branch.name.startswith(remote_branch.remote_name + "/")
+                    remote = repo.remote(remote_branch.remote_name)
+                    branch_name = remote_branch.name.replace(remote_branch.remote_name + "/", "", 1)
 
         return cls(
             repo=f"{account}/{repo_name}",
