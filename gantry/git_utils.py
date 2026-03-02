@@ -277,16 +277,13 @@ class GitRepoState:
             res = subprocess.run(
                 [
                     "gh",
-                    "search",
-                    "commits",
-                    "--json=sha",
-                    f"--hash={git_ref}",
-                    f"--repo={account}/{repo_name}",
+                    "api",
+                    f"repos/{account}/{repo_name}/commits/{git_ref}",
+                    "--jq='{sha: .sha}'",
                 ],
                 capture_output=True,
                 text=True,
             )
-            res.check_returncode()
         except FileNotFoundError:
             from .beaker_utils import is_running_in_gantry_batch_job
 
@@ -300,13 +297,22 @@ class GitRepoState:
             elif not is_running_in_gantry_batch_job():
                 warnings.warn(msg, UserWarning)
         else:
-            results = json.loads(res.stdout)
-            assert isinstance(results, list)
-            if not results:
-                raise UnpushedChangesError(
-                    f"Current git ref '{git_ref}' does not appear to exist on the remote!\n"
-                    "Please push your changes and try again."
-                )
+            try:
+                output = json.loads(res.stdout)
+            except json.JSONDecodeError:
+                output = {}
+            else:
+                if "sha" not in output:
+                    if str(output.get("status", "200")) in {"404", "422"}:
+                        raise UnpushedChangesError(
+                            f"Current git ref '{git_ref}' does not appear to exist on the remote!\n"
+                            "Please push your changes and try again."
+                        )
+                    else:
+                        raise RuntimeError(
+                            f"Unexpected response from GitHub API when validating git ref '{git_ref}' on remote:\n"
+                            f"{res.stdout}\n{res.stderr}"
+                        )
 
         # Resolve branch.
         branch_name: str | None = branch
