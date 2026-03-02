@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Fixed
+
+- Use the GitHub CLI, when available, to validate that the target commit exists on the remote. This is more robust than the previous method which relied on having an up-to-date full clone of the repo.
+
 ## [v3.5.0](https://github.com/allenai/beaker-gantry/releases/tag/v3.5.0) - 2026-02-18
 
 ### Added
