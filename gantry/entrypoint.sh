@@ -336,6 +336,7 @@ function uv_setup_python {
         log_info "Activating virtual environment at '$GANTRY_UV_VENV'..."
         # shellcheck disable=SC1091
         source "$GANTRY_UV_VENV/bin/activate" || return 1
+        export UV_PROJECT_ENVIRONMENT="$GANTRY_UV_VENV"
         log_info "Done."
     elif [[ -n "$GANTRY_USE_SYSTEM_PYTHON" ]]; then
         if ! command -v python &> /dev/null; then
