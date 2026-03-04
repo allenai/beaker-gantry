@@ -104,6 +104,7 @@ def main(quiet: bool = False, check_for_upgrades: bool | None = None, log_level:
         format="%(message)s",
         handlers=[utils.RichHandler()],
     )
+    logging.captureWarnings(True)
 
     # Handle SIGTERM just like KeyboardInterrupt
     signal.signal(signal.SIGTERM, handle_sigterm)

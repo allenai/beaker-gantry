@@ -313,10 +313,7 @@ class GitRepoState:
                         f"Unexpected response from the GitHub API while validating git ref '{git_ref}' on remote:\n"
                         f"{res.stdout}\n{res.stderr}"
                     )
-                    if is_running_in_gantry_batch_job():
-                        warnings.warn(msg, RuntimeWarning)
-                    else:
-                        raise RuntimeError(msg)
+                    warnings.warn(msg, RuntimeWarning)
 
         # Resolve branch.
         branch_name: str | None = branch
