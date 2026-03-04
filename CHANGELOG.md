@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [v3.5.2](https://github.com/allenai/beaker-gantry/releases/tag/v3.5.2) - 2026-03-04
+
 ### Fixed
 
 - Export `UV_PROJECT_ENVIRONMENT` when `--uv-venv` is set so that `uv sync` targets the correct virtual environment instead of ignoring it.
