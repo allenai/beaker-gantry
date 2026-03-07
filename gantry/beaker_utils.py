@@ -37,6 +37,7 @@ def init_client(
 ) -> Beaker:
     Beaker.MAX_RETRIES = 10_000  # effectively retry forever
     Beaker.BACKOFF_MAX = 32
+    Beaker.WRITE_TIMEOUT = 60.0
 
     kwargs = dict()
     if workspace is not None:
