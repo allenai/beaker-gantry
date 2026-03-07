@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [v3.5.3](https://github.com/allenai/beaker-gantry/releases/tag/v3.5.3) - 2026-03-06
+
 ### Fixed
 
 - Fix bug when specifying hostnames with a weka mount.
