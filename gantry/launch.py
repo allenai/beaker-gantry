@@ -318,7 +318,7 @@ def launch_experiment(
                     raise ValueError(f"Invalid weka mount: '{m}'")
             weka_buckets.append((source, target))
 
-        if weka_buckets and (not tags or "storage:weka" not in tags):
+        if weka_buckets and not hostnames and (not tags or "storage:weka" not in tags):
             tags = list(tags or [])
             tags.append("storage:weka")
 
@@ -339,6 +339,11 @@ def launch_experiment(
 
         # Validate clusters.
         if clusters or gpu_types or tags:
+            if hostnames:
+                raise ConfigurationError(
+                    "Cannot specify hostnames with additional cluster selection constraints"
+                )
+
             constraints = []
             if clusters:
                 constraints.append(f'''name matches any of: "{'", "'.join(clusters)}"''')
