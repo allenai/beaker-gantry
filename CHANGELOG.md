@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+- Increase timeout in HTTP client to 30 seconds. This is needed to get around an issue creating experiments with many replicas, since jobs are synchronously created. This is tested to work with 128 task replicas.
+
 ## [v3.5.3](https://github.com/allenai/beaker-gantry/releases/tag/v3.5.3) - 2026-03-06
 
 ### Fixed
