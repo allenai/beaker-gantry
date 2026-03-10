@@ -382,8 +382,9 @@ function uv_setup_python {
 
     (
         if command -v flock &> /dev/null; then
-            log_info "Acquiring lock on setup process with lockfile '$lockfile'..."
+            log_info "Acquiring lock for uv install at '$lockfile'..."
             flock -x 200  # Acquire an exclusive lock on file descriptor 200
+            log_info "Done."
         fi
 
         if [[ -z "$GANTRY_INSTALL_CMD" ]]; then
