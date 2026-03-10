@@ -22,6 +22,7 @@ RUN apt-get update \
        jq \
        cmake \
        git \
+       flock \
     && rm -rf /var/lib/apt/lists/*
 
 # Install conda.
