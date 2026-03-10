@@ -542,6 +542,11 @@ log = logging.getLogger(__name__)
     help="""The backend to use when installing packages in the PyTorch ecosystem with uv.
     Valid options are 'auto', 'cpu', 'cu128', etc.""",
 )
+@optgroup.option(
+    "--uv-cache-dir",
+    type=str,
+    help="""Set a cache directory for uv to use. This is a shortcut to setting the UV_CACHE_DIR environment variable.""",
+)
 @new_optgroup(
     "Python conda settings",
     "Settings specific to the conda Python manager (--python-manager=conda).",

@@ -65,6 +65,7 @@ def launch_experiment(
     uv_extras: Sequence[str] | None = None,
     uv_all_extras: bool | None = None,
     uv_torch_backend: str | None = None,
+    uv_cache_dir: str | None = None,
     env_vars: Sequence[str | tuple[str, str]] | None = None,
     env_secrets: Sequence[str | tuple[str, str]] | None = None,
     dataset_secrets: Sequence[str | tuple[str, str]] | None = None,
@@ -251,6 +252,13 @@ def launch_experiment(
                 raise ConfigurationError(f"Duplicate env var name: '{env_name}'")
             env_var_names.add(env_name)
             env_vars_to_use.append((env_name, val))
+        if uv_cache_dir is not None:
+            if "UV_CACHE_DIR" in env_var_names:
+                raise ConfigurationError(
+                    f"Can't set both {utils.fmt_opt('--uv-cache-dir')} and the env var name 'UV_CACHE_DIR' at the same time."
+                )
+            env_var_names.add("UV_CACHE_DIR")
+            env_vars_to_use.append(("UV_CACHE_DIR", uv_cache_dir))
 
         secret_names: set[str] = set()
         env_secrets_to_use = []
