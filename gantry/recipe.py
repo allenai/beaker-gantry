@@ -108,6 +108,7 @@ class Recipe:
     uv_extras: Sequence[str] | None = None
     uv_all_extras: bool | None = None
     uv_torch_backend: str | None = None
+    uv_cache_dir: str | None = None
 
     # Python Conda settings.
     conda_file: PathOrStr | None = None

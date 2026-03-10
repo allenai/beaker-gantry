@@ -369,23 +369,43 @@ function uv_setup_python {
     UV_PYTHON="$(which python)"
     export UV_PYTHON
 
-    if [[ -z "$GANTRY_INSTALL_CMD" ]]; then
-        if [[ -f 'pyproject.toml' ]]; then
-            # shellcheck disable=SC2086
-            uv_install_project pyproject.toml $GANTRY_UV_FLAGS || return 1
-        elif [[ -f 'setup.py' ]]; then
-            # shellcheck disable=SC2086
-            uv_install_project setup.py $GANTRY_UV_FLAGS || return 1
-        elif [[ -f 'setup.cfg' ]]; then
-            # shellcheck disable=SC2086
-            uv_install_project setup.cfg $GANTRY_UV_FLAGS || return 1
-        elif [[ -f 'requirements.txt' ]]; then
-            # shellcheck disable=SC2086
-            uv_install_requirements $GANTRY_UV_FLAGS || return 1
-        fi
-    else
-        run_custom_cmd "install" "$GANTRY_INSTALL_CMD" || return 1
+    # Using a shared uv cache can lead to race conditions, so if a cache directory is specified
+    # and flock is available, we use flock to get a lock on the cache dir.
+    # This makes it much safer to use a shared cache directory on weka or another network filesystem
+    # at the expense of longer setup times due to lock contention (which can be mitigated by
+    # using a less popular cache dir).
+    lockfile=$RESULTS_DIR/lockfile
+    if [[ -n "$UV_CACHE_DIR" ]] && command -v flock &> /dev/null; then
+        mkdir -p "$UV_CACHE_DIR"
+        lockfile="$UV_CACHE_DIR/lockfile"
     fi
+
+    (
+        if command -v flock &> /dev/null; then
+            log_info "Acquiring lock for uv install at '$lockfile'..."
+            flock -x 200  # Acquire an exclusive lock on file descriptor 200
+            log_info "Done."
+        fi
+
+        if [[ -z "$GANTRY_INSTALL_CMD" ]]; then
+            if [[ -f 'pyproject.toml' ]]; then
+                # shellcheck disable=SC2086
+                uv_install_project pyproject.toml $GANTRY_UV_FLAGS || return 1
+            elif [[ -f 'setup.py' ]]; then
+                # shellcheck disable=SC2086
+                uv_install_project setup.py $GANTRY_UV_FLAGS || return 1
+            elif [[ -f 'setup.cfg' ]]; then
+                # shellcheck disable=SC2086
+                uv_install_project setup.cfg $GANTRY_UV_FLAGS || return 1
+            elif [[ -f 'requirements.txt' ]]; then
+                # shellcheck disable=SC2086
+                uv_install_requirements $GANTRY_UV_FLAGS || return 1
+            fi
+        else
+            run_custom_cmd "install" "$GANTRY_INSTALL_CMD" || return 1
+        fi
+    ) 200>"$lockfile"  # Open lockfile as FD 200 (creates it if needed)
+    # Lock is automatically released when the subshell ( ) exits and FD 200 is closed
 
     uv pip freeze 2> /dev/null > "$GANTRY_DIR/requirements.txt"
 }
