@@ -2,6 +2,7 @@
 
 .eggs/
 .mypy_cache
+.ruff_cache
 *.egg-info/
 build/
 dist/
@@ -36,6 +37,7 @@ doc/_build/
 *.pyc
 *.pyo
 __pycache__
+uv.lock
 
 
 # testing and continuous integration
