@@ -83,7 +83,7 @@ jobs:
               exec gantry run \
                 --show-logs \
                 --python-manager conda \
-                --beaker-image petew/gantry-dev-tools \
+                --beaker-image beaker-py/gantry-dev-tools \
                 -- python --version
 
           - name: Example - conda env file
@@ -97,7 +97,7 @@ jobs:
             run: |
               exec gantry run \
                 --show-logs \
-                --beaker-image petew/gantry-dev-tools \
+                --beaker-image beaker-py/gantry-dev-tools \
                 -- python --version
 
           - name: Example - uv with system python

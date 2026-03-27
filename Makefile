@@ -36,7 +36,7 @@ dev-tools-image :
 
 .PHONY : test-dev-tools-image
 test-dev-tools-image :
-	gantry run --timeout -1 --workspace ai2/gantry-beaker-py --beaker-image petew/gantry-dev-tools --allow-dirty --yes -- python -c 'print("Hello, World!")'
+	gantry run --timeout -1 --workspace ai2/gantry-beaker-py --beaker-image beaker-py/gantry-dev-tools --allow-dirty --yes -- python -c 'print("Hello, World!")'
 
 .PHONY : check-version
 check-version :
