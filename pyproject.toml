@@ -131,5 +131,5 @@ reportWildcardImportFromLibrary = false
 
 [tool.gantry]
 workspace = "ai2/gantry-testing"
-budget = "ai2/oe-base"
+budget = "ai2/compute"
 log_level = "warning"
