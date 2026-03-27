@@ -1,5 +1,5 @@
 IMAGE_NAME=gantry
-BEAKER_WORKSPACE=ai2/gantry-testing
+BEAKER_WORKSPACE=ai2/gantry-beaker-py
 GANTRY_VERSION := $(shell cat gantry/version.py | cut -d'"' -f2-2)
 
 .PHONY : run-checks
@@ -32,11 +32,11 @@ beaker-image : docker-image
 .PHONY : dev-tools-image
 dev-tools-image :
 	docker build -f test_fixtures/Dockerfile -t gantry-dev-tools .
-	beaker image create gantry-dev-tools --name gantry-dev-tools --workspace ai2/gantry-testing
+	beaker image create gantry-dev-tools --name gantry-dev-tools --workspace ai2/gantry-beaker-py
 
 .PHONY : test-dev-tools-image
 test-dev-tools-image :
-	gantry run --timeout -1 --workspace ai2/gantry-testing --beaker-image petew/gantry-dev-tools --allow-dirty --yes -- python -c 'print("Hello, World!")'
+	gantry run --timeout -1 --workspace ai2/gantry-beaker-py --beaker-image beaker-py/gantry-dev-tools --allow-dirty --yes -- python -c 'print("Hello, World!")'
 
 .PHONY : check-version
 check-version :
