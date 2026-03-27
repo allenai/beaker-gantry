@@ -19,7 +19,7 @@ def run_name() -> str:
 
 @pytest.fixture(scope="session")
 def workspace_name() -> str:
-    return "ai2/gantry-testing"
+    return "ai2/gantry-beaker-py"
 
 
 @pytest.fixture(scope="session")

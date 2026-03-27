@@ -130,6 +130,6 @@ filterwarnings = []
 reportWildcardImportFromLibrary = false
 
 [tool.gantry]
-workspace = "ai2/gantry-testing"
+workspace = "ai2/gantry-beaker-py"
 budget = "ai2/compute"
 log_level = "warning"

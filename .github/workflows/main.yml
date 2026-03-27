@@ -26,7 +26,7 @@ jobs:
     timeout-minutes: 15
     env:
       BEAKER_TOKEN: ${{ secrets.BEAKER_TOKEN }}
-      BEAKER_WORKSPACE: ai2/gantry-testing
+      BEAKER_WORKSPACE: ai2/gantry-beaker-py
       GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
     strategy:
       fail-fast: false
@@ -66,7 +66,7 @@ jobs:
                 --show-logs \
                 --yes \
                 --dry-run \
-                --workspace ai2/gantry-testing \
+                --workspace ai2/gantry-beaker-py \
                 --remote allenai/beaker-gantry \
                 --branch main \
                 -- echo 'Hello, World!'
@@ -144,7 +144,7 @@ jobs:
     timeout-minutes: 10
     env:
       BEAKER_TOKEN: ${{ secrets.BEAKER_TOKEN }}
-      BEAKER_WORKSPACE: ai2/gantry-testing
+      BEAKER_WORKSPACE: ai2/gantry-beaker-py
     steps:
       - name: Checkout
         uses: actions/checkout@v4
