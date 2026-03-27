@@ -40,7 +40,7 @@ dev = [
     "types-requests",
     "types-protobuf",
     "types-PyYAML",
-    "black>=23.0,<24.0",
+    "black>=23.0,<25.0",
     "isort>=5.11,<5.13",
     "pytest",
     "twine>=1.11.0",

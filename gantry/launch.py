@@ -858,9 +858,9 @@ def follow_workload(
                             last_inactive_warning = cur_time
                             formatted_duration = utils.format_timedelta(
                                 cur_time - last_event,
-                                resolution="minutes"
-                                if inactive_soft_timeout % 60 == 0
-                                else "seconds",
+                                resolution=(
+                                    "minutes" if inactive_soft_timeout % 60 == 0 else "seconds"
+                                ),
                             )
                             log.warning(
                                 f"Job appears to be inactive! No new logs within the past {formatted_duration}."
