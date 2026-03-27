@@ -16,6 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved safety with setting a `UV_CACHE_DIR` to a shared directory on weka by getting a lock on the directory using `flock`.
   Note that only other gantry runs will respect the lock.
 
+### Changed
+
+- Moved references to workspace, images and budget to those for the new `beaker-py` owner. 
+
 ## [v3.5.3](https://github.com/allenai/beaker-gantry/releases/tag/v3.5.3) - 2026-03-06
 
 ### Fixed
