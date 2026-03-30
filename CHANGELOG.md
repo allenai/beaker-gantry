@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [v3.6.0](https://github.com/allenai/beaker-gantry/releases/tag/v3.6.0) - 2026-03-30
+
 ### Added
 
 - Added `--uv-cache-dir` option to `gantry run`, which is just a shortcut to setting the env var `UV_CACHE_DIR`.
