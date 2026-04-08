@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## [v3.7.0](https://github.com/allenai/beaker-gantry/releases/tag/v3.7.0) - 2026-04-08
+
 ### Added
 
 - Added `--min-runtime` option to `gantry run` for specifying a minimum guaranteed runtime before a job can be preempted (e.g. `--min-runtime 1h`).
