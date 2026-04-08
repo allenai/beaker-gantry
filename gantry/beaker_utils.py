@@ -8,7 +8,7 @@ import tempfile
 import time
 from collections import defaultdict
 from contextlib import ExitStack
-from datetime import datetime
+from datetime import datetime, timedelta
 from fnmatch import fnmatch
 from pathlib import Path
 from typing import Any, Iterable, Literal, Sequence
@@ -544,7 +544,7 @@ def display_results(
     callbacks: Sequence[Callback] | None = None,
 ):
     status = job.status.status
-    runtime = job.status.exited - job.status.started  # type: ignore
+    runtime: timedelta = job.status.exited - job.status.started  # type: ignore
     results_ds = beaker.dataset.get(job.assignment_details.result_dataset_id)
 
     if status == BeakerWorkloadStatus.succeeded:
@@ -628,6 +628,8 @@ def build_experiment_spec(
     uploads: list[tuple[str, str]] | None = None,
     hostnames: list[str] | None = None,
     preemptible: bool | None = None,
+    min_runtime: str | None = None,
+    auto_resume: bool | None = None,
     retries: int | None = None,
     results: str = constants.RESULTS_DIR,
     runtime_dir: str = constants.RUNTIME_DIR,
@@ -654,6 +656,8 @@ def build_experiment_spec(
             resources=task_resources,
             priority=priority,
             preemptible=preemptible,
+            min_runtime=min_runtime,
+            auto_resume=auto_resume,
             replicas=replicas,
             leader_selection=leader_selection,
             host_networking=host_networking,

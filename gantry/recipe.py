@@ -74,7 +74,9 @@ class Recipe:
     task_name: str = "main"
     priority: str | None = None
     task_timeout: str | None = None
-    preemptible: bool | None = None
+    preemptible: bool | None = dataclasses.field(default=None, repr=False)  # deprecated
+    min_runtime: str | None = None
+    auto_resume: bool | None = None
     retries: int | None = None
 
     # Multi-node config.

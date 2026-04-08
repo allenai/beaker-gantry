@@ -48,8 +48,8 @@ def test_dry_run(workspace_name: str, run_name: str, tmp_path: Path):
 
     # Make sure spec is valid.
     spec = BeakerExperimentSpec.from_file(spec_path)
-    # Should be preemptible since we didn't specify a cluster.
-    assert spec.tasks[0].context.preemptible is True
+    # No preemption settings specified, server defaults apply.
+    assert spec.tasks[0].context.preemptible is None
 
 
 def test_dry_run_not_preemptible(workspace_name: str, run_name: str, tmp_path: Path):
@@ -65,10 +65,10 @@ def test_dry_run_not_preemptible(workspace_name: str, run_name: str, tmp_path: P
         text=True,
     )
     assert result.returncode == 0
+    assert "deprecated" in result.stderr.lower()
 
     # Make sure spec is valid.
     spec = BeakerExperimentSpec.from_file(spec_path)
-    # Should be preemptible since we didn't specify a cluster.
     assert spec.tasks[0].context.preemptible is False
 
 
@@ -130,6 +130,60 @@ def test_dry_run_with_weka_tag(
     assert spec.tasks[0].constraints.cluster is not None
     constrained_clusters = set(spec.tasks[0].constraints.cluster)
     assert constrained_clusters
+
+
+def test_dry_run_min_runtime(workspace_name: str, run_name: str, tmp_path: Path):
+    spec_path = tmp_path / "spec.yaml"
+    result = subprocess.run(
+        _build_run_cmd(
+            workspace_name=workspace_name,
+            run_name=run_name,
+            spec_path=spec_path,
+            options=["--min-runtime", "1h"],
+        ),
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0
+
+    spec = BeakerExperimentSpec.from_file(spec_path)
+    assert spec.tasks[0].context.min_runtime == to_nanoseconds("1h")
+
+
+def test_dry_run_no_auto_resume(workspace_name: str, run_name: str, tmp_path: Path):
+    spec_path = tmp_path / "spec.yaml"
+    result = subprocess.run(
+        _build_run_cmd(
+            workspace_name=workspace_name,
+            run_name=run_name,
+            spec_path=spec_path,
+            options=["--no-auto-resume"],
+        ),
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0
+
+    spec = BeakerExperimentSpec.from_file(spec_path)
+    assert spec.tasks[0].context.auto_resume is False
+
+
+def test_dry_run_preemptible_with_min_runtime_error(
+    workspace_name: str, run_name: str, tmp_path: Path
+):
+    spec_path = tmp_path / "spec.yaml"
+    result = subprocess.run(
+        _build_run_cmd(
+            workspace_name=workspace_name,
+            run_name=run_name,
+            spec_path=spec_path,
+            options=["--preemptible", "--min-runtime", "1h"],
+        ),
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode != 0
+    assert "cannot be used together" in result.stderr.lower()
 
 
 def test_dry_run_with_budget(workspace_name: str, run_name: str, tmp_path: Path):
