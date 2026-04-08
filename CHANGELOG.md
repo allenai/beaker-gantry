@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- Added `--min-runtime` option to `gantry run` for specifying a minimum guaranteed runtime before a job can be preempted (e.g. `--min-runtime 1h`).
+- Added `--no-auto-resume` option to `gantry run` for disabling automatic job resumption after preemption.
+
+### Changed
+
+- Bumped minimum `beaker-py` version to 2.6.0.
+- When no cluster is specified, gantry no longer explicitly sets `preemptible=True`. The server defaults (`min_runtime=0`, `auto_resume=true`) now apply, which is equivalent behavior.
+
+### Deprecated
+
+- `--preemptible/--not-preemptible` is deprecated in favor of `--min-runtime` and `--no-auto-resume`. The old flags still work but emit a deprecation warning.
+
 ## [v3.6.0](https://github.com/allenai/beaker-gantry/releases/tag/v3.6.0) - 2026-03-30
 
 ### Added

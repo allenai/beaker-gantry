@@ -347,6 +347,26 @@ Then change your `gantry run` command like this:
 ```
 </details>
 
+### How can I control job preemption behavior?
+<details>
+<summary>Click to expand 💬</summary>
+
+Use `--min-runtime` to specify the minimum time your job needs to make and durably save progress before it can be preempted.
+This should cover your initialization, a full training step or checkpoint cycle, and saving the checkpoint.
+For example:
+
+```bash
+gantry run --show-logs --min-runtime='1h' -- python train.py
+```
+
+By default, jobs can be preempted at any time (`min_runtime=0`) and will automatically resume after preemption.
+To disable automatic resumption, add `--no-auto-resume`:
+
+```bash
+gantry run --show-logs --min-runtime='30m' --no-auto-resume -- python train.py
+```
+</details>
+
 ### How can I customize the Python setup steps?
 <details>
 <summary>Click to expand 💬</summary>
@@ -445,7 +465,6 @@ jobs:
             --ref ${{ env.COMMIT_SHA }} \
             --branch ${{ env.BRANCH_NAME }} \
             --priority normal \
-            --preemptible \
             --gpus 1 \
             --gpu-type h100 \
             --gpu-type a100 \

@@ -93,6 +93,8 @@ def launch_experiment(
     synchronized_start_timeout: str | None = None,
     budget: str | None = None,
     preemptible: bool | None = None,
+    min_runtime: str | None = None,
+    auto_resume: bool | None = None,
     retries: int | None = None,
     results: str = constants.RESULTS_DIR,
     runtime_dir: str = constants.RUNTIME_DIR,
@@ -396,10 +398,6 @@ def launch_experiment(
             else:
                 clusters = [f"{cl.organization_name}/{cl.name}" for cl in all_clusters]
 
-        # Default to preemptible when no cluster has been specified.
-        if not clusters and preemptible is None:
-            preemptible = True
-
         # Get / set the GitHub token secret.
         gh_token_secret_to_use: str | None = None
         if not git_repo.is_public and "GITHUB_TOKEN" not in secret_names:
@@ -526,6 +524,8 @@ def launch_experiment(
             uploads=uploads_to_use,
             hostnames=None if hostnames is None else list(hostnames),
             preemptible=preemptible,
+            min_runtime=min_runtime,
+            auto_resume=auto_resume,
             retries=retries,
             results=results,
             runtime_dir=runtime_dir,

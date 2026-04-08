@@ -152,8 +152,7 @@ log = logging.getLogger(__name__)
     default=None,
     help="""The name of a cluster to use or a glob pattern, e.g. --cluster='ai2/*-cirrascale'.
     Multiple allowed.
-    If you don't specify a cluster or the priority, the priority will default to 'preemptible' and
-    the job will be able to run on any on-premise cluster.""",
+    If you don't specify a cluster, the job will be able to run on any on-premise cluster.""",
     show_default=True,
 )
 @optgroup.option(
@@ -360,11 +359,27 @@ log = logging.getLogger(__name__)
     show_default=True,
 )
 @optgroup.option(
+    "--min-runtime",
+    type=str,
+    help="""Minimum guaranteed runtime before a job can be preempted, e.g. '1h', '30m'.
+    A value of '0' (the server default) means the job can be preempted at any time.""",
+    default=None,
+)
+@optgroup.option(
+    "--no-auto-resume",
+    "auto_resume",
+    is_flag=True,
+    flag_value=False,
+    help="""Disable automatic job resumption after preemption.
+    If not specified, the server default (auto-resume enabled) is used.""",
+    default=None,
+)
+@optgroup.option(
     "--preemptible/--not-preemptible",
     is_flag=True,
-    help="""Mark the job as preemptible or not. If you don't specify at least one cluster then
-    jobs will default to preemptible.""",
+    help="""[Deprecated] Use --min-runtime and --no-auto-resume instead.""",
     default=None,
+    hidden=True,
 )
 @optgroup.option(
     "--retries", type=int, help="""Specify the number of automatic retries for the experiment."""
@@ -602,6 +617,19 @@ def run(
             f"{', '.join([repr(s) for s in invalid_args])}.\n"
             "Hint: you might be trying to pass a value to a FLAG option.\n"
             "Try 'gantry run --help' for help."
+        )
+
+    # Validate preemptible vs min_runtime/auto_resume.
+    if kwargs.get("preemptible") is not None:
+        if kwargs.get("min_runtime") is not None or kwargs.get("auto_resume") is not None:
+            raise ConfigurationError(
+                f"{utils.fmt_opt('--preemptible')} cannot be used together with "
+                f"{utils.fmt_opt('--min-runtime')} or {utils.fmt_opt('--no-auto-resume')}. "
+                f"Please use {utils.fmt_opt('--min-runtime')} and/or {utils.fmt_opt('--no-auto-resume')} instead."
+            )
+        utils.print_stderr(
+            "[yellow]Warning: --preemptible/--not-preemptible is deprecated. "
+            "Use --min-runtime and/or --no-auto-resume instead.[/]"
         )
 
     # Parse timeouts.
