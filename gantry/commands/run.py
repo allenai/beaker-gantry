@@ -152,7 +152,7 @@ log = logging.getLogger(__name__)
     default=None,
     help="""The name of a cluster to use or a glob pattern, e.g. --cluster='ai2/*-cirrascale'.
     Multiple allowed.
-    If you don't specify a cluster, the job will be able to run on any on-premise cluster.""",
+    If you don't specify a cluster, Beaker will attempt to schedule on any available on-premise cluster.""",
     show_default=True,
 )
 @optgroup.option(
@@ -377,9 +377,9 @@ log = logging.getLogger(__name__)
 @optgroup.option(
     "--preemptible/--not-preemptible",
     is_flag=True,
-    help="""[Deprecated] Use --min-runtime and --no-auto-resume instead.""",
+    help="""Use --min-runtime and --no-auto-resume instead.""",
     default=None,
-    hidden=True,
+    deprecated="Use --min-runtime and/or --no-auto-resume instead.",
 )
 @optgroup.option(
     "--retries", type=int, help="""Specify the number of automatic retries for the experiment."""
@@ -627,10 +627,6 @@ def run(
                 f"{utils.fmt_opt('--min-runtime')} or {utils.fmt_opt('--no-auto-resume')}. "
                 f"Please use {utils.fmt_opt('--min-runtime')} and/or {utils.fmt_opt('--no-auto-resume')} instead."
             )
-        utils.print_stderr(
-            "[yellow]Warning: --preemptible/--not-preemptible is deprecated. "
-            "Use --min-runtime and/or --no-auto-resume instead.[/]"
-        )
 
     # Parse timeouts.
     # NOTE: `timeout_str` has to be handled specially because of the '-1' value.
