@@ -1,0 +1,8 @@
+name: Project sync
+on:
+  issues:
+    types: [opened, reopened, transferred, labeled, unlabeled, closed]
+jobs:
+  sync:
+    uses: allenai/reops/.github/workflows/sync-issue.yml@main
+    secrets: inherit
