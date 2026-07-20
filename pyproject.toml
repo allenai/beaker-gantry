@@ -131,5 +131,5 @@ reportWildcardImportFromLibrary = false
 
 [tool.gantry]
 workspace = "ai2/gantry-beaker-py"
-budget = "ai2/compute"
+budget = "ai2/infra"
 log_level = "warning"
